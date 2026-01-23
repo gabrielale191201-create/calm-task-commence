@@ -2,95 +2,60 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Definition of the design system. All colors, gradients, fonts, etc should be defined here. 
-All colors MUST be HSL.
-*/
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700&display=swap');
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
+    /* Light, calming green-based palette */
+    --background: 120 20% 98%;
+    --foreground: 150 10% 15%;
 
     --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
+    --card-foreground: 150 10% 15%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
+    --popover-foreground: 150 10% 15%;
 
-    --primary: 222.2 47.4% 11.2%;
-    --primary-foreground: 210 40% 98%;
+    /* Main green brand color */
+    --primary: 152 55% 45%;
+    --primary-foreground: 0 0% 100%;
 
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
+    /* Soft green secondary */
+    --secondary: 145 30% 94%;
+    --secondary-foreground: 150 25% 30%;
 
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
+    --muted: 140 15% 95%;
+    --muted-foreground: 150 10% 45%;
 
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
+    --accent: 152 45% 90%;
+    --accent-foreground: 152 55% 30%;
 
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
+    --destructive: 0 65% 55%;
+    --destructive-foreground: 0 0% 100%;
 
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 222.2 84% 4.9%;
+    --border: 145 20% 90%;
+    --input: 145 20% 90%;
+    --ring: 152 55% 45%;
 
-    --radius: 0.5rem;
+    --radius: 1rem;
 
-    --sidebar-background: 0 0% 98%;
+    /* Custom focus app colors */
+    --focus-green: 152 55% 45%;
+    --focus-green-light: 145 40% 92%;
+    --focus-green-dark: 152 55% 35%;
+    --focus-sage: 140 20% 85%;
+    --focus-cream: 40 30% 97%;
+    --focus-text: 150 10% 20%;
+    --focus-text-muted: 150 8% 55%;
+    
+    /* Timer ring */
+    --timer-ring: 152 55% 45%;
+    --timer-track: 145 20% 92%;
+    --timer-glow: 152 55% 45%;
 
-    --sidebar-foreground: 240 5.3% 26.1%;
-
-    --sidebar-primary: 240 5.9% 10%;
-
-    --sidebar-primary-foreground: 0 0% 98%;
-
-    --sidebar-accent: 240 4.8% 95.9%;
-
-    --sidebar-accent-foreground: 240 5.9% 10%;
-
-    --sidebar-border: 220 13% 91%;
-
-    --sidebar-ring: 217.2 91.2% 59.8%;
-  }
-
-  .dark {
-    --background: 222.2 84% 4.9%;
-    --foreground: 210 40% 98%;
-
-    --card: 222.2 84% 4.9%;
-    --card-foreground: 210 40% 98%;
-
-    --popover: 222.2 84% 4.9%;
-    --popover-foreground: 210 40% 98%;
-
-    --primary: 210 40% 98%;
-    --primary-foreground: 222.2 47.4% 11.2%;
-
-    --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 210 40% 98%;
-
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
-
-    --accent: 217.2 32.6% 17.5%;
-    --accent-foreground: 210 40% 98%;
-
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
-
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 212.7 26.8% 83.9%;
-    --sidebar-background: 240 5.9% 10%;
-    --sidebar-foreground: 240 4.8% 95.9%;
-    --sidebar-primary: 224.3 76.3% 48%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 240 3.7% 15.9%;
-    --sidebar-accent-foreground: 240 4.8% 95.9%;
-    --sidebar-border: 240 3.7% 15.9%;
-    --sidebar-ring: 217.2 91.2% 59.8%;
+    /* Success states */
+    --success: 152 55% 45%;
+    --success-light: 145 40% 94%;
   }
 }
 
@@ -100,6 +65,231 @@ All colors MUST be HSL.
   }
 
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground font-sans antialiased;
+    font-family: 'Inter', system-ui, sans-serif;
   }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: 'Outfit', 'Inter', system-ui, sans-serif;
+  }
+}
+
+@layer components {
+  /* Focus card styles */
+  .focus-card {
+    @apply bg-card rounded-2xl p-6 shadow-sm border border-border/50;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .focus-card:hover {
+    @apply shadow-md;
+    transform: translateY(-2px);
+  }
+
+  /* Primary button with gradient */
+  .btn-primary-focus {
+    @apply px-8 py-4 rounded-2xl font-semibold text-lg;
+    background: linear-gradient(135deg, hsl(152 55% 45%), hsl(152 55% 40%));
+    color: white;
+    box-shadow: 0 4px 20px hsl(152 55% 45% / 0.3);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .btn-primary-focus:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 25px hsl(152 55% 45% / 0.4);
+  }
+
+  .btn-primary-focus:active {
+    transform: translateY(0);
+  }
+
+  /* Secondary button */
+  .btn-secondary-focus {
+    @apply px-6 py-3 rounded-xl font-medium bg-secondary text-secondary-foreground;
+    transition: all 0.2s ease;
+  }
+
+  .btn-secondary-focus:hover {
+    @apply bg-accent;
+  }
+
+  /* Timer circle */
+  .timer-circle {
+    filter: drop-shadow(0 0 20px hsl(152 55% 45% / 0.2));
+  }
+
+  /* Smooth page transitions */
+  .page-enter {
+    animation: pageEnter 0.4s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+  }
+
+  /* Bottom nav styles */
+  .bottom-nav {
+    @apply fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-xl border-t border-border/50;
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+
+  .nav-item {
+    @apply flex flex-col items-center justify-center py-2 px-3 rounded-xl transition-all duration-300;
+  }
+
+  .nav-item.active {
+    @apply bg-accent;
+  }
+
+  .nav-item.active svg,
+  .nav-item.active span {
+    color: hsl(152 55% 35%);
+  }
+
+  /* Task checkbox */
+  .task-checkbox {
+    @apply w-6 h-6 rounded-full border-2 border-primary/50 flex items-center justify-center transition-all duration-300;
+  }
+
+  .task-checkbox.checked {
+    @apply bg-primary border-primary;
+  }
+
+  /* Progress ring animation */
+  .progress-ring {
+    transition: stroke-dashoffset 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  /* Input focus styles */
+  .focus-input {
+    @apply w-full px-5 py-4 rounded-xl bg-muted/50 border border-transparent text-foreground placeholder:text-muted-foreground;
+    transition: all 0.2s ease;
+  }
+
+  .focus-input:focus {
+    @apply outline-none border-primary/30 bg-white shadow-sm;
+  }
+
+  /* Duration preset button */
+  .duration-preset {
+    @apply px-4 py-2 rounded-full text-sm font-medium bg-secondary text-secondary-foreground transition-all duration-200;
+  }
+
+  .duration-preset:hover {
+    @apply bg-accent;
+  }
+
+  .duration-preset.active {
+    @apply bg-primary text-white;
+  }
+
+  /* Streak badge */
+  .streak-badge {
+    @apply inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium;
+    background: linear-gradient(135deg, hsl(152 55% 45% / 0.15), hsl(152 55% 45% / 0.1));
+    color: hsl(152 55% 35%);
+  }
+}
+
+@layer utilities {
+  /* Custom animations */
+  @keyframes pageEnter {
+    from {
+      opacity: 0;
+      transform: translateY(10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  @keyframes pulse-soft {
+    0%, 100% {
+      opacity: 1;
+    }
+    50% {
+      opacity: 0.7;
+    }
+  }
+
+  @keyframes float {
+    0%, 100% {
+      transform: translateY(0);
+    }
+    50% {
+      transform: translateY(-6px);
+    }
+  }
+
+  @keyframes ring-pulse {
+    0% {
+      box-shadow: 0 0 0 0 hsl(152 55% 45% / 0.4);
+    }
+    70% {
+      box-shadow: 0 0 0 15px hsl(152 55% 45% / 0);
+    }
+    100% {
+      box-shadow: 0 0 0 0 hsl(152 55% 45% / 0);
+    }
+  }
+
+  @keyframes celebrate {
+    0% {
+      transform: scale(1);
+    }
+    50% {
+      transform: scale(1.05);
+    }
+    100% {
+      transform: scale(1);
+    }
+  }
+
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+
+  @keyframes slideUp {
+    from {
+      opacity: 0;
+      transform: translateY(20px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  .animate-pulse-soft {
+    animation: pulse-soft 2s ease-in-out infinite;
+  }
+
+  .animate-float {
+    animation: float 3s ease-in-out infinite;
+  }
+
+  .animate-ring-pulse {
+    animation: ring-pulse 2s infinite;
+  }
+
+  .animate-celebrate {
+    animation: celebrate 0.5s ease-in-out;
+  }
+
+  .animate-fade-in {
+    animation: fadeIn 0.4s ease-out forwards;
+  }
+
+  .animate-slide-up {
+    animation: slideUp 0.5s ease-out forwards;
+  }
+
+  /* Staggered animations */
+  .stagger-1 { animation-delay: 0.1s; }
+  .stagger-2 { animation-delay: 0.2s; }
+  .stagger-3 { animation-delay: 0.3s; }
+  .stagger-4 { animation-delay: 0.4s; }
 }
