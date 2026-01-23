@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { HelpCircle, Settings } from 'lucide-react';
+import { HelpCircle } from 'lucide-react';
 import { BottomNav } from '@/components/BottomNav';
 import { TimerIndicator } from '@/components/TimerIndicator';
 import { HomePage } from '@/components/pages/HomePage';
@@ -13,6 +13,7 @@ import { useTimer } from '@/hooks/useTimer';
 import { useAlarmSound } from '@/hooks/useAlarmSound';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
 import { TabType, Task, Routine, JournalEntry, FocusSession, UserProfile } from '@/types/focuson';
+import { FocusOnLogo } from '@/components/FocusOnLogo';
 
 function generateId() {
   return Math.random().toString(36).substr(2, 9);
@@ -267,9 +268,27 @@ export default function Index() {
       {/* Header with help button */}
       <header className="fixed top-0 left-0 right-0 z-30 bg-background/80 backdrop-blur-lg border-b border-border/50">
         <div className="flex items-center justify-between px-6 py-3">
-          <h1 className="text-xl font-display font-semibold text-primary">
-            FocusON
-          </h1>
+          {activeTab === 'hoy' ? (
+            <div className="flex-1 flex flex-col items-center justify-center gap-2">
+              <div className="pointer-events-none select-none">
+                <FocusOnLogo size={40} />
+              </div>
+              <h1 className="text-sm font-display font-semibold tracking-[0.22em] text-foreground">
+                FOCUSON
+              </h1>
+            </div>
+          ) : (
+            <div className="flex items-center gap-3">
+              {activeTab === 'enfoque' ? (
+                <div className="pointer-events-none select-none">
+                  <FocusOnLogo size={26} />
+                </div>
+              ) : null}
+              <h1 className="text-xl font-display font-semibold text-primary">
+                FocusON
+              </h1>
+            </div>
+          )}
           <button
             onClick={() => setShowHowTo(true)}
             className="p-2 rounded-xl hover:bg-muted transition-colors"
@@ -290,7 +309,7 @@ export default function Index() {
       )}
 
       {/* Main content */}
-      <main className="pt-16">
+      <main className="pt-20">
         {renderPage()}
       </main>
 
