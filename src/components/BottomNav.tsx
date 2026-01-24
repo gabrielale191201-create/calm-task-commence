@@ -1,4 +1,4 @@
-import { Home, Target, CheckSquare, RotateCcw, BookOpen, BarChart3 } from 'lucide-react';
+import { Home, Target, CalendarClock, CheckSquare, RotateCcw, BookOpen, BarChart3 } from 'lucide-react';
 import { TabType } from '@/types/focuson';
 import { cn } from '@/lib/utils';
 import { FocusOnLogo } from '@/components/FocusOnLogo';
@@ -11,6 +11,7 @@ interface BottomNavProps {
 const navItems: { id: TabType; label: string; icon: React.ElementType }[] = [
   { id: 'hoy', label: 'Hoy', icon: Home },
   { id: 'enfoque', label: 'Enfoque', icon: Target },
+  { id: 'horario', label: 'Horario', icon: CalendarClock },
   { id: 'tareas', label: 'Tareas', icon: CheckSquare },
   { id: 'rutinas', label: 'Rutinas', icon: RotateCcw },
   { id: 'diario', label: 'Diario', icon: BookOpen },
