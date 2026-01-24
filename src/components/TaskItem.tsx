@@ -8,33 +8,51 @@ interface TaskItemProps {
   onDelete: (id: string) => void;
   onStartFocus?: (task: string) => void;
   showFocusButton?: boolean;
+  meta?: string;
+  onPress?: () => void;
 }
 
-export function TaskItem({ task, onToggle, onDelete, onStartFocus, showFocusButton = true }: TaskItemProps) {
+export function TaskItem({ task, onToggle, onDelete, onStartFocus, showFocusButton = true, meta, onPress }: TaskItemProps) {
+  const isDone = task.status === 'done';
+
   return (
-    <div className={cn(
+    <div
+      className={cn(
       "flex items-center gap-3 p-4 rounded-xl bg-card border border-border/50 transition-all duration-300",
-      task.completed && "opacity-60"
-    )}>
+      isDone && "opacity-60",
+      onPress && "cursor-pointer hover:bg-muted/20"
+    )}
+      onClick={onPress}
+      role={onPress ? 'button' : undefined}
+      tabIndex={onPress ? 0 : undefined}
+      onKeyDown={onPress ? (e) => e.key === 'Enter' && onPress() : undefined}
+    >
       <button
         onClick={() => onToggle(task.id)}
         className={cn(
           "task-checkbox flex-shrink-0",
-          task.completed && "checked"
+          isDone && "checked"
         )}
       >
-        {task.completed && <Check size={14} className="text-white" />}
+        {isDone && <Check size={14} className="text-white" />}
       </button>
       
-      <span className={cn(
-        "flex-1 text-foreground transition-all duration-300",
-        task.completed && "line-through text-muted-foreground"
-      )}>
-        {task.text}
-      </span>
+      <div className="flex-1 min-w-0">
+        <span className={cn(
+          "block text-foreground transition-all duration-300 truncate",
+          isDone && "line-through text-muted-foreground"
+        )}>
+          {task.text}
+        </span>
+        {meta ? (
+          <span className="mt-1 inline-flex text-[11px] text-muted-foreground bg-muted/40 px-2 py-1 rounded-full">
+            {meta}
+          </span>
+        ) : null}
+      </div>
       
       <div className="flex items-center gap-2">
-        {showFocusButton && !task.completed && onStartFocus && (
+        {showFocusButton && !isDone && onStartFocus && (
           <button
             onClick={() => onStartFocus(task.text)}
             className="p-2 rounded-lg bg-primary/10 text-primary hover:bg-primary/20 transition-colors"

@@ -80,13 +80,21 @@ export default function Index() {
   }, [sessions]);
 
   // Task handlers
-  const addTask = (text: string, isTopThree = false) => {
+  const addTask = (
+    input: string | { text: string; scheduledDate?: string; scheduledTime?: string; durationMinutes?: number; source?: Task['source'] },
+    isTopThree = false
+  ) => {
+    const normalized = typeof input === 'string' ? { text: input } : input;
     const newTask: Task = {
       id: generateId(),
-      text,
-      completed: false,
+      text: normalized.text,
+      status: 'pending',
+      source: normalized.source || 'manual',
       createdAt: new Date().toISOString(),
       isTopThree,
+      scheduledDate: normalized.scheduledDate,
+      scheduledTime: normalized.scheduledTime,
+      durationMinutes: normalized.durationMinutes,
     };
     setTasks([...tasks, newTask]);
   };
@@ -95,14 +103,32 @@ export default function Index() {
     const now = new Date().toISOString();
     setTasks(tasks.map(t => {
       if (t.id !== id) return t;
-      const nextCompleted = !t.completed;
+      const nextDone = t.status !== 'done';
       return {
         ...t,
-        completed: nextCompleted,
-        completedAt: nextCompleted ? now : undefined,
+        status: nextDone ? 'done' : 'pending',
+        completedAt: nextDone ? now : undefined,
       };
     }));
   };
+
+  // Migración suave de tareas antiguas (completed -> status, source por defecto)
+  useEffect(() => {
+    const needsMigration = tasks.some((t: any) => typeof t.status === 'undefined' || typeof t.source === 'undefined');
+    if (!needsMigration) return;
+    setTasks(tasks.map((t: any) => {
+      const status: Task['status'] = typeof t.status !== 'undefined'
+        ? t.status
+        : (t.completed ? 'done' : 'pending');
+      const source: Task['source'] = t.source || 'manual';
+      return {
+        ...t,
+        status,
+        source,
+      } as Task;
+    }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const deleteTask = (id: string) => {
     setTasks(tasks.filter(t => t.id !== id));
@@ -214,7 +240,7 @@ export default function Index() {
 
   const hasVictoryToday = (() => {
     const didSession = sessions.some((s) => s.date === todayISO && s.status === 'completed');
-    const didTask = tasks.some((t) => t.completed && (t.completedAt || '').startsWith(todayISO));
+    const didTask = tasks.some((t) => t.status === 'done' && (t.completedAt || '').startsWith(todayISO));
     const didRoutine = routines.some((r) => r.steps.some((st) => st.completed && (st.completedAt || '').startsWith(todayISO)));
     return didSession || didTask || didRoutine;
   })();
@@ -222,7 +248,7 @@ export default function Index() {
   const calculateStartedStreak = useCallback(() => {
     const dayHasVictory = (dateStr: string) => {
       const didSession = sessions.some((s) => s.date === dateStr && s.status === 'completed');
-      const didTask = tasks.some((t) => t.completed && (t.completedAt || '').startsWith(dateStr));
+      const didTask = tasks.some((t) => t.status === 'done' && (t.completedAt || '').startsWith(dateStr));
       const didRoutine = routines.some((r) => r.steps.some((st) => st.completed && (st.completedAt || '').startsWith(dateStr)));
       return didSession || didTask || didRoutine;
     };
@@ -289,10 +315,10 @@ export default function Index() {
         return (
           <TasksPage
             tasks={regularTasks}
-            onAddTask={(text) => addTask(text, false)}
+            onAddTask={(data) => addTask(data, false)}
             onToggleTask={toggleTask}
             onDeleteTask={deleteTask}
-            onStartFocus={startFocusFromTask}
+            onStartFocus={(taskText, minutes) => startFocusFromTopTask(taskText, minutes)}
           />
         );
       case 'rutinas':
