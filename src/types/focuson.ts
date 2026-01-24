@@ -1,10 +1,26 @@
 export interface Task {
   id: string;
   text: string;
-  completed: boolean;
+  /**
+   * Estado actual de la tarea.
+   * - pending: por hacer
+   * - done: hecha
+   */
+  status: 'pending' | 'done';
+  /**
+   * Origen de la tarea.
+   * - manual: creada en la pestaña Tareas/Hoy
+   * - horario: creada desde una actividad del Horario
+   */
+  source: 'manual' | 'horario';
   completedAt?: string;
   createdAt: string;
   isTopThree: boolean;
+
+  // Programación (opcional)
+  scheduledDate?: string; // YYYY-MM-DD
+  scheduledTime?: string; // HH:mm
+  durationMinutes?: number;
 }
 
 export interface Routine {
