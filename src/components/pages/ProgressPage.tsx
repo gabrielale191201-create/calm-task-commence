@@ -10,7 +10,8 @@ export function ProgressPage({ sessions, streak }: ProgressPageProps) {
   const today = new Date().toISOString().split('T')[0];
   
   const todaySessions = sessions.filter(s => s.date === today);
-  const todayMinutes = Math.round(todaySessions.reduce((acc, s) => acc + s.duration, 0) / 60);
+  const todayCompletedSessions = todaySessions.filter(s => s.status === 'completed');
+  const todayMinutes = Math.round(todaySessions.reduce((acc, s) => acc + s.focusedDuration, 0) / 60);
 
   // Get last 7 days for history
   const last7Days = Array.from({ length: 7 }, (_, i) => {
@@ -23,8 +24,8 @@ export function ProgressPage({ sessions, streak }: ProgressPageProps) {
     const daySessions = sessions.filter(s => s.date === date);
     return {
       date,
-      sessionsCompleted: daySessions.length,
-      minutesFocused: Math.round(daySessions.reduce((acc, s) => acc + s.duration, 0) / 60),
+      sessionsCompleted: daySessions.filter(s => s.status === 'completed').length,
+      minutesFocused: Math.round(daySessions.reduce((acc, s) => acc + s.focusedDuration, 0) / 60),
     };
   });
 
@@ -54,7 +55,7 @@ export function ProgressPage({ sessions, streak }: ProgressPageProps) {
             <span className="text-sm">Sesiones hoy</span>
           </div>
           <p className="text-3xl font-display font-semibold text-foreground">
-            {todaySessions.length}
+            {todayCompletedSessions.length}
           </p>
         </div>
 
@@ -138,7 +139,7 @@ export function ProgressPage({ sessions, streak }: ProgressPageProps) {
                   {session.task}
                 </span>
                 <span className="text-sm text-muted-foreground flex-shrink-0">
-                  {Math.round(session.duration / 60)} min
+                    {Math.round(session.focusedDuration / 60)} min
                 </span>
               </div>
             ))}

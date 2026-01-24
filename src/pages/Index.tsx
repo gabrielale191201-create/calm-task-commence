@@ -92,7 +92,16 @@ export default function Index() {
   };
 
   const toggleTask = (id: string) => {
-    setTasks(tasks.map(t => t.id === id ? { ...t, completed: !t.completed } : t));
+    const now = new Date().toISOString();
+    setTasks(tasks.map(t => {
+      if (t.id !== id) return t;
+      const nextCompleted = !t.completed;
+      return {
+        ...t,
+        completed: nextCompleted,
+        completedAt: nextCompleted ? now : undefined,
+      };
+    }));
   };
 
   const deleteTask = (id: string) => {
@@ -132,11 +141,16 @@ export default function Index() {
   };
 
   const toggleRoutineStep = (routineId: string, stepId: string) => {
+    const now = new Date().toISOString();
     setRoutines(routines.map(r => {
       if (r.id === routineId) {
         return {
           ...r,
-          steps: r.steps.map(s => s.id === stepId ? { ...s, completed: !s.completed } : s)
+          steps: r.steps.map(s => {
+            if (s.id !== stepId) return s;
+            const nextCompleted = !s.completed;
+            return { ...s, completed: nextCompleted, completedAt: nextCompleted ? now : undefined };
+          })
         };
       }
       return r;
@@ -177,7 +191,9 @@ export default function Index() {
     const newSession: FocusSession = {
       id: generateId(),
       task,
-      duration,
+      plannedDuration: duration,
+      focusedDuration: duration,
+      status: 'completed',
       completedAt: new Date().toISOString(),
       date: new Date().toISOString().split('T')[0],
     };
@@ -188,6 +204,48 @@ export default function Index() {
   const startFocusFromTask = (taskText: string) => {
     setActiveTab('enfoque');
   };
+
+  const startFocusFromTopTask = (taskText: string, minutes: number) => {
+    setActiveTab('enfoque');
+    timer.startTimer(minutes, taskText);
+  };
+
+  const todayISO = new Date().toISOString().split('T')[0];
+
+  const hasVictoryToday = (() => {
+    const didSession = sessions.some((s) => s.date === todayISO && s.status === 'completed');
+    const didTask = tasks.some((t) => t.completed && (t.completedAt || '').startsWith(todayISO));
+    const didRoutine = routines.some((r) => r.steps.some((st) => st.completed && (st.completedAt || '').startsWith(todayISO)));
+    return didSession || didTask || didRoutine;
+  })();
+
+  const calculateStartedStreak = useCallback(() => {
+    const dayHasVictory = (dateStr: string) => {
+      const didSession = sessions.some((s) => s.date === dateStr && s.status === 'completed');
+      const didTask = tasks.some((t) => t.completed && (t.completedAt || '').startsWith(dateStr));
+      const didRoutine = routines.some((r) => r.steps.some((st) => st.completed && (st.completedAt || '').startsWith(dateStr)));
+      return didSession || didTask || didRoutine;
+    };
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    let streak = 0;
+    let check = new Date(today);
+
+    while (true) {
+      const ds = check.toISOString().split('T')[0];
+      if (dayHasVictory(ds)) {
+        streak++;
+        check.setDate(check.getDate() - 1);
+      } else if (check.getTime() === today.getTime()) {
+        // Si hoy todavía no, miramos ayer
+        check.setDate(check.getDate() - 1);
+      } else {
+        break;
+      }
+    }
+    return streak;
+  }, [sessions, tasks, routines]);
 
   const topThreeTasks = tasks.filter(t => t.isTopThree).slice(0, 3);
   const regularTasks = tasks.filter(t => !t.isTopThree);
@@ -203,6 +261,10 @@ export default function Index() {
             onToggleTask={toggleTask}
             onAddTask={(text) => addTask(text, true)}
             onRemoveFromTopThree={removeFromTopThree}
+            onRequestSchedule={() => setActiveTab('horario')}
+            startedStreak={calculateStartedStreak()}
+            hasVictoryToday={hasVictoryToday}
+            onStartFocusFromTopTask={startFocusFromTopTask}
           />
         );
       case 'enfoque':
