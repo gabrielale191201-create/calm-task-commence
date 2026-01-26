@@ -44,8 +44,8 @@ export function ProgressPage({ sessions, tasks, streak }: ProgressPageProps) {
       <h1 className="text-2xl font-display font-semibold text-foreground mb-2 animate-fade-in">
         Progreso
       </h1>
-      <p className="text-muted-foreground mb-8 animate-fade-in">
-        Sin presión. Solo observa.
+      <p className="text-muted-foreground text-sm mb-6 animate-fade-in">
+        Observa sin juzgarte. Suficiente por hoy.
       </p>
 
       {/* Stats grid */}

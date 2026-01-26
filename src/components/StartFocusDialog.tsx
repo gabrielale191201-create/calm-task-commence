@@ -34,8 +34,8 @@ export function StartFocusDialog({ open, onOpenChange, title, suggestedMinutes =
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle>Iniciar enfoque</DialogTitle>
-          <DialogDescription>Con esto. Simple. Sin presión.</DialogDescription>
+          <DialogTitle>Iniciar bloque de enfoque</DialogTitle>
+          <DialogDescription>Simple. Sin presión. Elige cuántos minutos.</DialogDescription>
         </DialogHeader>
 
         <div className="mt-4">

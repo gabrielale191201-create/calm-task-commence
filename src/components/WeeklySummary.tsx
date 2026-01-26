@@ -62,11 +62,11 @@ export function WeeklySummary({ tasks, sessions }: WeeklySummaryProps) {
   // Build observation text
   let observation = '';
   if (stats.longTasks > 0) {
-    observation = 'Los bloques largos suelen ser los más difíciles. Considera dividirlos en pasos más pequeños.';
+    observation = 'Los bloques largos fueron los más difíciles. Divide en pasos más pequeños.';
   } else if (stats.pending > stats.completed) {
-    observation = 'Tienes bloques pendientes. Recuerda: un día cuenta con solo empezar uno.';
+    observation = 'Quedan bloques pendientes. Suficiente por hoy.';
   } else if (stats.completed > 0) {
-    observation = 'Vas bien. Mantén el ritmo sin forzar.';
+    observation = 'Buen ritmo. Sin forzar.';
   }
 
   return (
