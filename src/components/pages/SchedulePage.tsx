@@ -88,17 +88,17 @@ export function SchedulePage({ tasks, onStartFocus, tasksCountByDate }: Schedule
 
   return (
     <div className="page-enter px-6 pt-8 pb-32">
-      <div className="flex items-center justify-between mb-4 animate-fade-in">
+      <div className="flex items-center justify-between mb-3 animate-fade-in">
         <div>
           <h1 className="text-2xl font-display font-semibold text-foreground">Horario</h1>
-          <p className="text-muted-foreground text-sm">Tus bloques de tiempo. Como un horario escolar.</p>
+          <p className="text-muted-foreground text-sm">Tu estructura de bloques. Como un horario escolar.</p>
         </div>
       </div>
 
       {/* Info badge */}
-      <div className="mb-6 p-3 rounded-xl bg-accent/50 border border-primary/20 animate-slide-up">
-        <p className="text-xs text-muted-foreground leading-relaxed">
-          Los bloques se crean automáticamente desde <span className="font-medium text-foreground">Tareas</span> cuando defines fecha + hora + duración.
+      <div className="mb-5 p-2.5 rounded-xl bg-muted/40 border border-border/50 animate-slide-up">
+        <p className="text-xs text-muted-foreground">
+          Los bloques se generan automáticamente desde <span className="font-medium text-foreground">Tareas</span>.
         </p>
       </div>
 

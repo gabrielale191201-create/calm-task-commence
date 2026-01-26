@@ -52,7 +52,7 @@ export function TasksPage({ tasks, onAddTask, onToggleTask, onDeleteTask, onStar
     setLimitError(null);
 
     if (isAtLimit) {
-      setLimitError('Hoy ya estás completo.\nMáximo 5 actividades por día.\nElige cuál reemplazar.');
+      setLimitError('Ya tienes suficiente por hoy.\nEste sistema funciona con límites.');
       return;
     }
 
@@ -117,8 +117,8 @@ export function TasksPage({ tasks, onAddTask, onToggleTask, onDeleteTask, onStar
         Tareas
       </h1>
       
-      <p className="text-muted-foreground mb-4 animate-fade-in">
-        Escribe solo el primer paso. Cada tarea con fecha crea un bloque en Horario.
+      <p className="text-muted-foreground text-sm mb-4 animate-fade-in">
+        Escribe solo el primer paso. Cada bloque aparece en tu horario.
       </p>
 
       {/* Today counter */}
@@ -215,7 +215,7 @@ export function TasksPage({ tasks, onAddTask, onToggleTask, onDeleteTask, onStar
 
           {/* Info about blocks */}
           <p className="text-xs text-muted-foreground pt-2 border-t border-border/30">
-            Define fecha + hora + duración para crear un bloque visual en Horario.
+            Con fecha, hora y duración se genera un bloque en tu horario.
           </p>
         </div>
       </div>
