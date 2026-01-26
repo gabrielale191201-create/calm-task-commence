@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { HelpCircle } from 'lucide-react';
 import { BottomNav } from '@/components/BottomNav';
 import { TimerIndicator } from '@/components/TimerIndicator';
@@ -8,7 +8,10 @@ import { TasksPage } from '@/components/pages/TasksPage';
 import { RoutinesPage } from '@/components/pages/RoutinesPage';
 import { JournalPage } from '@/components/pages/JournalPage';
 import { ProgressPage } from '@/components/pages/ProgressPage';
+import { SchedulePage } from '@/components/pages/SchedulePage';
 import { HowToUsePage } from '@/components/pages/HowToUsePage';
+import { OnboardingBanner } from '@/components/OnboardingBanner';
+import { ProductTagline } from '@/components/ProductTagline';
 import { useTimer } from '@/hooks/useTimer';
 import { useAlarmSound } from '@/hooks/useAlarmSound';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
@@ -276,6 +279,21 @@ export default function Index() {
   const topThreeTasks = tasks.filter(t => t.isTopThree).slice(0, 3);
   const regularTasks = tasks.filter(t => !t.isTopThree);
 
+  // Count tasks per date for limit validation
+  const getTasksCountForDate = useCallback((dateStr: string) => {
+    return tasks.filter(t => t.scheduledDate === dateStr && t.status === 'pending').length;
+  }, [tasks]);
+
+  const tasksCountByDate = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const t of tasks) {
+      if (t.scheduledDate && t.status === 'pending') {
+        map.set(t.scheduledDate, (map.get(t.scheduledDate) || 0) + 1);
+      }
+    }
+    return map;
+  }, [tasks]);
+
   const renderPage = () => {
     switch (activeTab) {
       case 'hoy':
@@ -319,6 +337,15 @@ export default function Index() {
             onToggleTask={toggleTask}
             onDeleteTask={deleteTask}
             onStartFocus={(taskText, minutes) => startFocusFromTopTask(taskText, minutes)}
+            getTasksCountForDate={getTasksCountForDate}
+          />
+        );
+      case 'horario':
+        return (
+          <SchedulePage
+            tasks={tasks}
+            onStartFocus={(taskText, minutes) => startFocusFromTopTask(taskText, minutes)}
+            tasksCountByDate={tasksCountByDate}
           />
         );
       case 'rutinas':
@@ -343,6 +370,7 @@ export default function Index() {
         return (
           <ProgressPage
             sessions={sessions}
+            tasks={tasks}
             streak={calculateStreak()}
           />
         );
@@ -396,8 +424,12 @@ export default function Index() {
         />
       )}
 
+      {/* Onboarding + Tagline */}
+      <ProductTagline />
+      <OnboardingBanner />
+
       {/* Main content */}
-      <main className="pt-20">
+      <main className="pt-16">
         {renderPage()}
       </main>
 

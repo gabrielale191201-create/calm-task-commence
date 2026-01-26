@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Plus } from 'lucide-react';
+import { Plus, AlertCircle } from 'lucide-react';
 import { Task } from '@/types/focuson';
 import { TaskItem } from '@/components/TaskItem';
 import { StartFocusDialog } from '@/components/StartFocusDialog';
@@ -11,23 +11,32 @@ interface TasksPageProps {
   onToggleTask: (id: string) => void;
   onDeleteTask: (id: string) => void;
   onStartFocus: (taskText: string, minutes: number) => void;
+  getTasksCountForDate: (date: string) => number;
 }
 
-export function TasksPage({ tasks, onAddTask, onToggleTask, onDeleteTask, onStartFocus }: TasksPageProps) {
+const MAX_TASKS_PER_DAY = 5;
+
+export function TasksPage({ tasks, onAddTask, onToggleTask, onDeleteTask, onStartFocus, getTasksCountForDate }: TasksPageProps) {
   const [title, setTitle] = useState('');
   const [date, setDate] = useState<string>('');
   const [time, setTime] = useState<string>('');
   const [duration, setDuration] = useState<string>('');
   const [touched, setTouched] = useState(false);
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
+  const [limitError, setLimitError] = useState<string | null>(null);
 
   const todayISO = toISODate(new Date());
+
+  // Check limit for selected date
+  const selectedDateCount = date ? getTasksCountForDate(date) : 0;
+  const isAtLimit = date ? selectedDateCount >= MAX_TASKS_PER_DAY : false;
 
   const errors = useMemo(() => {
     if (!touched) return {} as Record<string, string>;
     const e: Record<string, string> = {};
     if (!title.trim()) e.title = 'Escribe un título.';
     if (time && !date) e.time = 'Elige fecha si defines hora.';
+    if (duration && !date) e.duration = 'Elige fecha si defines duración.';
     const d = duration.trim();
     if (d) {
       const n = parseInt(d, 10);
@@ -36,10 +45,17 @@ export function TasksPage({ tasks, onAddTask, onToggleTask, onDeleteTask, onStar
     return e;
   }, [touched, title, time, date, duration]);
 
-  const canSubmit = !!title.trim() && !errors.title && !errors.time && !errors.duration;
+  const canSubmit = !!title.trim() && !errors.title && !errors.time && !errors.duration && !isAtLimit;
 
   const handleAddTask = () => {
     setTouched(true);
+    setLimitError(null);
+
+    if (isAtLimit) {
+      setLimitError('Hoy ya estás completo.\nMáximo 5 actividades por día.\nElige cuál reemplazar.');
+      return;
+    }
+
     if (!canSubmit) return;
 
     const durationMinutes = duration.trim() ? Math.max(1, Math.min(180, parseInt(duration.trim(), 10))) : undefined;
@@ -66,20 +82,19 @@ export function TasksPage({ tasks, onAddTask, onToggleTask, onDeleteTask, onStar
     const num = d.toLocaleDateString('es-ES', { day: '2-digit' });
     const mon = d.toLocaleDateString('es-ES', { month: 'short' }).replace('.', '');
     const timePart = t.scheduledTime ? ` · ${t.scheduledTime}` : '';
-    return `${day} ${num} ${mon}${timePart}`;
+    const durPart = t.durationMinutes ? ` · ${t.durationMinutes}m` : '';
+    return `${day} ${num} ${mon}${timePart}${durPart}`;
   };
 
   const todayTasks = useMemo(() => {
     return pending
       .filter((t) => t.scheduledDate === todayISO)
-      .slice()
       .sort((a, b) => (a.scheduledTime || '99:99').localeCompare(b.scheduledTime || '99:99'));
   }, [pending, todayISO]);
 
   const upcomingTasks = useMemo(() => {
     return pending
       .filter((t) => (t.scheduledDate || '') > todayISO)
-      .slice()
       .sort((a, b) => {
         const da = a.scheduledDate || '';
         const db = b.scheduledDate || '';
@@ -91,9 +106,10 @@ export function TasksPage({ tasks, onAddTask, onToggleTask, onDeleteTask, onStar
   const unscheduledTasks = useMemo(() => {
     return pending
       .filter((t) => !t.scheduledDate && !t.scheduledTime)
-      .slice()
       .sort((a, b) => a.createdAt.localeCompare(b.createdAt));
   }, [pending]);
+
+  const todayCount = getTasksCountForDate(todayISO);
 
   return (
     <div className="page-enter px-6 pt-8 pb-32">
@@ -101,9 +117,17 @@ export function TasksPage({ tasks, onAddTask, onToggleTask, onDeleteTask, onStar
         Tareas
       </h1>
       
-      <p className="text-muted-foreground mb-6 animate-fade-in">
-        No escribas tareas grandes. Escribe solo el primer paso.
+      <p className="text-muted-foreground mb-4 animate-fade-in">
+        Escribe solo el primer paso. Cada tarea con fecha crea un bloque en Horario.
       </p>
+
+      {/* Today counter */}
+      <div className="flex items-center justify-between mb-4 p-3 rounded-xl bg-muted/40 animate-slide-up">
+        <span className="text-sm text-muted-foreground">Bloques hoy</span>
+        <span className={`text-sm font-semibold ${todayCount >= MAX_TASKS_PER_DAY ? 'text-destructive' : 'text-foreground'}`}>
+          {todayCount}/{MAX_TASKS_PER_DAY}
+        </span>
+      </div>
       
       {/* Compact form */}
       <div className="rounded-2xl border border-border/50 bg-card p-4 mb-6 animate-slide-up">
@@ -129,10 +153,18 @@ export function TasksPage({ tasks, onAddTask, onToggleTask, onDeleteTask, onStar
               <input
                 type="date"
                 value={date}
-                onChange={(e) => setDate(e.target.value)}
+                onChange={(e) => {
+                  setDate(e.target.value);
+                  setLimitError(null);
+                }}
                 onBlur={() => setTouched(true)}
                 className="mt-2 w-full px-4 py-3 rounded-xl bg-card border border-border/50 text-foreground"
               />
+              {date && (
+                <p className="mt-1 text-xs text-muted-foreground">
+                  {getTasksCountForDate(date)}/5 en este día
+                </p>
+              )}
             </div>
             <div>
               <label className="text-sm font-medium text-foreground">Hora</label>
@@ -149,7 +181,7 @@ export function TasksPage({ tasks, onAddTask, onToggleTask, onDeleteTask, onStar
 
           <div className="flex items-end gap-2">
             <div className="flex-1">
-              <label className="text-sm font-medium text-foreground">Duración (min, opcional)</label>
+              <label className="text-sm font-medium text-foreground">Duración (min)</label>
               <input
                 type="number"
                 value={duration}
@@ -165,19 +197,35 @@ export function TasksPage({ tasks, onAddTask, onToggleTask, onDeleteTask, onStar
 
             <button
               onClick={handleAddTask}
-              disabled={!canSubmit}
+              disabled={!title.trim() || isAtLimit}
               className="p-4 rounded-xl bg-primary text-white disabled:opacity-50 disabled:cursor-not-allowed transition-all hover:shadow-focus"
-              title="Agregar"
+              title={isAtLimit ? 'Límite alcanzado' : 'Agregar'}
             >
               <Plus size={20} />
             </button>
           </div>
+
+          {/* Limit error message */}
+          {limitError && (
+            <div className="flex items-start gap-2 p-3 rounded-xl bg-destructive/10 border border-destructive/20">
+              <AlertCircle size={18} className="text-destructive flex-shrink-0 mt-0.5" />
+              <p className="text-sm text-destructive whitespace-pre-line">{limitError}</p>
+            </div>
+          )}
+
+          {/* Info about blocks */}
+          <p className="text-xs text-muted-foreground pt-2 border-t border-border/30">
+            Define fecha + hora + duración para crear un bloque visual en Horario.
+          </p>
         </div>
       </div>
       
       {/* Hoy */}
       <section className="mb-8 animate-slide-up stagger-1">
-        <h3 className="text-sm font-medium text-muted-foreground mb-3">Hoy</h3>
+        <div className="flex items-center justify-between mb-3">
+          <h3 className="text-sm font-medium text-muted-foreground">Hoy</h3>
+          <span className="text-xs text-muted-foreground">{todayTasks.length} bloques</span>
+        </div>
         {todayTasks.length > 0 ? (
           <div className="space-y-3">
             {todayTasks.map((task) => (
@@ -194,7 +242,7 @@ export function TasksPage({ tasks, onAddTask, onToggleTask, onDeleteTask, onStar
           </div>
         ) : (
           <div className="rounded-2xl bg-muted/30 p-6 text-center">
-            <p className="text-sm text-muted-foreground">No tienes tareas programadas para hoy.</p>
+            <p className="text-sm text-muted-foreground">No tienes bloques para hoy.</p>
           </div>
         )}
       </section>
@@ -217,14 +265,16 @@ export function TasksPage({ tasks, onAddTask, onToggleTask, onDeleteTask, onStar
             ))}
           </div>
         ) : (
-          <div className="rounded-2xl bg-muted/20 p-6" />
+          <div className="rounded-2xl bg-muted/20 p-4 text-center">
+            <p className="text-xs text-muted-foreground">Sin tareas futuras.</p>
+          </div>
         )}
       </section>
 
       {/* Sin programar */}
-      <section className="mb-8 animate-slide-up stagger-3">
-        <h3 className="text-sm font-medium text-muted-foreground mb-3">Sin programar</h3>
-        {unscheduledTasks.length > 0 ? (
+      {unscheduledTasks.length > 0 && (
+        <section className="mb-8 animate-slide-up stagger-3">
+          <h3 className="text-sm font-medium text-muted-foreground mb-3">Sin programar</h3>
           <div className="space-y-3">
             {unscheduledTasks.map((task) => (
               <TaskItem
@@ -236,10 +286,8 @@ export function TasksPage({ tasks, onAddTask, onToggleTask, onDeleteTask, onStar
               />
             ))}
           </div>
-        ) : (
-          <div className="rounded-2xl bg-muted/20 p-6" />
-        )}
-      </section>
+        </section>
+      )}
       
       {/* Completed tasks */}
       {done.length > 0 && (
