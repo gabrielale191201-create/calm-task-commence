@@ -55,7 +55,7 @@ export function TasksPage({ tasks, onAddTask, onToggleTask, onDeleteTask, onStar
     setLimitError(null);
 
     if (isAtLimit) {
-      setLimitError('Ya tienes suficiente por hoy.\nEste sistema funciona con límites.');
+      setLimitError('Hoy ya estás completo.\nEste sistema funciona\nporque pone límites.');
       return;
     }
 
@@ -109,16 +109,21 @@ export function TasksPage({ tasks, onAddTask, onToggleTask, onDeleteTask, onStar
         Bloques
       </h1>
       
-      <p className="text-muted-foreground text-sm mb-4 animate-fade-in">
-        Cada bloque ocupa tiempo en tu horario. Máximo 5 por día.
+      <p className="text-muted-foreground text-sm mb-2 animate-fade-in">
+        Cada bloque ocupa tiempo en tu horario.
       </p>
 
-      {/* Today counter */}
-      <div className="flex items-center justify-between mb-4 p-3 rounded-xl bg-muted/40 animate-slide-up">
-        <span className="text-sm text-muted-foreground">Bloques hoy</span>
-        <span className={`text-sm font-semibold ${todayCount >= MAX_TASKS_PER_DAY ? 'text-destructive' : 'text-foreground'}`}>
-          {todayCount}/{MAX_TASKS_PER_DAY}
-        </span>
+      {/* Limit rule - explicit */}
+      <div className="mb-4 p-4 rounded-2xl bg-primary/5 border border-primary/20 animate-slide-up">
+        <div className="flex items-center justify-between mb-2">
+          <span className="text-sm font-medium text-foreground">Tareas hoy</span>
+          <span className={`text-lg font-bold ${todayCount >= MAX_TASKS_PER_DAY ? 'text-destructive' : 'text-primary'}`}>
+            {todayCount} / {MAX_TASKS_PER_DAY}
+          </span>
+        </div>
+        <p className="text-xs text-muted-foreground">
+          Máximo 5 tareas por día.
+        </p>
       </div>
       
       {/* Compact form */}

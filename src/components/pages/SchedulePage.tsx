@@ -102,17 +102,19 @@ export function SchedulePage({ tasks, quickNotes, onStartFocus, tasksCountByDate
 
   return (
     <div className="page-enter px-6 pt-8 pb-32">
-      <div className="flex items-center justify-between mb-3 animate-fade-in">
-        <div>
-          <h1 className="text-2xl font-display font-semibold text-foreground">Horario</h1>
-          <p className="text-muted-foreground text-sm">Tu estructura de bloques. Como un horario escolar.</p>
-        </div>
+      {/* Header with visual emphasis */}
+      <div className="mb-4 animate-fade-in">
+        <h1 className="text-3xl font-display font-bold text-foreground mb-1">Horario</h1>
+        <p className="text-muted-foreground text-sm">Tu estructura del día. Como un horario escolar.</p>
       </div>
 
-      {/* Info badge */}
-      <div className="mb-5 p-2.5 rounded-xl bg-muted/40 border border-border/50 animate-slide-up">
-        <p className="text-xs text-muted-foreground">
-          Los bloques se generan automáticamente desde <span className="font-medium text-foreground">Tareas</span>.
+      {/* Central info - visual prominence */}
+      <div className="mb-6 p-4 rounded-2xl bg-primary/5 border border-primary/20 animate-slide-up">
+        <p className="text-sm text-foreground text-center font-medium">
+          Los bloques se generan automáticamente al crear una tarea.
+        </p>
+        <p className="text-xs text-muted-foreground text-center mt-1">
+          Rango visible: 05:00 – 23:00
         </p>
       </div>
 
