@@ -1,33 +1,47 @@
 import { useMemo, useState } from 'react';
 import { CalendarDays } from 'lucide-react';
-import { Task } from '@/types/focuson';
+import { Task, QuickNote } from '@/types/focuson';
 import { cn } from '@/lib/utils';
 import { toISODate, startOfWeekMonday, parseTimeToMinutes, formatWeekRangeEs } from '@/lib/dateUtils';
 import { TimeBlock } from '@/components/schedule/TimeBlock';
 import { StartFocusDialog } from '@/components/StartFocusDialog';
+import { DailyAgendita } from '@/components/schedule/DailyAgendita';
 
 type View = 'hoy' | 'semana';
 
-const HOURS = Array.from({ length: 14 }, (_, i) => i + 7); // 07:00 - 20:00
+// Extended range: 05:00 - 23:00
+const HOURS = Array.from({ length: 19 }, (_, i) => i + 5);
 const DAY_LABELS = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
 
 export interface SchedulePageProps {
   tasks: Task[];
+  quickNotes: QuickNote[];
   onStartFocus: (taskText: string, minutes: number) => void;
   tasksCountByDate: Map<string, number>;
+  onAddQuickNote: (text: string, date: string) => void;
+  onToggleQuickNote: (id: string) => void;
+  onDeleteQuickNote: (id: string) => void;
 }
 
-export function SchedulePage({ tasks, onStartFocus, tasksCountByDate }: SchedulePageProps) {
+export function SchedulePage({ tasks, quickNotes, onStartFocus, tasksCountByDate, onAddQuickNote, onToggleQuickNote, onDeleteQuickNote }: SchedulePageProps) {
   const [view, setView] = useState<View>('semana');
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const todayISO = toISODate(new Date());
 
-  // Only scheduled tasks with date + time + duration
+  // All tasks now MUST have date + time + duration (they create blocks)
   const scheduledTasks = useMemo(() => {
     return tasks.filter(
-      (t) => t.scheduledDate && t.scheduledTime && t.durationMinutes
+      (t) => t.scheduledDate && t.scheduledTime && t.durationMinutes && t.status === 'pending'
     );
   }, [tasks]);
+
+  const completedTasks = useMemo(() => {
+    return tasks.filter(
+      (t) => t.scheduledDate && t.scheduledTime && t.durationMinutes && t.status === 'done'
+    );
+  }, [tasks]);
+
+  const allVisibleTasks = useMemo(() => [...scheduledTasks, ...completedTasks], [scheduledTasks, completedTasks]);
 
   const weekStart = useMemo(() => startOfWeekMonday(new Date()), []);
   const weekDays = useMemo(() => {
@@ -45,22 +59,22 @@ export function SchedulePage({ tasks, onStartFocus, tasksCountByDate }: Schedule
       .sort((a, b) => (a.scheduledTime || '').localeCompare(b.scheduledTime || ''));
   }, [scheduledTasks, todayISO]);
 
-  // Build grid: day -> hour -> task
+  // Build grid: day -> hour -> task (includes both pending and done)
   const grid = useMemo(() => {
     const map = new Map<string, Map<number, Task>>();
     for (const day of weekDays) {
       map.set(day, new Map());
     }
-    for (const task of scheduledTasks) {
-      if (!weekDays.includes(task.scheduledDate!)) continue;
-      const startMinutes = parseTimeToMinutes(task.scheduledTime!);
+    for (const task of allVisibleTasks) {
+      if (!weekDays.includes(task.scheduledDate)) continue;
+      const startMinutes = parseTimeToMinutes(task.scheduledTime);
       const startHour = Math.floor(startMinutes / 60);
-      if (startHour >= 7 && startHour <= 20) {
-        map.get(task.scheduledDate!)!.set(startHour, task);
+      if (startHour >= 5 && startHour <= 22) {
+        map.get(task.scheduledDate)!.set(startHour, task);
       }
     }
     return map;
-  }, [weekDays, scheduledTasks]);
+  }, [weekDays, allVisibleTasks]);
 
   const getRowSpan = (task: Task) => {
     const hours = Math.ceil((task.durationMinutes || 60) / 60);
@@ -174,6 +188,17 @@ export function SchedulePage({ tasks, onStartFocus, tasksCountByDate }: Schedule
               </p>
             </div>
           )}
+
+          {/* Agendita diaria para hoy */}
+          <div className="mt-6">
+            <DailyAgendita
+              notes={quickNotes}
+              date={todayISO}
+              onAddNote={onAddQuickNote}
+              onToggleNote={onToggleQuickNote}
+              onDeleteNote={onDeleteQuickNote}
+            />
+          </div>
         </section>
       ) : (
         <section className="animate-slide-up stagger-1">

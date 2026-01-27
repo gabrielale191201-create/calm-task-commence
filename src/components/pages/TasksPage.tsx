@@ -7,7 +7,7 @@ import { toISODate } from '@/lib/dateUtils';
 
 interface TasksPageProps {
   tasks: Task[];
-  onAddTask: (input: { text: string; scheduledDate?: string; scheduledTime?: string; durationMinutes?: number }) => void;
+  onAddTask: (input: { text: string; scheduledDate: string; scheduledTime: string; durationMinutes: number }) => void;
   onToggleTask: (id: string) => void;
   onDeleteTask: (id: string) => void;
   onStartFocus: (taskText: string, minutes: number) => void;
@@ -20,7 +20,7 @@ export function TasksPage({ tasks, onAddTask, onToggleTask, onDeleteTask, onStar
   const [title, setTitle] = useState('');
   const [date, setDate] = useState<string>('');
   const [time, setTime] = useState<string>('');
-  const [duration, setDuration] = useState<string>('');
+  const [duration, setDuration] = useState<string>('25');
   const [touched, setTouched] = useState(false);
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [limitError, setLimitError] = useState<string | null>(null);
@@ -35,17 +35,20 @@ export function TasksPage({ tasks, onAddTask, onToggleTask, onDeleteTask, onStar
     if (!touched) return {} as Record<string, string>;
     const e: Record<string, string> = {};
     if (!title.trim()) e.title = 'Escribe un título.';
-    if (time && !date) e.time = 'Elige fecha si defines hora.';
-    if (duration && !date) e.duration = 'Elige fecha si defines duración.';
+    if (!date) e.date = 'Elige una fecha.';
+    if (!time) e.time = 'Elige una hora.';
     const d = duration.trim();
-    if (d) {
+    if (!d) {
+      e.duration = 'Elige una duración.';
+    } else {
       const n = parseInt(d, 10);
       if (!Number.isFinite(n) || n <= 0 || n > 180) e.duration = 'Duración: 1–180 min.';
     }
     return e;
   }, [touched, title, time, date, duration]);
 
-  const canSubmit = !!title.trim() && !errors.title && !errors.time && !errors.duration && !isAtLimit;
+  const canSubmit = !!title.trim() && !!date && !!time && !!duration.trim() && 
+    !errors.title && !errors.date && !errors.time && !errors.duration && !isAtLimit;
 
   const handleAddTask = () => {
     setTouched(true);
@@ -58,17 +61,17 @@ export function TasksPage({ tasks, onAddTask, onToggleTask, onDeleteTask, onStar
 
     if (!canSubmit) return;
 
-    const durationMinutes = duration.trim() ? Math.max(1, Math.min(180, parseInt(duration.trim(), 10))) : undefined;
+    const durationMinutes = Math.max(1, Math.min(180, parseInt(duration.trim(), 10)));
     onAddTask({
       text: title.trim(),
-      scheduledDate: date || undefined,
-      scheduledTime: time || undefined,
+      scheduledDate: date,
+      scheduledTime: time,
       durationMinutes,
     });
     setTitle('');
     setDate('');
     setTime('');
-    setDuration('');
+    setDuration('25');
     setTouched(false);
   };
 
@@ -76,49 +79,38 @@ export function TasksPage({ tasks, onAddTask, onToggleTask, onDeleteTask, onStar
   const done = tasks.filter((t) => t.status === 'done');
 
   const formatChip = (t: Task) => {
-    if (!t.scheduledDate) return '';
     const d = new Date(t.scheduledDate);
     const day = d.toLocaleDateString('es-ES', { weekday: 'short' }).replace('.', '');
     const num = d.toLocaleDateString('es-ES', { day: '2-digit' });
     const mon = d.toLocaleDateString('es-ES', { month: 'short' }).replace('.', '');
-    const timePart = t.scheduledTime ? ` · ${t.scheduledTime}` : '';
-    const durPart = t.durationMinutes ? ` · ${t.durationMinutes}m` : '';
-    return `${day} ${num} ${mon}${timePart}${durPart}`;
+    return `${day} ${num} ${mon} · ${t.scheduledTime} · ${t.durationMinutes}m`;
   };
 
   const todayTasks = useMemo(() => {
     return pending
       .filter((t) => t.scheduledDate === todayISO)
-      .sort((a, b) => (a.scheduledTime || '99:99').localeCompare(b.scheduledTime || '99:99'));
+      .sort((a, b) => a.scheduledTime.localeCompare(b.scheduledTime));
   }, [pending, todayISO]);
 
   const upcomingTasks = useMemo(() => {
     return pending
-      .filter((t) => (t.scheduledDate || '') > todayISO)
+      .filter((t) => t.scheduledDate > todayISO)
       .sort((a, b) => {
-        const da = a.scheduledDate || '';
-        const db = b.scheduledDate || '';
-        if (da !== db) return da.localeCompare(db);
-        return (a.scheduledTime || '99:99').localeCompare(b.scheduledTime || '99:99');
+        if (a.scheduledDate !== b.scheduledDate) return a.scheduledDate.localeCompare(b.scheduledDate);
+        return a.scheduledTime.localeCompare(b.scheduledTime);
       });
   }, [pending, todayISO]);
-
-  const unscheduledTasks = useMemo(() => {
-    return pending
-      .filter((t) => !t.scheduledDate && !t.scheduledTime)
-      .sort((a, b) => a.createdAt.localeCompare(b.createdAt));
-  }, [pending]);
 
   const todayCount = getTasksCountForDate(todayISO);
 
   return (
     <div className="page-enter px-6 pt-8 pb-32">
       <h1 className="text-2xl font-display font-semibold text-foreground mb-2 animate-fade-in">
-        Tareas
+        Bloques
       </h1>
       
       <p className="text-muted-foreground text-sm mb-4 animate-fade-in">
-        Escribe solo el primer paso. Cada bloque aparece en tu horario.
+        Cada bloque ocupa tiempo en tu horario. Máximo 5 por día.
       </p>
 
       {/* Today counter */}
@@ -160,7 +152,8 @@ export function TasksPage({ tasks, onAddTask, onToggleTask, onDeleteTask, onStar
                 onBlur={() => setTouched(true)}
                 className="mt-2 w-full px-4 py-3 rounded-xl bg-card border border-border/50 text-foreground"
               />
-              {date && (
+              {errors.date && <p className="mt-1 text-xs text-destructive">{errors.date}</p>}
+              {date && !errors.date && (
                 <p className="mt-1 text-xs text-muted-foreground">
                   {getTasksCountForDate(date)}/5 en este día
                 </p>
@@ -215,7 +208,7 @@ export function TasksPage({ tasks, onAddTask, onToggleTask, onDeleteTask, onStar
 
           {/* Info about blocks */}
           <p className="text-xs text-muted-foreground pt-2 border-t border-border/30">
-            Con fecha, hora y duración se genera un bloque en tu horario.
+            Todos los bloques requieren fecha, hora y duración.
           </p>
         </div>
       </div>
@@ -270,25 +263,6 @@ export function TasksPage({ tasks, onAddTask, onToggleTask, onDeleteTask, onStar
           </div>
         )}
       </section>
-
-      {/* Sin programar */}
-      {unscheduledTasks.length > 0 && (
-        <section className="mb-8 animate-slide-up stagger-3">
-          <h3 className="text-sm font-medium text-muted-foreground mb-3">Sin programar</h3>
-          <div className="space-y-3">
-            {unscheduledTasks.map((task) => (
-              <TaskItem
-                key={task.id}
-                task={task}
-                onToggle={onToggleTask}
-                onDelete={onDeleteTask}
-                onStartFocus={(txt) => setSelectedTask({ ...task, text: txt })}
-              />
-            ))}
-          </div>
-        </section>
-      )}
-      
       {/* Completed tasks */}
       {done.length > 0 && (
         <details className="mt-8 animate-slide-up stagger-4">

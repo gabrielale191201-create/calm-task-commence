@@ -9,7 +9,7 @@ export interface Task {
   status: 'pending' | 'done';
   /**
    * Origen de la tarea.
-   * - manual: creada en la pestaña Tareas/Hoy
+   * - manual: creada en la pestaña Tareas
    * - horario: creada desde una actividad del Horario
    */
   source: 'manual' | 'horario';
@@ -17,16 +17,28 @@ export interface Task {
   createdAt: string;
   isTopThree: boolean;
 
-  // Programación (opcional)
-  scheduledDate?: string; // YYYY-MM-DD
-  scheduledTime?: string; // HH:mm
-  durationMinutes?: number;
+  // Programación OBLIGATORIA para crear bloques
+  scheduledDate: string; // YYYY-MM-DD (requerido)
+  scheduledTime: string; // HH:mm (requerido)
+  durationMinutes: number; // minutos (requerido)
+}
+
+/**
+ * Nota rápida de la agendita diaria.
+ * No consume tiempo, no crea bloques, no cuenta en el límite de 5.
+ */
+export interface QuickNote {
+  id: string;
+  text: string;
+  date: string; // YYYY-MM-DD
+  done: boolean;
+  createdAt: string;
 }
 
 export interface Routine {
   id: string;
   name: string;
-  duration: number; // in minutes
+  // Rutinas NO tienen duración - son hábitos sin tiempo
   steps: RoutineStep[];
   createdAt: string;
 }

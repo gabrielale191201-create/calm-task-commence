@@ -15,8 +15,8 @@ import { ProductTagline } from '@/components/ProductTagline';
 import { useTimer } from '@/hooks/useTimer';
 import { useAlarmSound } from '@/hooks/useAlarmSound';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
-import { TabType, Task, Routine, JournalEntry, FocusSession, UserProfile } from '@/types/focuson';
-import { FocusOnLogo } from '@/components/FocusOnLogo';
+import { TabType, Task, Routine, JournalEntry, FocusSession, UserProfile, QuickNote } from '@/types/focuson';
+import { AppLogo } from '@/components/AppLogo';
 
 function generateId() {
   return Math.random().toString(36).substr(2, 9);
@@ -30,6 +30,7 @@ export default function Index() {
   const [routines, setRoutines] = useLocalStorage<Routine[]>('focuson-routines', []);
   const [journalEntries, setJournalEntries] = useLocalStorage<JournalEntry[]>('focuson-journal', []);
   const [sessions, setSessions] = useLocalStorage<FocusSession[]>('focuson-sessions', []);
+  const [quickNotes, setQuickNotes] = useLocalStorage<QuickNote[]>('focuson-quicknotes', []);
   const [lastActiveDate, setLastActiveDate] = useLocalStorage<string>('focuson-last-active', '');
 
   const timer = useTimer();
@@ -84,20 +85,37 @@ export default function Index() {
 
   // Task handlers
   const addTask = (
-    input: string | { text: string; scheduledDate?: string; scheduledTime?: string; durationMinutes?: number; source?: Task['source'] },
+    input: string | { text: string; scheduledDate: string; scheduledTime: string; durationMinutes: number; source?: Task['source'] },
     isTopThree = false
   ) => {
-    const normalized = typeof input === 'string' ? { text: input } : input;
+    // If string, it's for Top 3 (quick add without scheduling)
+    if (typeof input === 'string') {
+      // Top 3 tasks don't need scheduling
+      const newTask: Task = {
+        id: generateId(),
+        text: input,
+        status: 'pending',
+        source: 'manual',
+        createdAt: new Date().toISOString(),
+        isTopThree: true,
+        scheduledDate: new Date().toISOString().split('T')[0],
+        scheduledTime: '09:00',
+        durationMinutes: 25,
+      };
+      setTasks([...tasks, newTask]);
+      return;
+    }
+
     const newTask: Task = {
       id: generateId(),
-      text: normalized.text,
+      text: input.text,
       status: 'pending',
-      source: normalized.source || 'manual',
+      source: input.source || 'manual',
       createdAt: new Date().toISOString(),
       isTopThree,
-      scheduledDate: normalized.scheduledDate,
-      scheduledTime: normalized.scheduledTime,
-      durationMinutes: normalized.durationMinutes,
+      scheduledDate: input.scheduledDate,
+      scheduledTime: input.scheduledTime,
+      durationMinutes: input.durationMinutes,
     };
     setTasks([...tasks, newTask]);
   };
@@ -141,12 +159,11 @@ export default function Index() {
     setTasks(tasks.map(t => t.id === id ? { ...t, isTopThree: false } : t));
   };
 
-  // Routine handlers
-  const addRoutine = (name: string, duration: number) => {
+  // Routine handlers (rutinas no tienen duración)
+  const addRoutine = (name: string) => {
     const newRoutine: Routine = {
       id: generateId(),
       name,
-      duration,
       steps: [],
       createdAt: new Date().toISOString(),
     };
@@ -211,8 +228,28 @@ export default function Index() {
         date,
         content,
         createdAt: new Date().toISOString(),
-      }]);
+    }]);
     }
+  };
+
+  // QuickNote handlers (Agendita diaria)
+  const addQuickNote = (text: string, date: string) => {
+    const newNote: QuickNote = {
+      id: generateId(),
+      text,
+      date,
+      done: false,
+      createdAt: new Date().toISOString(),
+    };
+    setQuickNotes([...quickNotes, newNote]);
+  };
+
+  const toggleQuickNote = (id: string) => {
+    setQuickNotes(quickNotes.map(n => n.id === id ? { ...n, done: !n.done } : n));
+  };
+
+  const deleteQuickNote = (id: string) => {
+    setQuickNotes(quickNotes.filter(n => n.id !== id));
   };
 
   // Session handlers
@@ -344,8 +381,12 @@ export default function Index() {
         return (
           <SchedulePage
             tasks={tasks}
+            quickNotes={quickNotes}
             onStartFocus={(taskText, minutes) => startFocusFromTopTask(taskText, minutes)}
             tasksCountByDate={tasksCountByDate}
+            onAddQuickNote={addQuickNote}
+            onToggleQuickNote={toggleQuickNote}
+            onDeleteQuickNote={deleteQuickNote}
           />
         );
       case 'rutinas':
@@ -387,7 +428,7 @@ export default function Index() {
           {activeTab === 'hoy' ? (
             <div className="flex-1 flex flex-col items-center justify-center gap-2">
               <div className="pointer-events-none select-none">
-                <FocusOnLogo size={40} />
+                <AppLogo size={48} />
               </div>
               <h1 className="text-sm font-display font-semibold tracking-[0.22em] text-foreground">
                 FOCUSON
@@ -397,7 +438,7 @@ export default function Index() {
             <div className="flex items-center gap-3">
               {activeTab === 'enfoque' ? (
                 <div className="pointer-events-none select-none">
-                  <FocusOnLogo size={26} />
+                  <AppLogo size={28} />
                 </div>
               ) : null}
               <h1 className="text-xl font-display font-semibold text-primary">
