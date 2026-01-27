@@ -5,7 +5,7 @@ import { cn } from '@/lib/utils';
 
 interface RoutinesPageProps {
   routines: Routine[];
-  onAddRoutine: (name: string, duration: number) => void;
+  onAddRoutine: (name: string) => void;
   onDeleteRoutine: (id: string) => void;
   onAddStep: (routineId: string, text: string) => void;
   onToggleStep: (routineId: string, stepId: string) => void;
@@ -22,15 +22,13 @@ export function RoutinesPage({
 }: RoutinesPageProps) {
   const [showNewRoutine, setShowNewRoutine] = useState(false);
   const [newRoutineName, setNewRoutineName] = useState('');
-  const [newRoutineDuration, setNewRoutineDuration] = useState(15);
   const [expandedRoutine, setExpandedRoutine] = useState<string | null>(null);
   const [newStepText, setNewStepText] = useState<{ [key: string]: string }>({});
 
   const handleAddRoutine = () => {
     if (newRoutineName.trim()) {
-      onAddRoutine(newRoutineName.trim(), newRoutineDuration);
+      onAddRoutine(newRoutineName.trim());
       setNewRoutineName('');
-      setNewRoutineDuration(15);
       setShowNewRoutine(false);
     }
   };
@@ -57,7 +55,7 @@ export function RoutinesPage({
             Rutinas
           </h1>
           <p className="text-muted-foreground text-sm">
-            Pequeños hábitos diarios
+            Hábitos sin tiempo · Solo hecho o no hecho
           </p>
         </div>
         <button
@@ -77,20 +75,13 @@ export function RoutinesPage({
               type="text"
               value={newRoutineName}
               onChange={(e) => setNewRoutineName(e.target.value)}
-              placeholder="Nombre de la rutina"
+              onKeyDown={(e) => e.key === 'Enter' && handleAddRoutine()}
+              placeholder="Nombre de la rutina (ej: Estirar, Meditar)"
               className="focus-input"
             />
-            <div className="flex items-center gap-4">
-              <label className="text-sm text-muted-foreground">Duración:</label>
-              <input
-                type="number"
-                value={newRoutineDuration}
-                onChange={(e) => setNewRoutineDuration(Math.max(1, parseInt(e.target.value) || 1))}
-                className="w-20 px-3 py-2 rounded-lg bg-muted text-center"
-                min="1"
-              />
-              <span className="text-sm text-muted-foreground">minutos</span>
-            </div>
+            <p className="text-xs text-muted-foreground">
+              Las rutinas no tienen duración. Solo se marcan como hechas o no hechas.
+            </p>
             <div className="flex gap-2">
               <button
                 onClick={handleAddRoutine}
@@ -125,7 +116,7 @@ export function RoutinesPage({
                 <div className="flex-1">
                   <h3 className="font-medium text-foreground">{routine.name}</h3>
                   <p className="text-sm text-muted-foreground">
-                    {routine.duration} min · {routine.steps.length} pasos
+                    {routine.steps.length} pasos
                   </p>
                 </div>
                 
