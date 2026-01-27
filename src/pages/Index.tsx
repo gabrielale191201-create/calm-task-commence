@@ -474,6 +474,13 @@ export default function Index() {
         {renderPage()}
       </main>
 
+      {/* Daily closing phrase - psychological closure */}
+      <div className="fixed bottom-20 left-0 right-0 flex justify-center pointer-events-none z-10 animate-fade-in">
+        <div className="bg-card/90 backdrop-blur-sm px-4 py-2 rounded-full border border-border/50 shadow-sm">
+          <p className="text-xs text-muted-foreground italic">Por hoy es suficiente.</p>
+        </div>
+      </div>
+
       {/* Bottom navigation */}
       <BottomNav activeTab={activeTab} onTabChange={setActiveTab} />
 

@@ -25,14 +25,14 @@ export function DailyAgendita({ notes, date, onAddNote, onToggleNote, onDeleteNo
   };
 
   return (
-    <div className="rounded-2xl border border-border/50 bg-card/50 p-4">
-      <div className="flex items-center gap-2 mb-3">
-        <StickyNote size={16} className="text-amber-500" />
-        <h4 className="text-sm font-medium text-foreground">Agendita</h4>
-        <span className="text-xs text-muted-foreground ml-auto">
-          No consume bloques
-        </span>
+    <div className="rounded-2xl border-2 border-amber-200 dark:border-amber-800/50 bg-amber-50/50 dark:bg-amber-900/10 p-4">
+      <div className="flex items-center gap-2 mb-2">
+        <StickyNote size={18} className="text-amber-500" />
+        <h4 className="text-base font-semibold text-foreground">Agendita del día</h4>
       </div>
+      <p className="text-xs text-muted-foreground mb-3 italic">
+        Esto no ocupa tiempo. Anota recordatorios rápidos sin bloque.
+      </p>
 
       {/* Add note */}
       <div className="flex items-center gap-2 mb-3">

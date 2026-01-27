@@ -49,13 +49,13 @@ export function RoutinesPage({
 
   return (
     <div className="page-enter px-6 pt-8 pb-32">
-      <div className="flex items-center justify-between mb-6 animate-fade-in">
+      <div className="flex items-center justify-between mb-4 animate-fade-in">
         <div>
           <h1 className="text-2xl font-display font-semibold text-foreground">
             Rutinas
           </h1>
           <p className="text-muted-foreground text-sm">
-            Hábitos sin tiempo · Solo hecho o no hecho
+            Hábitos diarios · Solo hecho o no hecho
           </p>
         </div>
         <button
@@ -64,6 +64,13 @@ export function RoutinesPage({
         >
           <Plus size={20} />
         </button>
+      </div>
+
+      {/* Explicit rule - routines don't take time */}
+      <div className="mb-6 p-3 rounded-xl bg-muted/40 border border-border/50 animate-slide-up">
+        <p className="text-xs text-muted-foreground text-center">
+          Las rutinas no ocupan tiempo ni crean bloques.
+        </p>
       </div>
 
       {/* New routine form */}
