@@ -1,4 +1,4 @@
-import { Home, Target, CalendarClock, CheckSquare, RotateCcw, BookOpen, BarChart3 } from 'lucide-react';
+import { Home, Target, CalendarClock, CheckSquare, BookOpen, BarChart3 } from 'lucide-react';
 import { TabType } from '@/types/focuson';
 import { cn } from '@/lib/utils';
 import { FocusOnLogo } from '@/components/FocusOnLogo';
@@ -8,12 +8,12 @@ interface BottomNavProps {
   onTabChange: (tab: TabType) => void;
 }
 
+// Removed 'rutinas' from navigation - temporarily hidden
 const navItems: { id: TabType; label: string; icon: React.ElementType }[] = [
   { id: 'hoy', label: 'Hoy', icon: Home },
-  { id: 'enfoque', label: 'Enfoque', icon: Target },
+  { id: 'enfoque', label: 'Focus Time', icon: Target },
   { id: 'horario', label: 'Horario', icon: CalendarClock },
   { id: 'tareas', label: 'Tareas', icon: CheckSquare },
-  { id: 'rutinas', label: 'Rutinas', icon: RotateCcw },
   { id: 'diario', label: 'Diario', icon: BookOpen },
   { id: 'progreso', label: 'Progreso', icon: BarChart3 },
 ];

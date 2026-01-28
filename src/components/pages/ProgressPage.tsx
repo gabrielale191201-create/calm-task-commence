@@ -45,7 +45,9 @@ export function ProgressPage({ sessions, tasks, streak }: ProgressPageProps) {
         Progreso
       </h1>
       <p className="text-muted-foreground text-sm mb-6 animate-fade-in">
-        Observa sin juzgarte. Suficiente por hoy.
+        {todayCompletedSessions.length > 0 
+          ? "Cuando empieces, aquí se verá."
+          : "Aún no empezaste hoy. Está bien."}
       </p>
 
       {/* Stats grid */}
@@ -152,8 +154,7 @@ export function ProgressPage({ sessions, tasks, streak }: ProgressPageProps) {
       {sessions.length === 0 && tasks.length === 0 && (
         <div className="text-center py-12 animate-fade-in">
           <p className="text-muted-foreground">
-            Aún no tienes actividad.<br />
-            Crea tu primera tarea para empezar.
+            Sin presiones. Empieza cuando estés listo.
           </p>
         </div>
       )}

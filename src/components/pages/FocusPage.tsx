@@ -116,11 +116,14 @@ export function FocusPage({
     );
   }
 
-  // Active timer screen
+  // Active timer screen - "Estás en Focus Time"
   if (isRunning) {
     return (
       <div className="page-enter min-h-[calc(100vh-100px)] flex flex-col items-center justify-center px-6 pb-32">
         <div className="text-center w-full max-w-sm">
+          <p className="text-sm text-primary font-medium mb-2 animate-fade-in">
+            Estás en Focus Time
+          </p>
           <p className="text-lg text-foreground font-medium mb-8 animate-fade-in">
             "{task}"
           </p>
@@ -138,7 +141,7 @@ export function FocusPage({
               onClick={handleFinish}
               className="w-full py-3 rounded-xl text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
             >
-              Salir del modo enfoque
+              Salir de Focus Time
             </button>
             
             <button
@@ -167,7 +170,7 @@ export function FocusPage({
     <div className="page-enter px-6 pt-8 pb-32">
       <div className="max-w-md mx-auto">
         <h2 className="text-2xl font-display font-semibold text-foreground text-center mb-2 animate-fade-in">
-          ¿Qué vas a hacer ahora?
+          Iniciar Focus Time
         </h2>
         <p className="text-muted-foreground text-center mb-8 animate-fade-in">
           Solo escribe el primer paso.
@@ -237,7 +240,7 @@ export function FocusPage({
             className="btn-primary-focus w-full flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <Play size={20} />
-            Comenzar enfoque
+            Iniciar Focus Time
           </button>
           
           {/* Sound toggle */}
