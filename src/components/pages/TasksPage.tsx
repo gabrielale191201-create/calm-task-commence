@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Plus, AlertCircle } from 'lucide-react';
+import { Plus } from 'lucide-react';
 import { Task } from '@/types/focuson';
 import { TaskItem } from '@/components/TaskItem';
 import { StartFocusDialog } from '@/components/StartFocusDialog';
@@ -14,8 +14,7 @@ interface TasksPageProps {
   getTasksCountForDate: (date: string) => number;
 }
 
-const MAX_TASKS_PER_DAY = 5;
-
+// Tasks are now UNLIMITED - no max limit
 export function TasksPage({ tasks, onAddTask, onToggleTask, onDeleteTask, onStartFocus, getTasksCountForDate }: TasksPageProps) {
   const [title, setTitle] = useState('');
   const [date, setDate] = useState<string>('');
@@ -23,13 +22,11 @@ export function TasksPage({ tasks, onAddTask, onToggleTask, onDeleteTask, onStar
   const [duration, setDuration] = useState<string>('25');
   const [touched, setTouched] = useState(false);
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
-  const [limitError, setLimitError] = useState<string | null>(null);
 
   const todayISO = toISODate(new Date());
 
-  // Check limit for selected date
+  // Tasks are unlimited - count is for display only
   const selectedDateCount = date ? getTasksCountForDate(date) : 0;
-  const isAtLimit = date ? selectedDateCount >= MAX_TASKS_PER_DAY : false;
 
   const errors = useMemo(() => {
     if (!touched) return {} as Record<string, string>;
@@ -48,16 +45,10 @@ export function TasksPage({ tasks, onAddTask, onToggleTask, onDeleteTask, onStar
   }, [touched, title, time, date, duration]);
 
   const canSubmit = !!title.trim() && !!date && !!time && !!duration.trim() && 
-    !errors.title && !errors.date && !errors.time && !errors.duration && !isAtLimit;
+    !errors.title && !errors.date && !errors.time && !errors.duration;
 
   const handleAddTask = () => {
     setTouched(true);
-    setLimitError(null);
-
-    if (isAtLimit) {
-      setLimitError('Hoy ya estás completo.\nEste sistema funciona\nporque pone límites.');
-      return;
-    }
 
     if (!canSubmit) return;
 
@@ -106,24 +97,19 @@ export function TasksPage({ tasks, onAddTask, onToggleTask, onDeleteTask, onStar
   return (
     <div className="page-enter px-6 pt-8 pb-32">
       <h1 className="text-2xl font-display font-semibold text-foreground mb-2 animate-fade-in">
-        Bloques
+        Tareas
       </h1>
       
-      <p className="text-muted-foreground text-sm mb-2 animate-fade-in">
-        Cada bloque ocupa tiempo en tu horario.
+      <p className="text-muted-foreground text-sm mb-4 animate-fade-in">
+        Cada tarea crea un bloque en tu horario.
       </p>
 
-      {/* Limit rule - explicit */}
-      <div className="mb-4 p-4 rounded-2xl bg-primary/5 border border-primary/20 animate-slide-up">
-        <div className="flex items-center justify-between mb-2">
-          <span className="text-sm font-medium text-foreground">Tareas hoy</span>
-          <span className={`text-lg font-bold ${todayCount >= MAX_TASKS_PER_DAY ? 'text-destructive' : 'text-primary'}`}>
-            {todayCount} / {MAX_TASKS_PER_DAY}
-          </span>
+      {/* Today counter - informational only */}
+      <div className="mb-4 p-3 rounded-xl bg-primary/5 border border-primary/20 animate-slide-up">
+        <div className="flex items-center justify-between">
+          <span className="text-sm text-muted-foreground">Tareas para hoy</span>
+          <span className="text-lg font-bold text-primary">{todayCount}</span>
         </div>
-        <p className="text-xs text-muted-foreground">
-          Máximo 5 tareas por día.
-        </p>
       </div>
       
       {/* Compact form */}
@@ -150,17 +136,14 @@ export function TasksPage({ tasks, onAddTask, onToggleTask, onDeleteTask, onStar
               <input
                 type="date"
                 value={date}
-                onChange={(e) => {
-                  setDate(e.target.value);
-                  setLimitError(null);
-                }}
+                onChange={(e) => setDate(e.target.value)}
                 onBlur={() => setTouched(true)}
                 className="mt-2 w-full px-4 py-3 rounded-xl bg-card border border-border/50 text-foreground"
               />
               {errors.date && <p className="mt-1 text-xs text-destructive">{errors.date}</p>}
               {date && !errors.date && (
                 <p className="mt-1 text-xs text-muted-foreground">
-                  {getTasksCountForDate(date)}/5 en este día
+                  {getTasksCountForDate(date)} tareas en este día
                 </p>
               )}
             </div>
@@ -195,25 +178,17 @@ export function TasksPage({ tasks, onAddTask, onToggleTask, onDeleteTask, onStar
 
             <button
               onClick={handleAddTask}
-              disabled={!title.trim() || isAtLimit}
+              disabled={!title.trim()}
               className="p-4 rounded-xl bg-primary text-white disabled:opacity-50 disabled:cursor-not-allowed transition-all hover:shadow-focus"
-              title={isAtLimit ? 'Límite alcanzado' : 'Agregar'}
+              title="Agregar tarea"
             >
               <Plus size={20} />
             </button>
           </div>
 
-          {/* Limit error message */}
-          {limitError && (
-            <div className="flex items-start gap-2 p-3 rounded-xl bg-destructive/10 border border-destructive/20">
-              <AlertCircle size={18} className="text-destructive flex-shrink-0 mt-0.5" />
-              <p className="text-sm text-destructive whitespace-pre-line">{limitError}</p>
-            </div>
-          )}
-
-          {/* Info about blocks */}
+          {/* Info about tasks */}
           <p className="text-xs text-muted-foreground pt-2 border-t border-border/30">
-            Todos los bloques requieren fecha, hora y duración.
+            Las tareas requieren fecha, hora y duración para crear bloques.
           </p>
         </div>
       </div>
@@ -222,7 +197,7 @@ export function TasksPage({ tasks, onAddTask, onToggleTask, onDeleteTask, onStar
       <section className="mb-8 animate-slide-up stagger-1">
         <div className="flex items-center justify-between mb-3">
           <h3 className="text-sm font-medium text-muted-foreground">Hoy</h3>
-          <span className="text-xs text-muted-foreground">{todayTasks.length} bloques</span>
+          <span className="text-xs text-muted-foreground">{todayTasks.length} tareas</span>
         </div>
         {todayTasks.length > 0 ? (
           <div className="space-y-3">
@@ -240,7 +215,7 @@ export function TasksPage({ tasks, onAddTask, onToggleTask, onDeleteTask, onStar
           </div>
         ) : (
           <div className="rounded-2xl bg-muted/30 p-6 text-center">
-            <p className="text-sm text-muted-foreground">No tienes bloques para hoy.</p>
+            <p className="text-sm text-muted-foreground">No tienes tareas para hoy.</p>
           </div>
         )}
       </section>
@@ -268,6 +243,7 @@ export function TasksPage({ tasks, onAddTask, onToggleTask, onDeleteTask, onStar
           </div>
         )}
       </section>
+
       {/* Completed tasks */}
       {done.length > 0 && (
         <details className="mt-8 animate-slide-up stagger-4">

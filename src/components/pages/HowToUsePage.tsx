@@ -1,4 +1,4 @@
-import { X, ArrowRight, Lightbulb, Clock, Target, RotateCcw, BarChart3, Heart } from 'lucide-react';
+import { X, Sparkles, CheckSquare, Play, Calendar, Cloud } from 'lucide-react';
 
 interface HowToUsePageProps {
   onClose: () => void;
@@ -6,34 +6,29 @@ interface HowToUsePageProps {
 
 const steps = [
   {
-    icon: ArrowRight,
-    title: 'No planifiques, empieza',
-    description: 'La planificación excesiva es procrastinación disfrazada. Solo elige una cosa y comienza.',
+    icon: Sparkles,
+    title: 'Ordena tu mente',
+    description: 'En el Home, escribe todo lo que tienes en la cabeza. El asistente lo ordena por ti.',
   },
   {
-    icon: Lightbulb,
-    title: 'Escribe solo lo que harás ahora',
-    description: 'No "estudiar para el examen". Mejor: "Abrir el libro en la página 23".',
+    icon: CheckSquare,
+    title: 'Crea tareas reales',
+    description: 'Las tareas representan acciones que sí puedes hacer.',
   },
   {
-    icon: Clock,
-    title: 'Elige pocos minutos',
-    description: '2 minutos es mejor que ninguno. Empezar es lo difícil, no continuar.',
+    icon: Play,
+    title: 'Inicia Focus Time',
+    description: 'Desde una tarea, inicia un Focus Time y enfócate solo en eso. Un bloque. Una cosa.',
   },
   {
-    icon: Target,
-    title: 'Confía en el enfoque',
-    description: 'Una vez que empiezas, el resto fluye. El temporizador es solo un recordatorio amable.',
+    icon: Calendar,
+    title: 'Revisa tu horario',
+    description: 'El horario se crea automáticamente según tus tareas.',
   },
   {
-    icon: RotateCcw,
-    title: 'Usa rutinas pequeñas',
-    description: 'Las rutinas eliminan la fricción. Pequeños hábitos diarios construyen grandes cambios.',
-  },
-  {
-    icon: BarChart3,
-    title: 'Revisa tu progreso sin exigirte',
-    description: 'El progreso no es perfección. Celebra cada sesión completada.',
+    icon: Cloud,
+    title: 'Usa notas rápidas',
+    description: 'La burbuja de notas sirve para anotar pendientes sin interrumpir tu foco.',
   },
 ];
 
@@ -44,7 +39,7 @@ export function HowToUsePage({ onClose }: HowToUsePageProps) {
         {/* Header */}
         <div className="flex items-center justify-between mb-8 animate-fade-in">
           <h1 className="text-2xl font-display font-semibold text-foreground">
-            Cómo usar FocusON
+            ¿Cómo funciona Focus On?
           </h1>
           <button
             onClick={onClose}
@@ -54,19 +49,8 @@ export function HowToUsePage({ onClose }: HowToUsePageProps) {
           </button>
         </div>
 
-        {/* Intro */}
-        <div className="text-center mb-10 animate-slide-up">
-          <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-primary/10 flex items-center justify-center">
-            <Heart size={32} className="text-primary" />
-          </div>
-          <p className="text-lg text-foreground">
-            FocusON está diseñado para ser<br />
-            <span className="font-semibold text-primary">simple, calmado y sin juicios.</span>
-          </p>
-        </div>
-
         {/* Steps */}
-        <div className="space-y-4">
+        <div className="space-y-4 mb-10">
           {steps.map((step, index) => (
             <div
               key={index}
@@ -90,16 +74,18 @@ export function HowToUsePage({ onClose }: HowToUsePageProps) {
           ))}
         </div>
 
-        {/* Footer message */}
-        <div className="text-center mt-10 animate-fade-in" style={{ animationDelay: '0.6s' }}>
-          <p className="text-muted-foreground">
-            Recuerda: <span className="text-foreground font-medium">solo empezar.</span><br />
-            Nada más.
+        {/* Main rule */}
+        <div className="text-center p-6 rounded-2xl bg-primary/5 border border-primary/20 animate-fade-in" style={{ animationDelay: '0.5s' }}>
+          <p className="text-sm font-medium text-primary mb-2">Regla principal:</p>
+          <p className="text-lg font-display font-semibold text-foreground">
+            No planifiques de más.
+            <br />
+            <span className="text-primary">Empieza.</span>
           </p>
         </div>
 
         {/* Close button */}
-        <div className="mt-8 animate-slide-up" style={{ animationDelay: '0.7s' }}>
+        <div className="mt-8 animate-slide-up" style={{ animationDelay: '0.6s' }}>
           <button
             onClick={onClose}
             className="btn-primary-focus w-full"

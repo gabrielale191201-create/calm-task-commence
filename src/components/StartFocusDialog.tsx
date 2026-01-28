@@ -34,7 +34,7 @@ export function StartFocusDialog({ open, onOpenChange, title, suggestedMinutes =
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle>Iniciar bloque de enfoque</DialogTitle>
+          <DialogTitle>Iniciar Focus Time</DialogTitle>
           <DialogDescription>Simple. Sin presión. Elige cuántos minutos.</DialogDescription>
         </DialogHeader>
 
@@ -86,7 +86,7 @@ export function StartFocusDialog({ open, onOpenChange, title, suggestedMinutes =
               Cancelar
             </button>
             <button onClick={start} className="btn-primary-focus flex-1">
-              Iniciar enfoque
+              Iniciar Focus Time
             </button>
           </div>
         </div>

@@ -5,13 +5,13 @@ import { TimerIndicator } from '@/components/TimerIndicator';
 import { HomePage } from '@/components/pages/HomePage';
 import { FocusPage } from '@/components/pages/FocusPage';
 import { TasksPage } from '@/components/pages/TasksPage';
-import { RoutinesPage } from '@/components/pages/RoutinesPage';
 import { JournalPage } from '@/components/pages/JournalPage';
 import { ProgressPage } from '@/components/pages/ProgressPage';
 import { SchedulePage } from '@/components/pages/SchedulePage';
 import { HowToUsePage } from '@/components/pages/HowToUsePage';
 import { OnboardingBanner } from '@/components/OnboardingBanner';
 import { ProductTagline } from '@/components/ProductTagline';
+import { FloatingNotesButton } from '@/components/notes/FloatingNotesButton';
 import { useTimer } from '@/hooks/useTimer';
 import { useAlarmSound } from '@/hooks/useAlarmSound';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
@@ -20,6 +20,13 @@ import { AppLogo } from '@/components/AppLogo';
 
 function generateId() {
   return Math.random().toString(36).substr(2, 9);
+}
+
+// Interface for floating notes (separate from quick notes in schedule)
+interface FloatingNote {
+  id: string;
+  text: string;
+  createdAt: string;
 }
 
 export default function Index() {
@@ -31,6 +38,7 @@ export default function Index() {
   const [journalEntries, setJournalEntries] = useLocalStorage<JournalEntry[]>('focuson-journal', []);
   const [sessions, setSessions] = useLocalStorage<FocusSession[]>('focuson-sessions', []);
   const [quickNotes, setQuickNotes] = useLocalStorage<QuickNote[]>('focuson-quicknotes', []);
+  const [floatingNotes, setFloatingNotes] = useLocalStorage<FloatingNote[]>('focuson-floatingnotes', []);
   const [lastActiveDate, setLastActiveDate] = useLocalStorage<string>('focuson-last-active', '');
 
   const timer = useTimer();
@@ -73,7 +81,6 @@ export default function Index() {
         streak++;
         checkDate.setDate(checkDate.getDate() - 1);
       } else if (checkDate.getTime() === today.getTime()) {
-        // Today has no sessions yet, check yesterday
         checkDate.setDate(checkDate.getDate() - 1);
       } else {
         break;
@@ -88,9 +95,7 @@ export default function Index() {
     input: string | { text: string; scheduledDate: string; scheduledTime: string; durationMinutes: number; source?: Task['source'] },
     isTopThree = false
   ) => {
-    // If string, it's for Top 3 (quick add without scheduling)
     if (typeof input === 'string') {
-      // Top 3 tasks don't need scheduling
       const newTask: Task = {
         id: generateId(),
         text: input,
@@ -120,6 +125,34 @@ export default function Index() {
     setTasks([...tasks, newTask]);
   };
 
+  // Add multiple tasks from AI
+  const addMultipleTasks = (taskTexts: string[]) => {
+    const todayISO = new Date().toISOString().split('T')[0];
+    const newTasks = taskTexts.map((text, index) => ({
+      id: generateId(),
+      text,
+      status: 'pending' as const,
+      source: 'manual' as const,
+      createdAt: new Date().toISOString(),
+      isTopThree: false,
+      scheduledDate: todayISO,
+      scheduledTime: `${9 + index}:00`,
+      durationMinutes: 25,
+    }));
+    setTasks([...tasks, ...newTasks]);
+    setActiveTab('tareas');
+  };
+
+  // Add floating notes from AI
+  const addFloatingNotesFromAI = (noteTexts: string[]) => {
+    const newNotes = noteTexts.map(text => ({
+      id: generateId(),
+      text,
+      createdAt: new Date().toISOString(),
+    }));
+    setFloatingNotes([...floatingNotes, ...newNotes]);
+  };
+
   const toggleTask = (id: string) => {
     const now = new Date().toISOString();
     setTasks(tasks.map(t => {
@@ -133,7 +166,7 @@ export default function Index() {
     }));
   };
 
-  // Migración suave de tareas antiguas (completed -> status, source por defecto)
+  // Migration for old tasks
   useEffect(() => {
     const needsMigration = tasks.some((t: any) => typeof t.status === 'undefined' || typeof t.source === 'undefined');
     if (!needsMigration) return;
@@ -159,7 +192,7 @@ export default function Index() {
     setTasks(tasks.map(t => t.id === id ? { ...t, isTopThree: false } : t));
   };
 
-  // Routine handlers (rutinas no tienen duración)
+  // Routine handlers (kept for data, but section is hidden)
   const addRoutine = (name: string) => {
     const newRoutine: Routine = {
       id: generateId(),
@@ -252,6 +285,20 @@ export default function Index() {
     setQuickNotes(quickNotes.filter(n => n.id !== id));
   };
 
+  // Floating notes handlers
+  const addFloatingNote = (text: string) => {
+    const newNote: FloatingNote = {
+      id: generateId(),
+      text,
+      createdAt: new Date().toISOString(),
+    };
+    setFloatingNotes([...floatingNotes, newNote]);
+  };
+
+  const deleteFloatingNote = (id: string) => {
+    setFloatingNotes(floatingNotes.filter(n => n.id !== id));
+  };
+
   // Session handlers
   const saveSession = useCallback((task: string, duration: number) => {
     const newSession: FocusSession = {
@@ -267,10 +314,6 @@ export default function Index() {
   }, [setSessions]);
 
   // Focus start from task
-  const startFocusFromTask = (taskText: string) => {
-    setActiveTab('enfoque');
-  };
-
   const startFocusFromTopTask = (taskText: string, minutes: number) => {
     setActiveTab('enfoque');
     timer.startTimer(minutes, taskText);
@@ -304,7 +347,6 @@ export default function Index() {
         streak++;
         check.setDate(check.getDate() - 1);
       } else if (check.getTime() === today.getTime()) {
-        // Si hoy todavía no, miramos ayer
         check.setDate(check.getDate() - 1);
       } else {
         break;
@@ -316,7 +358,7 @@ export default function Index() {
   const topThreeTasks = tasks.filter(t => t.isTopThree).slice(0, 3);
   const regularTasks = tasks.filter(t => !t.isTopThree);
 
-  // Count tasks per date for limit validation
+  // Count tasks per date for limit validation (now unlimited, kept for display)
   const getTasksCountForDate = useCallback((dateStr: string) => {
     return tasks.filter(t => t.scheduledDate === dateStr && t.status === 'pending').length;
   }, [tasks]);
@@ -346,6 +388,8 @@ export default function Index() {
             startedStreak={calculateStartedStreak()}
             hasVictoryToday={hasVictoryToday}
             onStartFocusFromTopTask={startFocusFromTopTask}
+            onSendToTasks={addMultipleTasks}
+            onSaveAsNotes={addFloatingNotesFromAI}
           />
         );
       case 'enfoque':
@@ -389,17 +433,11 @@ export default function Index() {
             onDeleteQuickNote={deleteQuickNote}
           />
         );
+      // Rutinas hidden - data preserved but not shown
       case 'rutinas':
-        return (
-          <RoutinesPage
-            routines={routines}
-            onAddRoutine={addRoutine}
-            onDeleteRoutine={deleteRoutine}
-            onAddStep={addRoutineStep}
-            onToggleStep={toggleRoutineStep}
-            onDeleteStep={deleteRoutineStep}
-          />
-        );
+        // Redirect to home if somehow accessed
+        setActiveTab('hoy');
+        return null;
       case 'diario':
         return (
           <JournalPage
@@ -431,7 +469,7 @@ export default function Index() {
                 <AppLogo size={48} />
               </div>
               <h1 className="text-sm font-display font-semibold tracking-[0.22em] text-foreground">
-                FOCUSON
+                FOCUS ON
               </h1>
             </div>
           ) : (
@@ -442,14 +480,14 @@ export default function Index() {
                 </div>
               ) : null}
               <h1 className="text-xl font-display font-semibold text-primary">
-                FocusON
+                Focus On
               </h1>
             </div>
           )}
           <button
             onClick={() => setShowHowTo(true)}
             className="p-2 rounded-xl hover:bg-muted transition-colors"
-            title="Cómo usar FocusON"
+            title="¿Cómo funciona Focus On?"
           >
             <HelpCircle size={22} className="text-muted-foreground" />
           </button>
@@ -474,12 +512,12 @@ export default function Index() {
         {renderPage()}
       </main>
 
-      {/* Daily closing phrase - psychological closure */}
-      <div className="fixed bottom-20 left-0 right-0 flex justify-center pointer-events-none z-10 animate-fade-in">
-        <div className="bg-card/90 backdrop-blur-sm px-4 py-2 rounded-full border border-border/50 shadow-sm">
-          <p className="text-xs text-muted-foreground italic">Por hoy es suficiente.</p>
-        </div>
-      </div>
+      {/* Floating Notes Button - visible on all sections */}
+      <FloatingNotesButton
+        notes={floatingNotes}
+        onAddNote={addFloatingNote}
+        onDeleteNote={deleteFloatingNote}
+      />
 
       {/* Bottom navigation */}
       <BottomNav activeTab={activeTab} onTabChange={setActiveTab} />
