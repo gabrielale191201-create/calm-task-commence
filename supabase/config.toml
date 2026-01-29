@@ -1,1 +1,7 @@
 project_id = "cmszoptzpkgnroeirilm"
+
+[functions.organize-tasks]
+verify_jwt = false
+
+[functions.emotional-chat]
+verify_jwt = false

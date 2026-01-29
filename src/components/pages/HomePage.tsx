@@ -1,5 +1,4 @@
-import { useMemo, useState } from 'react';
-import { ArrowRight, Sparkles } from 'lucide-react';
+import { ArrowRight } from 'lucide-react';
 import { Task, UserProfile } from '@/types/focuson';
 import { OrganizationAssistant } from '@/components/ai/OrganizationAssistant';
 
@@ -15,7 +14,6 @@ interface HomePageProps {
   hasVictoryToday: boolean;
   onStartFocusFromTopTask: (taskText: string, minutes: number) => void;
   onSendToTasks: (tasks: string[]) => void;
-  onSaveAsNotes: (notes: string[]) => void;
 }
 
 export function HomePage({
@@ -23,9 +21,7 @@ export function HomePage({
   onGoToFocus,
   startedStreak,
   hasVictoryToday,
-  onStartFocusFromTopTask,
   onSendToTasks,
-  onSaveAsNotes,
 }: HomePageProps) {
   const today = new Date();
   const dayNames = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
@@ -33,11 +29,6 @@ export function HomePage({
   
   const greeting = today.getHours() < 12 ? 'Buenos días' : today.getHours() < 19 ? 'Buenas tardes' : 'Buenas noches';
   const dateString = `${dayNames[today.getDay()]}, ${today.getDate()} de ${monthNames[today.getMonth()]}`;
-
-  const handleStartFocus = (task: string, minutes: number) => {
-    onStartFocusFromTopTask(task, minutes);
-  };
-
   return (
     <div className="page-enter px-6 pt-8 pb-32">
       {/* Greeting */}
@@ -74,9 +65,7 @@ export function HomePage({
 
       {/* AI Organization Assistant */}
       <OrganizationAssistant
-        onStartFocusTime={handleStartFocus}
         onSendToTasks={onSendToTasks}
-        onSaveAsNotes={onSaveAsNotes}
       />
 
       {/* Quick access button */}

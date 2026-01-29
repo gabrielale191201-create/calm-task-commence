@@ -1,24 +1,18 @@
 import { useState } from 'react';
-import { Sparkles, Play, Send, FileText, Loader2 } from 'lucide-react';
+import { Sparkles, Send, Loader2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
 interface AIResponse {
-  startWith: string;
-  forToday: string[];
-  pending: string[];
+  tasks: string[];
 }
 
 interface OrganizationAssistantProps {
-  onStartFocusTime: (task: string, minutes: number) => void;
   onSendToTasks: (tasks: string[]) => void;
-  onSaveAsNotes: (notes: string[]) => void;
 }
 
 export function OrganizationAssistant({
-  onStartFocusTime,
   onSendToTasks,
-  onSaveAsNotes,
 }: OrganizationAssistantProps) {
   const [input, setInput] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
@@ -48,9 +42,7 @@ export function OrganizationAssistant({
       }
 
       const organized: AIResponse = {
-        startWith: data.startWith || '',
-        forToday: data.forToday || [],
-        pending: data.pending || [],
+        tasks: data.tasks || [],
       };
 
       setResponse(organized);
@@ -62,23 +54,11 @@ export function OrganizationAssistant({
     }
   };
 
-  const handleStartFocus = () => {
-    if (response?.startWith) {
-      onStartFocusTime(response.startWith, 25);
-      setResponse(null);
-      setInput('');
-    }
-  };
-
   const handleSendToTasks = () => {
-    if (response?.forToday && response.forToday.length > 0) {
-      onSendToTasks(response.forToday);
-    }
-  };
-
-  const handleSaveNotes = () => {
-    if (response?.pending && response.pending.length > 0) {
-      onSaveAsNotes(response.pending);
+    if (response?.tasks && response.tasks.length > 0) {
+      onSendToTasks(response.tasks);
+      toast.success(`${response.tasks.length} tareas enviadas`);
+      handleReset();
     }
   };
 
@@ -105,7 +85,7 @@ export function OrganizationAssistant({
           <p className="text-sm text-muted-foreground mb-4">
             Escríbeme todo lo que tienes pendiente.
             <br />
-            Yo lo ordeno y te ayudo a empezar.
+            Yo lo ordeno en tareas claras.
           </p>
 
           <textarea
@@ -129,69 +109,42 @@ export function OrganizationAssistant({
             ) : (
               <>
                 <Sparkles size={18} />
-                Ordenar y empezar
+                Ordenar
               </>
             )}
           </button>
         </>
       ) : (
         <div className="space-y-5 animate-fade-in">
-          {/* Empieza con esto */}
-          {response.startWith && (
-            <div className="p-4 rounded-xl bg-primary/5 border border-primary/20">
-              <p className="text-xs font-medium text-primary mb-2">Empieza con esto:</p>
-              <p className="text-foreground font-medium mb-3">{response.startWith}</p>
-              <button
-                onClick={handleStartFocus}
-                className="btn-primary-focus w-full flex items-center justify-center gap-2 py-2.5 text-sm"
-              >
-                <Play size={16} />
-                Iniciar Focus Time
-              </button>
-            </div>
-          )}
-
-          {/* Para hoy */}
-          {response.forToday.length > 0 && (
+          {/* Lista de tareas */}
+          {response.tasks.length > 0 && (
             <div className="p-4 rounded-xl bg-muted/50 border border-border/50">
-              <p className="text-xs font-medium text-muted-foreground mb-2">Para hoy:</p>
-              <ul className="space-y-1.5 mb-3">
-                {response.forToday.map((task, i) => (
+              <p className="text-xs font-medium text-muted-foreground mb-3">
+                Tareas identificadas:
+              </p>
+              <ul className="space-y-2 mb-4">
+                {response.tasks.map((task, i) => (
                   <li key={i} className="text-sm text-foreground flex items-start gap-2">
-                    <span className="text-primary">•</span>
-                    {task}
+                    <span className="text-primary mt-0.5">•</span>
+                    <span>{task}</span>
                   </li>
                 ))}
               </ul>
               <button
                 onClick={handleSendToTasks}
-                className="btn-secondary-focus w-full flex items-center justify-center gap-2 py-2.5 text-sm"
+                className="btn-primary-focus w-full flex items-center justify-center gap-2 py-2.5 text-sm"
               >
                 <Send size={16} />
-                Enviar a tareas
+                Enviar a Tareas
               </button>
             </div>
           )}
 
-          {/* Pendientes */}
-          {response.pending.length > 0 && (
-            <div className="p-4 rounded-xl bg-muted/30 border border-border/30">
-              <p className="text-xs font-medium text-muted-foreground mb-2">Pendientes:</p>
-              <ul className="space-y-1.5 mb-3">
-                {response.pending.map((note, i) => (
-                  <li key={i} className="text-sm text-muted-foreground flex items-start gap-2">
-                    <span>○</span>
-                    {note}
-                  </li>
-                ))}
-              </ul>
-              <button
-                onClick={handleSaveNotes}
-                className="w-full py-2.5 text-sm rounded-xl border border-border/50 text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors flex items-center justify-center gap-2"
-              >
-                <FileText size={16} />
-                Guardar como notas
-              </button>
+          {response.tasks.length === 0 && (
+            <div className="p-4 rounded-xl bg-muted/30 text-center">
+              <p className="text-sm text-muted-foreground">
+                No se identificaron tareas claras. Intenta ser más específico.
+              </p>
             </div>
           )}
 

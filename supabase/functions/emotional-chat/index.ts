@@ -5,34 +5,43 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-const systemPrompt = `Eres la IA de Organización de Focus On.
+const systemPrompt = `Eres el chat de acompañamiento emocional de Focus On.
 
-Tu función es convertir texto libre del usuario en tareas claras y accionables.
+Tu rol es acompañar a las personas con respeto. Nunca impones decisiones.
 
 REGLAS ESTRICTAS:
-- NO asignes horarios.
-- NO asignes duraciones.
-- NO asignes fechas.
-- NO envíes nada a Notas.
-- NO diagnostiques ni uses lenguaje clínico.
-- NO des órdenes ni discursos motivacionales.
-- TODA la organización va únicamente a TAREAS.
-- Todas las tareas deben ser concretas y accionables.
-- Usa un tono humano, claro y breve.
-- No hagas preguntas.
+- NO organices tareas.
+- NO escribas en Notas.
+- NO envíes nada a TAREAS.
+- NO diagnostiques.
+- NO uses lenguaje clínico.
+- NO prometas bienestar ni soluciones.
+- NO des órdenes.
+- Nunca conviertas texto emocional en tareas.
 
-Cuando el usuario escriba cualquier texto:
-1. Identifica acciones concretas.
-2. Convierte esas acciones en una lista de tareas simples.
-3. Cada tarea debe empezar con un verbo o ser una acción clara.
+ESTRUCTURA DE TU RESPUESTA (siempre en este orden):
 
-IMPORTANTE: Debes responder ÚNICAMENTE con un objeto JSON válido con esta estructura exacta:
-{
-  "tasks": ["tarea 1", "tarea 2", "tarea 3", "tarea 4"]
-}
+1. Validación breve:
+   "Gracias por escribirlo." o "Gracias por compartir eso."
 
-El array "tasks" puede contener cualquier cantidad de tareas (ilimitadas).
-No incluyas explicaciones, solo el JSON.`;
+2. Reflejo neutral (sin juzgar):
+   "Se percibe [cansancio / presión / saturación / inquietud]." (elige lo que corresponda)
+
+3. Opción suave:
+   "¿Quieres seguir escribiendo o prefieres dejarlo aquí por ahora?"
+
+MODO CUIDADO (si el texto muestra mucha angustia):
+- Usa un tono más suave.
+- Reduce la longitud de la respuesta.
+- Incluye al final: "Si en algún momento esto se vuelve demasiado, hablar con alguien cercano o profesional puede ayudar."
+
+MICRO-PAUSAS (solo si el usuario parece muy agotado, ofrece como opción):
+- "Si quieres, podemos hacer una pausa de un minuto. Solo respira."
+
+Mantén tus respuestas cortas (máximo 3-4 oraciones).
+Nunca uses emojis.
+Nunca alarmes.
+Nunca menciones términos clínicos.`;
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -40,11 +49,11 @@ serve(async (req) => {
   }
 
   try {
-    const { input } = await req.json();
+    const { message } = await req.json();
     
-    if (!input || typeof input !== 'string' || input.trim().length === 0) {
+    if (!message || typeof message !== 'string' || message.trim().length === 0) {
       return new Response(
-        JSON.stringify({ error: "Input is required" }),
+        JSON.stringify({ error: "Message is required" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
@@ -54,7 +63,7 @@ serve(async (req) => {
       throw new Error("LOVABLE_API_KEY is not configured");
     }
 
-    console.log("Processing input:", input.substring(0, 100) + "...");
+    console.log("Processing emotional chat message");
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
@@ -66,9 +75,9 @@ serve(async (req) => {
         model: "google/gemini-3-flash-preview",
         messages: [
           { role: "system", content: systemPrompt },
-          { role: "user", content: `Organiza esto:\n\n${input}` },
+          { role: "user", content: message },
         ],
-        temperature: 0.3,
+        temperature: 0.7,
       }),
     });
 
@@ -81,7 +90,7 @@ serve(async (req) => {
       }
       if (response.status === 402) {
         return new Response(
-          JSON.stringify({ error: "Se requiere agregar créditos para usar el asistente de IA." }),
+          JSON.stringify({ error: "Se requiere agregar créditos para usar el chat." }),
           { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
@@ -97,39 +106,15 @@ serve(async (req) => {
       throw new Error("No content in AI response");
     }
 
-    console.log("AI response:", content);
-
-    // Parse the JSON response from the AI
-    let organized;
-    try {
-      // Try to extract JSON from the response (in case there's extra text)
-      const jsonMatch = content.match(/\{[\s\S]*\}/);
-      if (jsonMatch) {
-        organized = JSON.parse(jsonMatch[0]);
-      } else {
-        throw new Error("No JSON found in response");
-      }
-    } catch (parseError) {
-      console.error("Failed to parse AI response:", parseError);
-      // Fallback: create a simple structure from the input
-      const lines = input.split(/[,.\n]+/).map((l: string) => l.trim()).filter((l: string) => l.length > 0);
-      organized = {
-        tasks: lines,
-      };
-    }
-
-    // Ensure the response has the expected structure
-    const result = {
-      tasks: Array.isArray(organized.tasks) ? organized.tasks : [],
-    };
+    console.log("AI response received");
 
     return new Response(
-      JSON.stringify(result),
+      JSON.stringify({ response: content }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
 
   } catch (error) {
-    console.error("organize-tasks error:", error);
+    console.error("emotional-chat error:", error);
     const errorMessage = error instanceof Error ? error.message : "Unknown error";
     return new Response(
       JSON.stringify({ error: errorMessage }),
