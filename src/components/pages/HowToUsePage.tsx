@@ -1,4 +1,4 @@
-import { X, Sparkles, CheckSquare, Play, Calendar, Cloud } from 'lucide-react';
+import { X, Sparkles, CheckSquare, Play, Calendar, MessageCircle, Cloud } from 'lucide-react';
 
 interface HowToUsePageProps {
   onClose: () => void;
@@ -7,28 +7,33 @@ interface HowToUsePageProps {
 const steps = [
   {
     icon: Sparkles,
-    title: 'Ordena tu mente',
-    description: 'En el Home, escribe todo lo que tienes en la cabeza. El asistente lo ordena por ti.',
+    title: 'Escribes lo que tienes en la cabeza',
+    description: 'En el Home, escribe todo lo que te preocupa o tienes pendiente. La IA lo convierte en tareas claras.',
   },
   {
     icon: CheckSquare,
-    title: 'Crea tareas reales',
-    description: 'Las tareas representan acciones que sí puedes hacer.',
-  },
-  {
-    icon: Play,
-    title: 'Inicia Focus Time',
-    description: 'Desde una tarea, inicia un Focus Time y enfócate solo en eso. Un bloque. Una cosa.',
+    title: 'Tú decides en TAREAS',
+    description: 'Las tareas llegan como borradores. Tú eliges la hora, duración y fecha de cada una.',
   },
   {
     icon: Calendar,
-    title: 'Revisa tu horario',
-    description: 'El horario se crea automáticamente según tus tareas.',
+    title: 'El HORARIO se arma solo',
+    description: 'Cuando confirmas hora y duración, el horario se construye automáticamente.',
+  },
+  {
+    icon: Play,
+    title: 'Focus Time acompaña',
+    description: 'Inicia Focus Time desde una tarea. Un bloque. Una cosa a la vez.',
+  },
+  {
+    icon: MessageCircle,
+    title: 'El chat es para ti',
+    description: 'La nubecita de chat sirve para escribir lo que sientes. Sin presión, sin tareas.',
   },
   {
     icon: Cloud,
-    title: 'Usa notas rápidas',
-    description: 'La burbuja de notas sirve para anotar pendientes sin interrumpir tu foco.',
+    title: 'Notas rápidas',
+    description: 'La burbuja de notas guarda lo que necesites anotar sin crear tareas ni bloques.',
   },
 ];
 
@@ -75,7 +80,7 @@ export function HowToUsePage({ onClose }: HowToUsePageProps) {
         </div>
 
         {/* Main rule */}
-        <div className="text-center p-6 rounded-2xl bg-primary/5 border border-primary/20 animate-fade-in" style={{ animationDelay: '0.5s' }}>
+        <div className="text-center p-6 rounded-2xl bg-primary/5 border border-primary/20 animate-fade-in" style={{ animationDelay: '0.6s' }}>
           <p className="text-sm font-medium text-primary mb-2">Regla principal:</p>
           <p className="text-lg font-display font-semibold text-foreground">
             No planifiques de más.
@@ -85,7 +90,7 @@ export function HowToUsePage({ onClose }: HowToUsePageProps) {
         </div>
 
         {/* Close button */}
-        <div className="mt-8 animate-slide-up" style={{ animationDelay: '0.6s' }}>
+        <div className="mt-8 animate-slide-up" style={{ animationDelay: '0.7s' }}>
           <button
             onClick={onClose}
             className="btn-primary-focus w-full"

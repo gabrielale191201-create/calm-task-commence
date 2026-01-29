@@ -12,6 +12,7 @@ import { HowToUsePage } from '@/components/pages/HowToUsePage';
 import { OnboardingBanner } from '@/components/OnboardingBanner';
 import { ProductTagline } from '@/components/ProductTagline';
 import { FloatingNotesButton } from '@/components/notes/FloatingNotesButton';
+import { EmotionalChatButton } from '@/components/ai/EmotionalChatButton';
 import { useTimer } from '@/hooks/useTimer';
 import { useAlarmSound } from '@/hooks/useAlarmSound';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
@@ -389,7 +390,6 @@ export default function Index() {
             hasVictoryToday={hasVictoryToday}
             onStartFocusFromTopTask={startFocusFromTopTask}
             onSendToTasks={addMultipleTasks}
-            onSaveAsNotes={addFloatingNotesFromAI}
           />
         );
       case 'enfoque':
@@ -518,6 +518,9 @@ export default function Index() {
         onAddNote={addFloatingNote}
         onDeleteNote={deleteFloatingNote}
       />
+
+      {/* Emotional Chat Button - visible on all sections */}
+      <EmotionalChatButton />
 
       {/* Bottom navigation */}
       <BottomNav activeTab={activeTab} onTabChange={setActiveTab} />
