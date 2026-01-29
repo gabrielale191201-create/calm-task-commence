@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Sparkles, Play, Send, FileText, Loader2 } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
 
 interface AIResponse {
   startWith: string;
@@ -28,29 +29,37 @@ export function OrganizationAssistant({
     
     setIsProcessing(true);
     
-    // Simulate AI processing (in production, this would call an AI API)
-    await new Promise(resolve => setTimeout(resolve, 1500));
-    
-    // Parse input and organize into categories
-    const lines = input
-      .split(/[,.\n]+/)
-      .map(l => l.trim())
-      .filter(l => l.length > 0);
-    
-    if (lines.length === 0) {
+    try {
+      const { data, error } = await supabase.functions.invoke('organize-tasks', {
+        body: { input: input.trim() }
+      });
+
+      if (error) {
+        console.error('Edge function error:', error);
+        toast.error('Error al procesar. Intenta de nuevo.');
+        setIsProcessing(false);
+        return;
+      }
+
+      if (data.error) {
+        toast.error(data.error);
+        setIsProcessing(false);
+        return;
+      }
+
+      const organized: AIResponse = {
+        startWith: data.startWith || '',
+        forToday: data.forToday || [],
+        pending: data.pending || [],
+      };
+
+      setResponse(organized);
+    } catch (err) {
+      console.error('Failed to process with AI:', err);
+      toast.error('Error de conexión. Intenta de nuevo.');
+    } finally {
       setIsProcessing(false);
-      return;
     }
-
-    // Simple AI-like organization logic
-    const organized: AIResponse = {
-      startWith: lines[0], // First item is priority
-      forToday: lines.slice(1, 4), // Next items for today
-      pending: lines.slice(4), // Rest as pending notes
-    };
-
-    setResponse(organized);
-    setIsProcessing(false);
   };
 
   const handleStartFocus = () => {
