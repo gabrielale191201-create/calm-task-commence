@@ -26,7 +26,10 @@ export function EmotionalChatButton() {
 
     try {
       const { data, error } = await supabase.functions.invoke('emotional-chat', {
-        body: { messages: updatedMessages }
+        body: { messages: updatedMessages },
+        headers: {
+          'x-beta-token': import.meta.env.VITE_BETA_ACCESS_TOKEN || ''
+        }
       });
 
       if (error) {

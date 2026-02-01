@@ -1,9 +1,60 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
-};
+// Allowed origins for CORS
+const allowedOrigins = [
+  "https://id-preview--ee67add7-fb83-488d-a1bb-f6aa1acc5d65.lovable.app",
+  "https://calm-task-commence.lovable.app",
+  "http://localhost:5173",
+  "http://localhost:8080"
+];
+
+function getCorsHeaders(origin: string | null): Record<string, string> {
+  const allowedOrigin = origin && allowedOrigins.includes(origin) ? origin : allowedOrigins[0];
+  return {
+    "Access-Control-Allow-Origin": allowedOrigin,
+    "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-beta-token, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
+  };
+}
+
+// Rate limiting: 20 requests per 5 minutes per IP
+const rateLimitMap = new Map<string, number[]>();
+const RATE_LIMIT_WINDOW = 5 * 60 * 1000; // 5 minutes
+const RATE_LIMIT_MAX = 20;
+
+function isRateLimited(ip: string): boolean {
+  const now = Date.now();
+  const timestamps = rateLimitMap.get(ip) || [];
+  
+  // Filter out old timestamps
+  const recentTimestamps = timestamps.filter(t => now - t < RATE_LIMIT_WINDOW);
+  
+  if (recentTimestamps.length >= RATE_LIMIT_MAX) {
+    return true;
+  }
+  
+  recentTimestamps.push(now);
+  rateLimitMap.set(ip, recentTimestamps);
+  
+  // Cleanup old entries periodically
+  if (rateLimitMap.size > 1000) {
+    for (const [key, times] of rateLimitMap.entries()) {
+      const filtered = times.filter(t => now - t < RATE_LIMIT_WINDOW);
+      if (filtered.length === 0) {
+        rateLimitMap.delete(key);
+      } else {
+        rateLimitMap.set(key, filtered);
+      }
+    }
+  }
+  
+  return false;
+}
+
+function getClientIP(req: Request): string {
+  return req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || 
+         req.headers.get("x-real-ip") || 
+         "unknown";
+}
 
 const systemPrompt = `Eres el acompañante emocional de la app Focus On.
 
@@ -64,8 +115,33 @@ OBJETIVO FINAL
 Que el usuario sienta: "Puedo escribir aquí y alguien me lee de verdad."`;
 
 serve(async (req) => {
+  const origin = req.headers.get("origin");
+  const corsHeaders = getCorsHeaders(origin);
+
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
+  }
+
+  // Token validation
+  const BETA_ACCESS_TOKEN = Deno.env.get("BETA_ACCESS_TOKEN");
+  const betaToken = req.headers.get("x-beta-token");
+  
+  if (!BETA_ACCESS_TOKEN || betaToken !== BETA_ACCESS_TOKEN) {
+    console.log("Unauthorized access attempt - invalid or missing token");
+    return new Response(
+      JSON.stringify({ error: "unauthorized" }),
+      { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  }
+
+  // Rate limiting
+  const clientIP = getClientIP(req);
+  if (isRateLimited(clientIP)) {
+    console.log("Rate limited:", clientIP);
+    return new Response(
+      JSON.stringify({ error: "rate_limited" }),
+      { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
   }
 
   try {
@@ -83,7 +159,7 @@ serve(async (req) => {
       throw new Error("LOVABLE_API_KEY is not configured");
     }
 
-    console.log("Processing emotional chat with", messages.length, "messages");
+    console.log("Processing emotional chat from IP:", clientIP, "- messages:", messages.length);
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
@@ -129,7 +205,7 @@ serve(async (req) => {
       throw new Error("No content in AI response");
     }
 
-    console.log("AI response received");
+    console.log("AI response received for IP:", clientIP);
 
     return new Response(
       JSON.stringify({ response: content }),
