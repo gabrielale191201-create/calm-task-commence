@@ -25,7 +25,10 @@ export function OrganizationAssistant({
     
     try {
       const { data, error } = await supabase.functions.invoke('organize-tasks', {
-        body: { input: input.trim() }
+        body: { input: input.trim() },
+        headers: {
+          'x-beta-token': import.meta.env.VITE_BETA_ACCESS_TOKEN || ''
+        }
       });
 
       if (error) {
