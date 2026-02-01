@@ -16,6 +16,10 @@ function getCorsHeaders(origin: string | null): Record<string, string> {
   };
 }
 
+// Input validation limits
+const MAX_INPUT_LENGTH = 5000;
+const MAX_TASKS_RETURNED = 100;
+
 // Rate limiting: 20 requests per 5 minutes per IP
 const rateLimitMap = new Map<string, number[]>();
 const RATE_LIMIT_WINDOW = 5 * 60 * 1000; // 5 minutes
@@ -98,7 +102,7 @@ serve(async (req) => {
   const betaToken = req.headers.get("x-beta-token");
   
   if (!BETA_ACCESS_TOKEN || betaToken !== BETA_ACCESS_TOKEN) {
-    console.log("Unauthorized access attempt - invalid or missing token");
+    console.log("Unauthorized access attempt");
     return new Response(
       JSON.stringify({ error: "unauthorized" }),
       { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -108,7 +112,7 @@ serve(async (req) => {
   // Rate limiting
   const clientIP = getClientIP(req);
   if (isRateLimited(clientIP)) {
-    console.log("Rate limited:", clientIP);
+    console.log("Rate limited request");
     return new Response(
       JSON.stringify({ error: "rate_limited" }),
       { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -118,19 +122,32 @@ serve(async (req) => {
   try {
     const { input } = await req.json();
     
+    // Input validation
     if (!input || typeof input !== 'string' || input.trim().length === 0) {
       return new Response(
-        JSON.stringify({ error: "Input is required" }),
+        JSON.stringify({ error: "Se requiere texto para organizar." }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Input length validation
+    if (input.length > MAX_INPUT_LENGTH) {
+      return new Response(
+        JSON.stringify({ error: `Entrada demasiado larga. Máximo ${MAX_INPUT_LENGTH} caracteres.` }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) {
-      throw new Error("LOVABLE_API_KEY is not configured");
+      console.error("Missing API key configuration");
+      return new Response(
+        JSON.stringify({ error: "Error de configuración del servicio." }),
+        { status: 503, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
     }
 
-    console.log("Processing input from IP:", clientIP, "- length:", input.length);
+    console.log("Processing request", { timestamp: new Date().toISOString(), inputLength: input.length });
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
@@ -161,19 +178,26 @@ serve(async (req) => {
           { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
-      const errorText = await response.text();
-      console.error("AI gateway error:", response.status, errorText);
-      throw new Error(`AI gateway error: ${response.status}`);
+      // Log error internally but return generic message
+      console.error("AI service error:", response.status);
+      return new Response(
+        JSON.stringify({ error: "Error temporal del servicio. Intenta de nuevo." }),
+        { status: 503, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
     }
 
     const data = await response.json();
     const content = data.choices?.[0]?.message?.content;
 
     if (!content) {
-      throw new Error("No content in AI response");
+      console.error("Empty AI response");
+      return new Response(
+        JSON.stringify({ error: "Error al procesar la respuesta. Intenta de nuevo." }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
     }
 
-    console.log("AI response received for IP:", clientIP);
+    console.log("Request processed successfully");
 
     // Parse the JSON response from the AI
     let organized;
@@ -186,7 +210,7 @@ serve(async (req) => {
         throw new Error("No JSON found in response");
       }
     } catch (parseError) {
-      console.error("Failed to parse AI response:", parseError);
+      console.error("Parse error - using fallback");
       // Fallback: create a simple structure from the input
       const lines = input.split(/[,.\n]+/).map((l: string) => l.trim()).filter((l: string) => l.length > 0);
       organized = {
@@ -194,10 +218,13 @@ serve(async (req) => {
       };
     }
 
-    // Ensure the response has the expected structure
-    const result = {
-      tasks: Array.isArray(organized.tasks) ? organized.tasks : [],
-    };
+    // Ensure the response has the expected structure and limit task count
+    let tasks = Array.isArray(organized.tasks) ? organized.tasks : [];
+    if (tasks.length > MAX_TASKS_RETURNED) {
+      tasks = tasks.slice(0, MAX_TASKS_RETURNED);
+    }
+
+    const result = { tasks };
 
     return new Response(
       JSON.stringify(result),
@@ -205,10 +232,9 @@ serve(async (req) => {
     );
 
   } catch (error) {
-    console.error("organize-tasks error:", error);
-    const errorMessage = error instanceof Error ? error.message : "Unknown error";
+    console.error("Request processing error");
     return new Response(
-      JSON.stringify({ error: errorMessage }),
+      JSON.stringify({ error: "Error al procesar tu solicitud. Intenta de nuevo." }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
