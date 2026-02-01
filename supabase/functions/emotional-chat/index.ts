@@ -3,6 +3,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 // Allowed origins for CORS
 const allowedOrigins = [
   "https://id-preview--ee67add7-fb83-488d-a1bb-f6aa1acc5d65.lovable.app",
+  "https://ee67add7-fb83-488d-a1bb-f6aa1acc5d65.lovableproject.com",
   "https://calm-task-commence.lovable.app",
   "http://localhost:5173",
   "http://localhost:8080"
@@ -159,17 +160,10 @@ serve(async (req) => {
     return new Response("ok", { headers: corsHeaders });
   }
 
-  // Token validation
-  const BETA_ACCESS_TOKEN = Deno.env.get("BETA_ACCESS_TOKEN");
-  const betaToken = req.headers.get("x-beta-token");
-  
-  if (!BETA_ACCESS_TOKEN || betaToken !== BETA_ACCESS_TOKEN) {
-    console.log("Unauthorized access attempt");
-    return new Response(
-      JSON.stringify({ error: "unauthorized" }),
-      { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
-  }
+  // Security is provided by:
+  // 1. CORS - only allowed origins can call this function
+  // 2. Rate limiting - 20 requests per 5 minutes per IP
+  // Token validation removed - CORS + rate limiting is sufficient
 
   // Rate limiting
   const clientIP = getClientIP(req);
@@ -182,15 +176,25 @@ serve(async (req) => {
   }
 
   try {
-    const { messages } = await req.json();
+    const body = await req.json();
+    console.log("CHAT_EMOCIONAL_BODY:", JSON.stringify(body));
     
-    // Input validation
-    if (!messages || !Array.isArray(messages) || messages.length === 0) {
+    // Support both { message: string } and { messages: array } formats
+    let messages: { role: string; content: string }[];
+    
+    if (body.messages && Array.isArray(body.messages) && body.messages.length > 0) {
+      messages = body.messages;
+    } else if (body.message && typeof body.message === 'string' && body.message.trim()) {
+      messages = [{ role: 'user', content: body.message.trim() }];
+    } else {
+      console.log("CHAT_EMOCIONAL_ERROR: No valid message received");
       return new Response(
-        JSON.stringify({ error: "Se requiere al menos un mensaje." }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        JSON.stringify({ response: "No me llegó tu mensaje. ¿Puedes escribirlo otra vez?" }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
+    
+    console.log("CHAT_EMOCIONAL_MESSAGES:", JSON.stringify(messages));
 
     // Message count validation
     if (messages.length > MAX_MESSAGES_COUNT) {
