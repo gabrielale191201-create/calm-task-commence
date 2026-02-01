@@ -26,29 +26,32 @@ export function EmotionalChatButton() {
 
     try {
       const { data, error } = await supabase.functions.invoke('emotional-chat', {
-        body: { messages: updatedMessages },
-        headers: {
-          'x-beta-token': import.meta.env.VITE_BETA_ACCESS_TOKEN || ''
-        }
+        body: { messages: updatedMessages }
       });
 
       if (error) {
         console.error('Chat error:', error);
         setMessages(prev => [...prev, { 
           role: 'assistant', 
-          content: 'Aquí estoy. Cuando quieras, seguimos.' 
+          content: `Error: ${error.message || 'No pude conectar. Intenta de nuevo.'}` 
         }]);
-      } else {
+      } else if (data?.response) {
         setMessages(prev => [...prev, { 
           role: 'assistant', 
-          content: data.response || 'Te leo.' 
+          content: data.response 
+        }]);
+      } else {
+        console.error('No response from API:', data);
+        setMessages(prev => [...prev, { 
+          role: 'assistant', 
+          content: 'No recibí respuesta. ¿Puedes intentar de nuevo?' 
         }]);
       }
     } catch (err) {
       console.error('Failed to send message:', err);
       setMessages(prev => [...prev, { 
         role: 'assistant', 
-        content: 'Aquí estoy. Cuando quieras, seguimos.' 
+        content: 'Error de conexión. Intenta de nuevo.' 
       }]);
     } finally {
       setIsLoading(false);
