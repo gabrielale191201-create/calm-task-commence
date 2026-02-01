@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Plus } from 'lucide-react';
+import { Plus, Clock, Calendar, Edit2, Check, X } from 'lucide-react';
 import { Task } from '@/types/focuson';
 import { TaskItem } from '@/components/TaskItem';
 import { StartFocusDialog } from '@/components/StartFocusDialog';
@@ -7,69 +7,60 @@ import { toISODate } from '@/lib/dateUtils';
 
 interface TasksPageProps {
   tasks: Task[];
-  onAddTask: (input: { text: string; scheduledDate: string; scheduledTime: string; durationMinutes: number }) => void;
+  onAddTask: (input: { text: string; scheduledDate?: string; scheduledTime?: string; durationMinutes?: number }) => void;
   onToggleTask: (id: string) => void;
   onDeleteTask: (id: string) => void;
+  onUpdateTask?: (id: string, updates: Partial<Pick<Task, 'scheduledDate' | 'scheduledTime' | 'durationMinutes'>>) => void;
   onStartFocus: (taskText: string, minutes: number) => void;
   getTasksCountForDate: (date: string) => number;
 }
 
-// Tasks are now UNLIMITED - no max limit
-export function TasksPage({ tasks, onAddTask, onToggleTask, onDeleteTask, onStartFocus, getTasksCountForDate }: TasksPageProps) {
+export function TasksPage({ tasks, onAddTask, onToggleTask, onDeleteTask, onUpdateTask, onStartFocus, getTasksCountForDate }: TasksPageProps) {
   const [title, setTitle] = useState('');
-  const [date, setDate] = useState<string>('');
-  const [time, setTime] = useState<string>('');
-  const [duration, setDuration] = useState<string>('25');
-  const [touched, setTouched] = useState(false);
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
+  const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
+  const [editDate, setEditDate] = useState('');
+  const [editTime, setEditTime] = useState('');
+  const [editDuration, setEditDuration] = useState('');
 
   const todayISO = toISODate(new Date());
 
-  // Tasks are unlimited - count is for display only
-  const selectedDateCount = date ? getTasksCountForDate(date) : 0;
-
-  const errors = useMemo(() => {
-    if (!touched) return {} as Record<string, string>;
-    const e: Record<string, string> = {};
-    if (!title.trim()) e.title = 'Escribe un título.';
-    if (!date) e.date = 'Elige una fecha.';
-    if (!time) e.time = 'Elige una hora.';
-    const d = duration.trim();
-    if (!d) {
-      e.duration = 'Elige una duración.';
-    } else {
-      const n = parseInt(d, 10);
-      if (!Number.isFinite(n) || n <= 0 || n > 180) e.duration = 'Duración: 1–180 min.';
-    }
-    return e;
-  }, [touched, title, time, date, duration]);
-
-  const canSubmit = !!title.trim() && !!date && !!time && !!duration.trim() && 
-    !errors.title && !errors.date && !errors.time && !errors.duration;
-
   const handleAddTask = () => {
-    setTouched(true);
-
-    if (!canSubmit) return;
-
-    const durationMinutes = Math.max(1, Math.min(180, parseInt(duration.trim(), 10)));
-    onAddTask({
-      text: title.trim(),
-      scheduledDate: date,
-      scheduledTime: time,
-      durationMinutes,
-    });
+    if (!title.trim()) return;
+    // Solo crear con el nombre - sin fecha, hora ni duración
+    onAddTask({ text: title.trim() });
     setTitle('');
-    setDate('');
-    setTime('');
-    setDuration('25');
-    setTouched(false);
   };
 
   const pending = tasks.filter((t) => t.status === 'pending');
   const done = tasks.filter((t) => t.status === 'done');
 
+  // Tareas sin programar (sin fecha/hora/duración)
+  const unprogrammedTasks = useMemo(() => {
+    return pending.filter((t) => !t.scheduledDate || !t.scheduledTime || !t.durationMinutes);
+  }, [pending]);
+
+  // Tareas programadas para hoy
+  const todayTasks = useMemo(() => {
+    return pending
+      .filter((t) => t.scheduledDate === todayISO && t.scheduledTime && t.durationMinutes)
+      .sort((a, b) => (a.scheduledTime || '').localeCompare(b.scheduledTime || ''));
+  }, [pending, todayISO]);
+
+  // Tareas programadas para el futuro
+  const upcomingTasks = useMemo(() => {
+    return pending
+      .filter((t) => t.scheduledDate && t.scheduledDate > todayISO && t.scheduledTime && t.durationMinutes)
+      .sort((a, b) => {
+        if (a.scheduledDate !== b.scheduledDate) return (a.scheduledDate || '').localeCompare(b.scheduledDate || '');
+        return (a.scheduledTime || '').localeCompare(b.scheduledTime || '');
+      });
+  }, [pending, todayISO]);
+
   const formatChip = (t: Task) => {
+    if (!t.scheduledDate || !t.scheduledTime || !t.durationMinutes) {
+      return 'Sin programar';
+    }
     const d = new Date(t.scheduledDate);
     const day = d.toLocaleDateString('es-ES', { weekday: 'short' }).replace('.', '');
     const num = d.toLocaleDateString('es-ES', { day: '2-digit' });
@@ -77,20 +68,33 @@ export function TasksPage({ tasks, onAddTask, onToggleTask, onDeleteTask, onStar
     return `${day} ${num} ${mon} · ${t.scheduledTime} · ${t.durationMinutes}m`;
   };
 
-  const todayTasks = useMemo(() => {
-    return pending
-      .filter((t) => t.scheduledDate === todayISO)
-      .sort((a, b) => a.scheduledTime.localeCompare(b.scheduledTime));
-  }, [pending, todayISO]);
+  const startEditing = (task: Task) => {
+    setEditingTaskId(task.id);
+    setEditDate(task.scheduledDate || '');
+    setEditTime(task.scheduledTime || '');
+    setEditDuration(task.durationMinutes?.toString() || '');
+  };
 
-  const upcomingTasks = useMemo(() => {
-    return pending
-      .filter((t) => t.scheduledDate > todayISO)
-      .sort((a, b) => {
-        if (a.scheduledDate !== b.scheduledDate) return a.scheduledDate.localeCompare(b.scheduledDate);
-        return a.scheduledTime.localeCompare(b.scheduledTime);
-      });
-  }, [pending, todayISO]);
+  const cancelEditing = () => {
+    setEditingTaskId(null);
+    setEditDate('');
+    setEditTime('');
+    setEditDuration('');
+  };
+
+  const saveEditing = (taskId: string) => {
+    if (onUpdateTask) {
+      const updates: Partial<Pick<Task, 'scheduledDate' | 'scheduledTime' | 'durationMinutes'>> = {};
+      if (editDate) updates.scheduledDate = editDate;
+      if (editTime) updates.scheduledTime = editTime;
+      if (editDuration) {
+        const dur = parseInt(editDuration, 10);
+        if (dur > 0 && dur <= 180) updates.durationMinutes = dur;
+      }
+      onUpdateTask(taskId, updates);
+    }
+    cancelEditing();
+  };
 
   const todayCount = getTasksCountForDate(todayISO);
 
@@ -101,97 +105,134 @@ export function TasksPage({ tasks, onAddTask, onToggleTask, onDeleteTask, onStar
       </h1>
       
       <p className="text-muted-foreground text-sm mb-4 animate-fade-in">
-        Cada tarea crea un bloque en tu horario.
+        Tú decides cuándo y cuánto tiempo dedicar a cada tarea.
       </p>
 
-      {/* Today counter - informational only */}
+      {/* Today counter */}
       <div className="mb-4 p-3 rounded-xl bg-primary/5 border border-primary/20 animate-slide-up">
         <div className="flex items-center justify-between">
-          <span className="text-sm text-muted-foreground">Tareas para hoy</span>
+          <span className="text-sm text-muted-foreground">Tareas programadas para hoy</span>
           <span className="text-lg font-bold text-primary">{todayCount}</span>
         </div>
       </div>
       
-      {/* Compact form */}
+      {/* Simple add form - only title */}
       <div className="rounded-2xl border border-border/50 bg-card p-4 mb-6 animate-slide-up">
-        <div className="space-y-3">
-          <div>
-            <label className="text-sm font-medium text-foreground">Título</label>
+        <div className="flex items-end gap-2">
+          <div className="flex-1">
+            <label className="text-sm font-medium text-foreground">Nueva tarea</label>
             <input
               type="text"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              onBlur={() => setTouched(true)}
               onKeyDown={(e) => e.key === 'Enter' && handleAddTask()}
-              placeholder="¿Cuál es el primer paso?"
+              placeholder="¿Qué necesitas hacer?"
               className="focus-input mt-2"
               maxLength={120}
             />
-            {errors.title && <p className="mt-1 text-xs text-destructive">{errors.title}</p>}
           </div>
-
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="text-sm font-medium text-foreground">Fecha</label>
-              <input
-                type="date"
-                value={date}
-                onChange={(e) => setDate(e.target.value)}
-                onBlur={() => setTouched(true)}
-                className="mt-2 w-full px-4 py-3 rounded-xl bg-card border border-border/50 text-foreground"
-              />
-              {errors.date && <p className="mt-1 text-xs text-destructive">{errors.date}</p>}
-              {date && !errors.date && (
-                <p className="mt-1 text-xs text-muted-foreground">
-                  {getTasksCountForDate(date)} tareas en este día
-                </p>
-              )}
-            </div>
-            <div>
-              <label className="text-sm font-medium text-foreground">Hora</label>
-              <input
-                type="time"
-                value={time}
-                onChange={(e) => setTime(e.target.value)}
-                onBlur={() => setTouched(true)}
-                className="mt-2 w-full px-4 py-3 rounded-xl bg-card border border-border/50 text-foreground"
-              />
-              {errors.time && <p className="mt-1 text-xs text-destructive">{errors.time}</p>}
-            </div>
-          </div>
-
-          <div className="flex items-end gap-2">
-            <div className="flex-1">
-              <label className="text-sm font-medium text-foreground">Duración (min)</label>
-              <input
-                type="number"
-                value={duration}
-                onChange={(e) => setDuration(e.target.value)}
-                onBlur={() => setTouched(true)}
-                className="mt-2 w-full px-4 py-3 rounded-xl bg-card border border-border/50 text-foreground"
-                placeholder="Ej: 25"
-                min={1}
-                max={180}
-              />
-              {errors.duration && <p className="mt-1 text-xs text-destructive">{errors.duration}</p>}
-            </div>
-
-            <button
-              onClick={handleAddTask}
-              disabled={!title.trim()}
-              className="p-4 rounded-xl bg-primary text-white disabled:opacity-50 disabled:cursor-not-allowed transition-all hover:shadow-focus"
-              title="Agregar tarea"
-            >
-              <Plus size={20} />
-            </button>
-          </div>
-
-          {/* Info about tasks */}
-          <p className="text-xs text-muted-foreground pt-2 border-t border-border/30">
-            Las tareas requieren fecha, hora y duración para crear bloques.
-          </p>
+          <button
+            onClick={handleAddTask}
+            disabled={!title.trim()}
+            className="p-4 rounded-xl bg-primary text-white disabled:opacity-50 disabled:cursor-not-allowed transition-all hover:shadow-focus"
+            title="Agregar tarea"
+          >
+            <Plus size={20} />
+          </button>
         </div>
+        <p className="text-xs text-muted-foreground mt-3 pt-2 border-t border-border/30">
+          Después de crear la tarea, puedes asignarle fecha, hora y duración.
+        </p>
       </div>
+
+      {/* Sin programar */}
+      {unprogrammedTasks.length > 0 && (
+        <section className="mb-8 animate-slide-up">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-sm font-medium text-amber-600 dark:text-amber-400">Sin programar</h3>
+            <span className="text-xs text-muted-foreground">{unprogrammedTasks.length} tareas</span>
+          </div>
+          <div className="space-y-3">
+            {unprogrammedTasks.map((task) => (
+              <div key={task.id} className="rounded-2xl border border-amber-200 dark:border-amber-800/50 bg-amber-50/50 dark:bg-amber-900/10 p-4">
+                {editingTaskId === task.id ? (
+                  <div className="space-y-3">
+                    <p className="text-sm font-medium text-foreground mb-3">{task.text}</p>
+                    <div className="grid grid-cols-3 gap-2">
+                      <div>
+                        <label className="text-xs text-muted-foreground">Fecha</label>
+                        <input
+                          type="date"
+                          value={editDate}
+                          onChange={(e) => setEditDate(e.target.value)}
+                          className="mt-1 w-full px-3 py-2 rounded-lg bg-card border border-border/50 text-foreground text-sm"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-xs text-muted-foreground">Hora</label>
+                        <input
+                          type="time"
+                          value={editTime}
+                          onChange={(e) => setEditTime(e.target.value)}
+                          className="mt-1 w-full px-3 py-2 rounded-lg bg-card border border-border/50 text-foreground text-sm"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-xs text-muted-foreground">Minutos</label>
+                        <input
+                          type="number"
+                          value={editDuration}
+                          onChange={(e) => setEditDuration(e.target.value)}
+                          placeholder="25"
+                          min={1}
+                          max={180}
+                          className="mt-1 w-full px-3 py-2 rounded-lg bg-card border border-border/50 text-foreground text-sm"
+                        />
+                      </div>
+                    </div>
+                    <div className="flex gap-2 pt-2">
+                      <button
+                        onClick={cancelEditing}
+                        className="flex-1 py-2 px-3 rounded-lg bg-muted text-muted-foreground text-sm hover:bg-muted/80 transition-colors flex items-center justify-center gap-1"
+                      >
+                        <X size={14} />
+                        Cancelar
+                      </button>
+                      <button
+                        onClick={() => saveEditing(task.id)}
+                        disabled={!editDate || !editTime || !editDuration}
+                        className="flex-1 py-2 px-3 rounded-lg bg-primary text-white text-sm disabled:opacity-50 hover:bg-primary/90 transition-colors flex items-center justify-center gap-1"
+                      >
+                        <Check size={14} />
+                        Guardar
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex-1">
+                      <TaskItem
+                        task={task}
+                        onToggle={onToggleTask}
+                        onDelete={onDeleteTask}
+                        showFocusButton={false}
+                        meta="Sin programar"
+                      />
+                    </div>
+                    <button
+                      onClick={() => startEditing(task)}
+                      className="p-2 rounded-lg bg-primary/10 text-primary hover:bg-primary/20 transition-colors"
+                      title="Programar tarea"
+                    >
+                      <Edit2 size={16} />
+                    </button>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
       
       {/* Hoy */}
       <section className="mb-8 animate-slide-up stagger-1">
@@ -215,7 +256,7 @@ export function TasksPage({ tasks, onAddTask, onToggleTask, onDeleteTask, onStar
           </div>
         ) : (
           <div className="rounded-2xl bg-muted/30 p-6 text-center">
-            <p className="text-sm text-muted-foreground">No tienes tareas para hoy.</p>
+            <p className="text-sm text-muted-foreground">No tienes tareas programadas para hoy.</p>
           </div>
         )}
       </section>
@@ -239,7 +280,7 @@ export function TasksPage({ tasks, onAddTask, onToggleTask, onDeleteTask, onStar
           </div>
         ) : (
           <div className="rounded-2xl bg-muted/20 p-4 text-center">
-            <p className="text-xs text-muted-foreground">Sin tareas futuras.</p>
+            <p className="text-xs text-muted-foreground">Sin tareas futuras programadas.</p>
           </div>
         )}
       </section>
@@ -261,7 +302,7 @@ export function TasksPage({ tasks, onAddTask, onToggleTask, onDeleteTask, onStar
                   onToggle={onToggleTask}
                   onDelete={onDeleteTask}
                   showFocusButton={false}
-                  meta={formatChip(task) || undefined}
+                  meta={formatChip(task)}
                 />
               ))}
           </div>
@@ -272,7 +313,7 @@ export function TasksPage({ tasks, onAddTask, onToggleTask, onDeleteTask, onStar
         open={!!selectedTask}
         onOpenChange={(o) => !o && setSelectedTask(null)}
         title={selectedTask?.text || ''}
-        suggestedMinutes={selectedTask?.durationMinutes ?? 5}
+        suggestedMinutes={selectedTask?.durationMinutes ?? 25}
         onStart={(mins) => {
           if (!selectedTask) return;
           onStartFocus(selectedTask.text, mins);

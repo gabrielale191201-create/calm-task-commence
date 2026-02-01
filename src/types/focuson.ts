@@ -17,10 +17,10 @@ export interface Task {
   createdAt: string;
   isTopThree: boolean;
 
-  // Programación OBLIGATORIA para crear bloques
-  scheduledDate: string; // YYYY-MM-DD (requerido)
-  scheduledTime: string; // HH:mm (requerido)
-  durationMinutes: number; // minutos (requerido)
+  // Programación OPCIONAL - el usuario decide manualmente
+  scheduledDate?: string; // YYYY-MM-DD (opcional)
+  scheduledTime?: string; // HH:mm (opcional)
+  durationMinutes?: number; // minutos (opcional)
 }
 
 /**

@@ -93,7 +93,7 @@ export default function Index() {
 
   // Task handlers
   const addTask = (
-    input: string | { text: string; scheduledDate: string; scheduledTime: string; durationMinutes: number; source?: Task['source'] },
+    input: string | { text: string; scheduledDate?: string; scheduledTime?: string; durationMinutes?: number; source?: Task['source'] },
     isTopThree = false
   ) => {
     if (typeof input === 'string') {
@@ -104,9 +104,10 @@ export default function Index() {
         source: 'manual',
         createdAt: new Date().toISOString(),
         isTopThree: true,
-        scheduledDate: new Date().toISOString().split('T')[0],
-        scheduledTime: '09:00',
-        durationMinutes: 25,
+        // Sin programación por defecto
+        scheduledDate: undefined,
+        scheduledTime: undefined,
+        durationMinutes: undefined,
       };
       setTasks([...tasks, newTask]);
       return;
@@ -126,19 +127,24 @@ export default function Index() {
     setTasks([...tasks, newTask]);
   };
 
-  // Add multiple tasks from AI
+  // Update task scheduling
+  const updateTask = (id: string, updates: Partial<Pick<Task, 'scheduledDate' | 'scheduledTime' | 'durationMinutes'>>) => {
+    setTasks(tasks.map(t => t.id === id ? { ...t, ...updates } : t));
+  };
+
+  // Add multiple tasks from AI - SIN hora, fecha ni duración
   const addMultipleTasks = (taskTexts: string[]) => {
-    const todayISO = new Date().toISOString().split('T')[0];
-    const newTasks = taskTexts.map((text, index) => ({
+    const newTasks = taskTexts.map((text) => ({
       id: generateId(),
       text,
       status: 'pending' as const,
       source: 'manual' as const,
       createdAt: new Date().toISOString(),
       isTopThree: false,
-      scheduledDate: todayISO,
-      scheduledTime: `${9 + index}:00`,
-      durationMinutes: 25,
+      // NO asignar fecha, hora ni duración - el usuario decide
+      scheduledDate: undefined,
+      scheduledTime: undefined,
+      durationMinutes: undefined,
     }));
     setTasks([...tasks, ...newTasks]);
     setActiveTab('tareas');
@@ -417,6 +423,7 @@ export default function Index() {
             onAddTask={(data) => addTask(data, false)}
             onToggleTask={toggleTask}
             onDeleteTask={deleteTask}
+            onUpdateTask={updateTask}
             onStartFocus={(taskText, minutes) => startFocusFromTopTask(taskText, minutes)}
             getTasksCountForDate={getTasksCountForDate}
           />
