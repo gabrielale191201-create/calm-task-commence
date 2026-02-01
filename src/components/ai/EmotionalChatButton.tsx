@@ -18,31 +18,34 @@ export function EmotionalChatButton() {
 
     const userMessage = input.trim();
     setInput('');
-    setMessages(prev => [...prev, { role: 'user', content: userMessage }]);
+    
+    const newUserMessage: ChatMessage = { role: 'user', content: userMessage };
+    const updatedMessages = [...messages, newUserMessage];
+    setMessages(updatedMessages);
     setIsLoading(true);
 
     try {
       const { data, error } = await supabase.functions.invoke('emotional-chat', {
-        body: { message: userMessage }
+        body: { messages: updatedMessages }
       });
 
       if (error) {
         console.error('Chat error:', error);
         setMessages(prev => [...prev, { 
           role: 'assistant', 
-          content: 'Gracias por escribirlo. Estoy aquí cuando quieras continuar.' 
+          content: 'Aquí estoy. Cuando quieras, seguimos.' 
         }]);
       } else {
         setMessages(prev => [...prev, { 
           role: 'assistant', 
-          content: data.response || 'Gracias por compartir eso.' 
+          content: data.response || 'Te leo.' 
         }]);
       }
     } catch (err) {
       console.error('Failed to send message:', err);
       setMessages(prev => [...prev, { 
         role: 'assistant', 
-        content: 'Gracias por escribirlo. Estoy aquí cuando quieras continuar.' 
+        content: 'Aquí estoy. Cuando quieras, seguimos.' 
       }]);
     } finally {
       setIsLoading(false);
