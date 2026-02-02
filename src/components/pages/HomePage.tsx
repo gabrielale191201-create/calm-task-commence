@@ -53,13 +53,12 @@ export function HomePage({
       </div>
 
       {/* Main motivation */}
-      <div className="text-center py-10 mb-8 animate-slide-up">
-        <p className="text-3xl font-display font-semibold text-foreground leading-relaxed mb-3">
-          Solo empezar.<br />
-          <span className="text-primary">Nada más.</span>
+      <div className="text-center py-8 mb-6 animate-slide-up">
+        <p className="text-2xl font-display font-semibold text-foreground leading-relaxed mb-2">
+          Escribe lo que tienes en la cabeza.
         </p>
         <p className="text-muted-foreground text-sm">
-          Usa la IA para ordenar lo que tienes en la cabeza.
+          Focus On lo convierte en tareas claras para que empieces.
         </p>
       </div>
 
