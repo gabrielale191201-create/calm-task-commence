@@ -1,13 +1,18 @@
 import { useState } from 'react';
-import { MessageCircle, X, Send, Loader2 } from 'lucide-react';
+import { X, Send, Loader2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
+import { cn } from '@/lib/utils';
 
 interface ChatMessage {
   role: 'user' | 'assistant';
   content: string;
 }
 
-export function EmotionalChatButton() {
+interface EmotionalChatButtonProps {
+  variant?: 'full' | 'compact';
+}
+
+export function EmotionalChatButton({ variant = 'full' }: EmotionalChatButtonProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState('');
@@ -70,11 +75,18 @@ export function EmotionalChatButton() {
       {/* Floating button - Emotional writing space */}
       <button
         onClick={() => setIsOpen(true)}
-        className="fixed bottom-24 left-4 z-40 flex items-center gap-2 px-4 py-2.5 rounded-full bg-primary/90 text-primary-foreground shadow-lg hover:bg-primary transition-all hover:scale-105"
+        className={cn(
+          "fixed z-40 transition-all",
+          variant === 'full' 
+            ? "bottom-24 left-4 flex items-center gap-2 px-4 py-2.5 rounded-full bg-primary/90 text-primary-foreground shadow-lg hover:bg-primary hover:scale-105"
+            : "bottom-24 left-4 w-12 h-12 rounded-full bg-muted/80 text-muted-foreground shadow-md hover:bg-muted hover:text-foreground flex items-center justify-center"
+        )}
         title="Escribe cómo te sientes"
       >
-        <span className="text-lg">✍️</span>
-        <span className="text-sm font-medium">Escribe cómo te sientes</span>
+        <span className={cn("text-lg", variant === 'compact' && "text-xl")}>✍️</span>
+        {variant === 'full' && (
+          <span className="text-sm font-medium">Escribe cómo te sientes</span>
+        )}
       </button>
 
       {/* Chat panel */}

@@ -526,8 +526,8 @@ export default function Index() {
         onDeleteNote={deleteFloatingNote}
       />
 
-      {/* Emotional Chat Button - visible on all sections */}
-      <EmotionalChatButton />
+      {/* Emotional Chat Button - full on Home/Progress/Journal, compact on Focus/Schedule/Tasks */}
+      <EmotionalChatButton variant={['hoy', 'progreso', 'diario'].includes(activeTab) ? 'full' : 'compact'} />
 
       {/* Bottom navigation */}
       <BottomNav activeTab={activeTab} onTabChange={setActiveTab} />

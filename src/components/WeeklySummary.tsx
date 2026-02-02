@@ -59,12 +59,12 @@ export function WeeklySummary({ tasks, sessions }: WeeklySummaryProps) {
     );
   }
 
-  // Build observation text
+  // Build observation text - neutral, calm language
   let observation = '';
   if (stats.longTasks > 0) {
-    observation = 'Los bloques largos fueron los más difíciles. Divide en pasos más pequeños.';
+    observation = 'Los bloques largos pueden dividirse en pasos más pequeños.';
   } else if (stats.pending > stats.completed) {
-    observation = 'Quedan bloques pendientes. Suficiente por hoy.';
+    observation = 'Tienes bloques disponibles. Esto puede esperar.';
   } else if (stats.completed > 0) {
     observation = 'Buen ritmo. Sin forzar.';
   }
@@ -89,7 +89,7 @@ export function WeeklySummary({ tasks, sessions }: WeeklySummaryProps) {
 
         {stats.pending > 0 && (
           <p className="text-muted-foreground text-sm">
-            Pendientes: {stats.pending}
+            Bloques disponibles: {stats.pending}
           </p>
         )}
 

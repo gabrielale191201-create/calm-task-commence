@@ -1,4 +1,4 @@
-import { Cloud, X, Check, Trash2 } from 'lucide-react';
+import { StickyNote, X, Check, Trash2 } from 'lucide-react';
 import { useState } from 'react';
 import { cn } from '@/lib/utils';
 
@@ -32,16 +32,16 @@ export function FloatingNotesButton({ notes, onAddNote, onDeleteNote }: Floating
         onClick={() => setIsOpen(true)}
         className={cn(
           "fixed bottom-24 right-4 z-40 w-14 h-14 rounded-full shadow-lg",
-          "bg-primary/90 hover:bg-primary text-white",
+          "bg-amber-100 dark:bg-amber-900/40 hover:bg-amber-200 dark:hover:bg-amber-800/50 text-amber-700 dark:text-amber-400",
           "flex items-center justify-center transition-all duration-300",
           "hover:scale-110 hover:shadow-xl",
           isOpen && "scale-0 opacity-0"
         )}
-        aria-label="Notas rápidas"
+        aria-label="Notas rápidas (no son tareas)"
       >
-        <Cloud size={24} />
+        <StickyNote size={22} />
         {notes.length > 0 && (
-          <span className="absolute -top-1 -right-1 w-5 h-5 bg-accent text-accent-foreground text-xs font-bold rounded-full flex items-center justify-center">
+          <span className="absolute -top-1 -right-1 w-5 h-5 bg-amber-500 text-white text-xs font-bold rounded-full flex items-center justify-center">
             {notes.length}
           </span>
         )}
@@ -54,8 +54,11 @@ export function FloatingNotesButton({ notes, onAddNote, onDeleteNote }: Floating
             {/* Header */}
             <div className="flex items-center justify-between px-6 py-4 border-b border-border/50">
               <div className="flex items-center gap-3">
-                <Cloud size={20} className="text-primary" />
-                <h3 className="font-display font-semibold text-foreground">Notas rápidas</h3>
+                <StickyNote size={20} className="text-amber-500" />
+                <div>
+                  <h3 className="font-display font-semibold text-foreground">Notas rápidas</h3>
+                  <p className="text-xs text-muted-foreground">(no son tareas)</p>
+                </div>
               </div>
               <button
                 onClick={() => setIsOpen(false)}
@@ -66,9 +69,9 @@ export function FloatingNotesButton({ notes, onAddNote, onDeleteNote }: Floating
             </div>
 
             {/* Info text */}
-            <div className="px-6 py-3 bg-muted/30">
+            <div className="px-6 py-3 bg-amber-50/50 dark:bg-amber-900/10">
               <p className="text-xs text-muted-foreground">
-                Anota cualquier cosa sin interrumpir tu foco. Estas notas no crean tareas ni bloques.
+                Anota lo que no quieres olvidar. Sin presión, sin horarios.
               </p>
             </div>
 
