@@ -1,0 +1,135 @@
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+};
+
+// Web Push implementation
+async function sendWebPush(subscription: { endpoint: string; p256dh: string; auth: string }, payload: string): Promise<boolean> {
+  const vapidPublicKey = Deno.env.get('VAPID_PUBLIC_KEY')!;
+  const vapidPrivateKey = Deno.env.get('VAPID_PRIVATE_KEY')!;
+
+  try {
+    // Import the web-push library for Deno
+    const webpush = await import('https://esm.sh/web-push@3.6.7');
+    
+    webpush.setVapidDetails(
+      'mailto:focuson@lovable.app',
+      vapidPublicKey,
+      vapidPrivateKey
+    );
+
+    const pushSubscription = {
+      endpoint: subscription.endpoint,
+      keys: {
+        p256dh: subscription.p256dh,
+        auth: subscription.auth
+      }
+    };
+
+    await webpush.sendNotification(pushSubscription, payload);
+    console.log('Push sent successfully to:', subscription.endpoint.substring(0, 50));
+    return true;
+  } catch (error) {
+    console.error('Failed to send push:', error);
+    return false;
+  }
+}
+
+Deno.serve(async (req) => {
+  if (req.method === 'OPTIONS') {
+    return new Response('ok', { headers: corsHeaders });
+  }
+
+  try {
+    const supabase = createClient(
+      Deno.env.get('SUPABASE_URL')!,
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+    );
+
+    // Get pending reminders that should be sent now
+    const now = new Date().toISOString();
+    const { data: reminders, error: fetchError } = await supabase
+      .from('reminders')
+      .select('id, task_id, task_text, device_id')
+      .eq('sent', false)
+      .lte('run_at', now)
+      .limit(50);
+
+    if (fetchError) {
+      console.error('Error fetching reminders:', fetchError);
+      return new Response(
+        JSON.stringify({ error: 'Failed to fetch reminders' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    if (!reminders || reminders.length === 0) {
+      console.log('No pending reminders to send');
+      return new Response(
+        JSON.stringify({ sent: 0 }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    console.log(`Found ${reminders.length} reminders to send`);
+
+    let sentCount = 0;
+    const failedIds: string[] = [];
+
+    for (const reminder of reminders) {
+      // Fetch subscription separately
+      const { data: subscription } = await supabase
+        .from('push_subscriptions')
+        .select('endpoint, p256dh, auth')
+        .eq('device_id', reminder.device_id)
+        .single();
+      
+      if (!subscription) {
+        console.log('No subscription for reminder:', reminder.id);
+        failedIds.push(reminder.id);
+        continue;
+      }
+
+      const payload = JSON.stringify({
+        title: '⏰ Focus On - Recordatorio',
+        body: reminder.task_text,
+        taskId: reminder.task_id
+      });
+
+      const success = await sendWebPush(subscription, payload);
+
+      if (success) {
+        sentCount++;
+        // Mark as sent
+        await supabase
+          .from('reminders')
+          .update({ sent: true })
+          .eq('id', reminder.id);
+      } else {
+        failedIds.push(reminder.id);
+      }
+    }
+
+    // Clean up failed reminders (subscription might be invalid)
+    if (failedIds.length > 0) {
+      await supabase
+        .from('reminders')
+        .update({ sent: true })
+        .in('id', failedIds);
+    }
+
+    console.log(`Sent ${sentCount}/${reminders.length} notifications`);
+    return new Response(
+      JSON.stringify({ sent: sentCount, total: reminders.length }),
+      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
+  } catch (err) {
+    console.error('Error:', err);
+    return new Response(
+      JSON.stringify({ error: 'Internal server error' }),
+      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
+  }
+});
