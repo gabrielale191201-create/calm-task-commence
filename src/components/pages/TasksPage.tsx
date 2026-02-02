@@ -3,7 +3,7 @@ import { Plus, Clock, Calendar, Edit2, Check, X } from 'lucide-react';
 import { Task } from '@/types/focuson';
 import { TaskItem } from '@/components/TaskItem';
 import { StartFocusDialog } from '@/components/StartFocusDialog';
-import { toISODate } from '@/lib/dateUtils';
+import { toISODate, parseDateString } from '@/lib/dateUtils';
 
 interface TasksPageProps {
   tasks: Task[];
@@ -61,7 +61,7 @@ export function TasksPage({ tasks, onAddTask, onToggleTask, onDeleteTask, onUpda
     if (!t.scheduledDate || !t.scheduledTime || !t.durationMinutes) {
       return 'Sin programar';
     }
-    const d = new Date(t.scheduledDate);
+    const d = parseDateString(t.scheduledDate);
     const day = d.toLocaleDateString('es-ES', { weekday: 'short' }).replace('.', '');
     const num = d.toLocaleDateString('es-ES', { day: '2-digit' });
     const mon = d.toLocaleDateString('es-ES', { month: 'short' }).replace('.', '');
