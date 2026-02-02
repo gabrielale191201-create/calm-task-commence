@@ -145,9 +145,16 @@ export function usePushNotifications() {
     try {
       const deviceId = getOrCreateDeviceId();
       
-      // We don't have a delete endpoint, but reminders auto-expire after being sent
-      // For now, we'll handle this client-side by not showing the toggle
-      console.log('Reminder cancellation requested for task:', taskId);
+      const { error } = await supabase.functions.invoke('delete-reminder', {
+        body: { deviceId, taskId }
+      });
+
+      if (error) {
+        console.error('Error canceling reminder:', error);
+        return false;
+      }
+
+      console.log('Reminder cancelled for task:', taskId);
       return true;
     } catch (err) {
       console.error('Error canceling reminder:', err);
