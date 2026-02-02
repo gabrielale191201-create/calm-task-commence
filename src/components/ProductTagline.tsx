@@ -1,8 +1,8 @@
 export function ProductTagline() {
   return (
-    <div className="text-center py-2.5 border-b border-border/30 bg-muted/20">
+    <div className="fixed top-[60px] left-0 right-0 z-20 text-center py-2 border-b border-border/30 bg-muted/30 backdrop-blur-sm">
       <p className="text-xs text-muted-foreground">
-        Sistema de enfoque con límites · Máximo 5 bloques por día
+        Tú decides el horario y el tiempo después.
       </p>
     </div>
   );
