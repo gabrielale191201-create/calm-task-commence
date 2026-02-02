@@ -81,10 +81,10 @@ export function FocusPage({
           </div>
           
           <h2 className="text-2xl font-display font-semibold text-foreground mb-2">
-            Sesión completada
+            Buen avance
           </h2>
           <p className="text-muted-foreground mb-8">
-            Bien. Ya empezaste.
+            Puedes cerrar aquí o seguir un poco más.
           </p>
           
           <p className="text-lg font-medium text-foreground mb-8">
@@ -108,7 +108,7 @@ export function FocusPage({
               onClick={handleFinish}
               className="btn-secondary-focus w-full"
             >
-              Finalizar sesión
+              Cerrar Focus Time
             </button>
           </div>
         </div>
@@ -139,16 +139,9 @@ export function FocusPage({
           <div className="space-y-3">
             <button
               onClick={handleFinish}
-              className="w-full py-3 rounded-xl text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
-            >
-              Salir de Focus Time
-            </button>
-            
-            <button
-              onClick={handleFinish}
               className="btn-secondary-focus w-full"
             >
-              Finalizar sesión
+              Cerrar Focus Time
             </button>
           </div>
           
