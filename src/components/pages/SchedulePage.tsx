@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { CalendarDays } from 'lucide-react';
 import { Task, QuickNote } from '@/types/focuson';
 import { cn } from '@/lib/utils';
-import { toISODate, startOfWeekMonday, parseTimeToMinutes, formatWeekRangeEs } from '@/lib/dateUtils';
+import { toISODate, startOfWeekMonday, parseTimeToMinutes, formatWeekRangeEs, parseDateString } from '@/lib/dateUtils';
 import { TimeBlock } from '@/components/schedule/TimeBlock';
 import { StartFocusDialog } from '@/components/StartFocusDialog';
 import { DailyAgendita } from '@/components/schedule/DailyAgendita';
@@ -216,7 +216,7 @@ export function SchedulePage({ tasks, quickNotes, onStartFocus, tasksCountByDate
                 <div className="text-xs text-muted-foreground text-center py-2">Hora</div>
                 {weekDays.map((day, i) => {
                   const isToday = day === todayISO;
-                  const d = new Date(day);
+                  const d = parseDateString(day);
                   const count = tasksCountByDate.get(day) || 0;
                   return (
                     <div
