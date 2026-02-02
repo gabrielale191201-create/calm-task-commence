@@ -72,29 +72,12 @@ export function OrganizationAssistant({
 
   return (
     <div className="focus-card animate-slide-up">
-      <div className="flex items-center gap-3 mb-4">
-        <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
-          <Sparkles size={20} className="text-primary" />
-        </div>
-        <div>
-          <h3 className="font-display font-semibold text-foreground">
-            Asistente de organización
-          </h3>
-        </div>
-      </div>
-
       {!response ? (
         <>
-          <p className="text-sm text-muted-foreground mb-4">
-            Escríbeme todo lo que tienes pendiente.
-            <br />
-            Yo lo ordeno en tareas claras.
-          </p>
-
           <textarea
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            placeholder="Ej: trabajo, correos, estudio, ideas sueltas…"
+            placeholder="Ej: trabajo, estudio, estoy cansado, no sé por dónde empezar, tengo muchas cosas"
             className="w-full min-h-[120px] px-4 py-3 rounded-xl bg-muted/50 border border-border/50 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 resize-none"
             disabled={isProcessing}
           />
@@ -112,10 +95,14 @@ export function OrganizationAssistant({
             ) : (
               <>
                 <Sparkles size={18} />
-                Ordenar
+                Ordenar en tareas
               </>
             )}
           </button>
+
+          <p className="text-xs text-muted-foreground text-center mt-3">
+            La IA solo organiza. Tú decides horarios y tiempo después.
+          </p>
         </>
       ) : (
         <div className="space-y-5 animate-fade-in">
