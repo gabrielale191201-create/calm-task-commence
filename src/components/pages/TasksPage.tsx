@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { Plus, Clock, Calendar, Edit2, Check, X } from 'lucide-react';
 import { Task } from '@/types/focuson';
 import { TaskItem } from '@/components/TaskItem';
+import { TaskReminderToggle } from '@/components/TaskReminderToggle';
 import { StartFocusDialog } from '@/components/StartFocusDialog';
 import { toISODate, parseDateString } from '@/lib/dateUtils';
 
@@ -243,15 +244,22 @@ export function TasksPage({ tasks, onAddTask, onToggleTask, onDeleteTask, onUpda
         {todayTasks.length > 0 ? (
           <div className="space-y-3">
             {todayTasks.map((task) => (
-              <TaskItem
-                key={task.id}
-                task={task}
-                onToggle={onToggleTask}
-                onDelete={onDeleteTask}
-                showFocusButton={false}
-                meta={formatChip(task)}
-                onPress={() => setSelectedTask(task)}
-              />
+              <div key={task.id} className="rounded-2xl border border-border/50 bg-card p-4">
+                <TaskItem
+                  task={task}
+                  onToggle={onToggleTask}
+                  onDelete={onDeleteTask}
+                  showFocusButton={false}
+                  meta={formatChip(task)}
+                  onPress={() => setSelectedTask(task)}
+                />
+                <TaskReminderToggle
+                  taskId={task.id}
+                  taskText={task.text}
+                  scheduledDate={task.scheduledDate}
+                  scheduledTime={task.scheduledTime}
+                />
+              </div>
             ))}
           </div>
         ) : (
@@ -267,15 +275,22 @@ export function TasksPage({ tasks, onAddTask, onToggleTask, onDeleteTask, onUpda
         {upcomingTasks.length > 0 ? (
           <div className="space-y-3">
             {upcomingTasks.map((task) => (
-              <TaskItem
-                key={task.id}
-                task={task}
-                onToggle={onToggleTask}
-                onDelete={onDeleteTask}
-                showFocusButton={false}
-                meta={formatChip(task)}
-                onPress={() => setSelectedTask(task)}
-              />
+              <div key={task.id} className="rounded-2xl border border-border/50 bg-card p-4">
+                <TaskItem
+                  task={task}
+                  onToggle={onToggleTask}
+                  onDelete={onDeleteTask}
+                  showFocusButton={false}
+                  meta={formatChip(task)}
+                  onPress={() => setSelectedTask(task)}
+                />
+                <TaskReminderToggle
+                  taskId={task.id}
+                  taskText={task.text}
+                  scheduledDate={task.scheduledDate}
+                  scheduledTime={task.scheduledTime}
+                />
+              </div>
             ))}
           </div>
         ) : (

@@ -5,3 +5,12 @@ verify_jwt = false
 
 [functions.emotional-chat]
 verify_jwt = false
+
+[functions.save-push-subscription]
+verify_jwt = false
+
+[functions.save-reminder]
+verify_jwt = false
+
+[functions.send-push-notifications]
+verify_jwt = false

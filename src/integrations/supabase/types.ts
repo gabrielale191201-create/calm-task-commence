@@ -14,7 +14,74 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      push_subscriptions: {
+        Row: {
+          auth: string
+          created_at: string
+          device_id: string
+          endpoint: string
+          id: string
+          p256dh: string
+          updated_at: string
+        }
+        Insert: {
+          auth: string
+          created_at?: string
+          device_id: string
+          endpoint: string
+          id?: string
+          p256dh: string
+          updated_at?: string
+        }
+        Update: {
+          auth?: string
+          created_at?: string
+          device_id?: string
+          endpoint?: string
+          id?: string
+          p256dh?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      reminders: {
+        Row: {
+          created_at: string
+          device_id: string
+          id: string
+          run_at: string
+          sent: boolean
+          task_id: string
+          task_text: string
+        }
+        Insert: {
+          created_at?: string
+          device_id: string
+          id?: string
+          run_at: string
+          sent?: boolean
+          task_id: string
+          task_text: string
+        }
+        Update: {
+          created_at?: string
+          device_id?: string
+          id?: string
+          run_at?: string
+          sent?: boolean
+          task_id?: string
+          task_text?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "reminders_device_id_fkey"
+            columns: ["device_id"]
+            isOneToOne: false
+            referencedRelation: "push_subscriptions"
+            referencedColumns: ["device_id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
