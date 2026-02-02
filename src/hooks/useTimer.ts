@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useLocalStorage } from './useLocalStorage';
+import { useFocusTimePush } from './useFocusTimePush';
 
 interface TimerState {
   isRunning: boolean;
@@ -20,6 +21,9 @@ export function useTimer() {
   const [timeLeft, setTimeLeft] = useState<number>(0);
   const [isCompleted, setIsCompleted] = useState(false);
   const intervalRef = useRef<number | null>(null);
+  const { scheduleFocusEndNotification, cancelFocusEndNotification
+
+ } = useFocusTimePush();
 
   const calculateTimeLeft = useCallback(() => {
     if (!timerState.endTime) return 0;
@@ -65,16 +69,22 @@ export function useTimer() {
       task,
     });
     setIsCompleted(false);
-  }, [setTimerState]);
+
+    // Schedule push notification for when timer ends
+    scheduleFocusEndNotification(task, new Date(endTime));
+  }, [setTimerState, scheduleFocusEndNotification]);
 
   const stopTimer = useCallback(() => {
+    // Cancel the push notification
+    cancelFocusEndNotification();
+
     setTimerState(INITIAL_STATE);
     setTimeLeft(0);
     setIsCompleted(false);
     if (intervalRef.current) {
       clearInterval(intervalRef.current);
     }
-  }, [setTimerState]);
+  }, [setTimerState, cancelFocusEndNotification]);
 
   const continueTimer = useCallback((minutes: number) => {
     const durationMs = minutes * 60 * 1000;
@@ -87,7 +97,10 @@ export function useTimer() {
       duration: minutes * 60,
     }));
     setIsCompleted(false);
-  }, [setTimerState]);
+
+    // Schedule new push notification for the extended time
+    scheduleFocusEndNotification(timerState.task, new Date(endTime));
+  }, [setTimerState, scheduleFocusEndNotification, timerState.task]);
 
   const acknowledgeCompletion = useCallback(() => {
     setIsCompleted(false);
