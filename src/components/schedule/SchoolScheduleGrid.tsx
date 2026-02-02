@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 import { Task } from '@/types/focuson';
 import { TimeBlock } from './TimeBlock';
-import { toISODate, startOfWeekMonday, parseTimeToMinutes } from '@/lib/dateUtils';
+import { toISODate, startOfWeekMonday, parseTimeToMinutes, parseDateString } from '@/lib/dateUtils';
 import { cn } from '@/lib/utils';
 
 interface SchoolScheduleGridProps {
@@ -76,7 +76,7 @@ export function SchoolScheduleGrid({ tasks, onTaskClick }: SchoolScheduleGridPro
           <div className="text-xs text-muted-foreground text-center py-2">Hora</div>
           {weekDays.map((day, i) => {
             const isToday = day === todayISO;
-            const d = new Date(day);
+            const d = parseDateString(day);
             return (
               <div
                 key={day}
