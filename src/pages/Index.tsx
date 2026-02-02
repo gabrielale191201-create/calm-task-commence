@@ -514,8 +514,8 @@ export default function Index() {
       <ProductTagline />
       <OnboardingBanner />
 
-      {/* Main content */}
-      <main className="pt-16">
+      {/* Main content - extra padding when banner is shown */}
+      <main className="pt-36">
         {renderPage()}
       </main>
 

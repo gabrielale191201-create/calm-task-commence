@@ -14,17 +14,14 @@ export function OnboardingBanner() {
   };
 
   return (
-    <div className="bg-accent/60 border-b border-primary/20 px-6 py-3 animate-fade-in">
+    <div className="fixed top-[92px] left-0 right-0 z-20 bg-accent/80 backdrop-blur-sm border-b border-primary/20 px-6 py-3 animate-fade-in">
       <div className="flex items-start justify-between gap-3">
-        <div className="space-y-1.5">
+        <div className="space-y-1">
           <p className="text-sm font-semibold text-foreground">
             Empieza escribiendo.
           </p>
           <p className="text-xs text-muted-foreground">
             Escribe lo que tienes en la cabeza. Focus On lo ordena en tareas para que empieces.
-          </p>
-          <p className="text-[11px] text-muted-foreground/70">
-            Tú decides el horario y el tiempo después.
           </p>
         </div>
         <button
