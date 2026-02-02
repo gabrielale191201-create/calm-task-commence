@@ -33,6 +33,7 @@ interface FloatingNote {
 export default function Index() {
   const [activeTab, setActiveTab] = useLocalStorage<TabType>('focuson-tab', 'hoy');
   const [showHowTo, setShowHowTo] = useState(false);
+  const [isWritingMode, setIsWritingMode] = useState(false);
   const [profile, setProfile] = useLocalStorage<UserProfile>('focuson-profile', { name: '' });
   const [tasks, setTasks] = useLocalStorage<Task[]>('focuson-tasks', []);
   const [routines, setRoutines] = useLocalStorage<Routine[]>('focuson-routines', []);
@@ -524,13 +525,19 @@ export default function Index() {
         notes={floatingNotes}
         onAddNote={addFloatingNote}
         onDeleteNote={deleteFloatingNote}
+        onWritingModeChange={setIsWritingMode}
       />
 
       {/* Emotional Chat Button - full on Home/Progress/Journal, compact on Focus/Schedule/Tasks */}
-      <EmotionalChatButton variant={['hoy', 'progreso', 'diario'].includes(activeTab) ? 'full' : 'compact'} />
+      <EmotionalChatButton 
+        variant={['hoy', 'progreso', 'diario'].includes(activeTab) ? 'full' : 'compact'} 
+        onWritingModeChange={setIsWritingMode}
+      />
 
-      {/* Bottom navigation */}
-      <BottomNav activeTab={activeTab} onTabChange={setActiveTab} />
+      {/* Bottom navigation - hidden during writing mode */}
+      <div className={`transition-all duration-300 ${isWritingMode ? 'translate-y-full opacity-0 pointer-events-none' : 'translate-y-0 opacity-100'}`}>
+        <BottomNav activeTab={activeTab} onTabChange={setActiveTab} />
+      </div>
 
       {/* How to use overlay */}
       {showHowTo && <HowToUsePage onClose={() => setShowHowTo(false)} />}

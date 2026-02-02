@@ -10,13 +10,25 @@ interface ChatMessage {
 
 interface EmotionalChatButtonProps {
   variant?: 'full' | 'compact';
+  onWritingModeChange?: (active: boolean) => void;
 }
 
-export function EmotionalChatButton({ variant = 'full' }: EmotionalChatButtonProps) {
+export function EmotionalChatButton({ variant = 'full', onWritingModeChange }: EmotionalChatButtonProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+
+  // Notify parent when chat opens/closes (writing mode)
+  const handleOpen = () => {
+    setIsOpen(true);
+    onWritingModeChange?.(true);
+  };
+
+  const handleClose = () => {
+    setIsOpen(false);
+    onWritingModeChange?.(false);
+  };
 
   const sendMessage = async () => {
     if (!input.trim() || isLoading) return;
@@ -74,7 +86,7 @@ export function EmotionalChatButton({ variant = 'full' }: EmotionalChatButtonPro
     <>
       {/* Floating button - Emotional writing space */}
       <button
-        onClick={() => setIsOpen(true)}
+        onClick={handleOpen}
         className={cn(
           "fixed z-40 transition-all",
           variant === 'full' 
@@ -103,7 +115,7 @@ export function EmotionalChatButton({ variant = 'full' }: EmotionalChatButtonPro
                 </div>
               </div>
               <button
-                onClick={() => setIsOpen(false)}
+                onClick={handleClose}
                 className="p-2 rounded-xl hover:bg-muted transition-colors"
               >
                 <X size={20} className="text-muted-foreground" />

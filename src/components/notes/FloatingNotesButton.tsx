@@ -12,11 +12,23 @@ interface FloatingNotesButtonProps {
   notes: FloatingNote[];
   onAddNote: (text: string) => void;
   onDeleteNote: (id: string) => void;
+  onWritingModeChange?: (active: boolean) => void;
 }
 
-export function FloatingNotesButton({ notes, onAddNote, onDeleteNote }: FloatingNotesButtonProps) {
+export function FloatingNotesButton({ notes, onAddNote, onDeleteNote, onWritingModeChange }: FloatingNotesButtonProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [newNote, setNewNote] = useState('');
+
+  // Notify parent when notes panel opens/closes (writing mode)
+  const handleOpen = () => {
+    setIsOpen(true);
+    onWritingModeChange?.(true);
+  };
+
+  const handleClose = () => {
+    setIsOpen(false);
+    onWritingModeChange?.(false);
+  };
 
   const handleAddNote = () => {
     if (newNote.trim()) {
@@ -29,7 +41,7 @@ export function FloatingNotesButton({ notes, onAddNote, onDeleteNote }: Floating
     <>
       {/* Floating button */}
       <button
-        onClick={() => setIsOpen(true)}
+        onClick={handleOpen}
         className={cn(
           "fixed bottom-24 right-4 z-40 w-14 h-14 rounded-full shadow-lg",
           "bg-amber-100 dark:bg-amber-900/40 hover:bg-amber-200 dark:hover:bg-amber-800/50 text-amber-700 dark:text-amber-400",
@@ -61,7 +73,7 @@ export function FloatingNotesButton({ notes, onAddNote, onDeleteNote }: Floating
                 </div>
               </div>
               <button
-                onClick={() => setIsOpen(false)}
+                onClick={handleClose}
                 className="p-2 rounded-xl hover:bg-muted transition-colors"
               >
                 <X size={20} className="text-muted-foreground" />
