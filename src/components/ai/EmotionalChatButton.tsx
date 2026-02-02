@@ -19,14 +19,21 @@ export function EmotionalChatButton({ variant = 'full', onWritingModeChange }: E
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
-  // Notify parent when chat opens/closes (writing mode)
   const handleOpen = () => {
     setIsOpen(true);
-    onWritingModeChange?.(true);
   };
 
   const handleClose = () => {
     setIsOpen(false);
+    onWritingModeChange?.(false);
+  };
+
+  // Activate writing mode on textarea focus (keyboard opens)
+  const handleInputFocus = () => {
+    onWritingModeChange?.(true);
+  };
+
+  const handleInputBlur = () => {
     onWritingModeChange?.(false);
   };
 
@@ -175,6 +182,8 @@ export function EmotionalChatButton({ variant = 'full', onWritingModeChange }: E
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
                   onKeyDown={handleKeyDown}
+                  onFocus={handleInputFocus}
+                  onBlur={handleInputBlur}
                   placeholder="Puedes escribir cómo te sientes, lo que te preocupa o lo que necesitas decir ahora."
                   className="flex-1 px-4 py-2.5 rounded-xl bg-muted/50 border border-border/50 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 resize-none text-sm min-h-[44px] max-h-[120px]"
                   rows={1}

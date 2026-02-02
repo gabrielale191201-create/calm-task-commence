@@ -19,14 +19,21 @@ export function FloatingNotesButton({ notes, onAddNote, onDeleteNote, onWritingM
   const [isOpen, setIsOpen] = useState(false);
   const [newNote, setNewNote] = useState('');
 
-  // Notify parent when notes panel opens/closes (writing mode)
   const handleOpen = () => {
     setIsOpen(true);
-    onWritingModeChange?.(true);
   };
 
   const handleClose = () => {
     setIsOpen(false);
+    onWritingModeChange?.(false);
+  };
+
+  // Activate writing mode on input focus (keyboard opens)
+  const handleInputFocus = () => {
+    onWritingModeChange?.(true);
+  };
+
+  const handleInputBlur = () => {
     onWritingModeChange?.(false);
   };
 
@@ -121,6 +128,8 @@ export function FloatingNotesButton({ notes, onAddNote, onDeleteNote, onWritingM
                   value={newNote}
                   onChange={(e) => setNewNote(e.target.value)}
                   onKeyDown={(e) => e.key === 'Enter' && handleAddNote()}
+                  onFocus={handleInputFocus}
+                  onBlur={handleInputBlur}
                   placeholder="Escribe una nota rápida..."
                   className="focus-input flex-1 py-3"
                   autoFocus
