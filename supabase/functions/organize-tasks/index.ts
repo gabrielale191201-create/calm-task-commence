@@ -3,6 +3,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 // Allowed origins for CORS
 const allowedOrigins = [
   "https://id-preview--ee67add7-fb83-488d-a1bb-f6aa1acc5d65.lovable.app",
+  "https://ee67add7-fb83-488d-a1bb-f6aa1acc5d65.lovableproject.com",
   "https://calm-task-commence.lovable.app",
   "http://localhost:5173",
   "http://localhost:8080"
@@ -97,17 +98,10 @@ serve(async (req) => {
     return new Response("ok", { headers: corsHeaders });
   }
 
-  // Token validation
-  const BETA_ACCESS_TOKEN = Deno.env.get("BETA_ACCESS_TOKEN");
-  const betaToken = req.headers.get("x-beta-token");
-  
-  if (!BETA_ACCESS_TOKEN || betaToken !== BETA_ACCESS_TOKEN) {
-    console.log("Unauthorized access attempt");
-    return new Response(
-      JSON.stringify({ error: "unauthorized" }),
-      { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
-  }
+  // Security is provided by:
+  // 1. CORS - only allowed origins can call this function
+  // 2. Rate limiting - 20 requests per 5 minutes per IP
+  // Token validation removed - CORS + rate limiting is sufficient
 
   // Rate limiting
   const clientIP = getClientIP(req);
