@@ -21,9 +21,7 @@ export function useTimer() {
   const [timeLeft, setTimeLeft] = useState<number>(0);
   const [isCompleted, setIsCompleted] = useState(false);
   const intervalRef = useRef<number | null>(null);
-  const { scheduleFocusEndNotification, cancelFocusEndNotification
-
- } = useFocusTimePush();
+  const { scheduleFocusEndNotification, cancelFocusEndNotification } = useFocusTimePush();
 
   const calculateTimeLeft = useCallback(() => {
     if (!timerState.endTime) return 0;
@@ -71,7 +69,7 @@ export function useTimer() {
     setIsCompleted(false);
 
     // Schedule push notification for when timer ends
-    scheduleFocusEndNotification(task, new Date(endTime));
+    scheduleFocusEndNotification(new Date(endTime));
   }, [setTimerState, scheduleFocusEndNotification]);
 
   const stopTimer = useCallback(() => {
@@ -99,8 +97,8 @@ export function useTimer() {
     setIsCompleted(false);
 
     // Schedule new push notification for the extended time
-    scheduleFocusEndNotification(timerState.task, new Date(endTime));
-  }, [setTimerState, scheduleFocusEndNotification, timerState.task]);
+    scheduleFocusEndNotification(new Date(endTime));
+  }, [setTimerState, scheduleFocusEndNotification]);
 
   const acknowledgeCompletion = useCallback(() => {
     setIsCompleted(false);
