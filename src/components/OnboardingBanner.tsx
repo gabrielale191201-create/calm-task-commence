@@ -17,14 +17,15 @@ export function OnboardingBanner() {
     <div className="bg-accent/60 border-b border-primary/20 px-6 py-3 animate-fade-in">
       <div className="flex items-start justify-between gap-3">
         <div className="space-y-1.5">
-          <p className="text-sm font-medium text-foreground">
-            Esto no es para hacer más. Es para <span className="text-primary">terminar sin sobrecargarte</span>.
+          <p className="text-sm font-semibold text-foreground">
+            Empieza escribiendo.
           </p>
-          <ul className="text-xs text-muted-foreground space-y-0.5">
-            <li>• Máximo <span className="font-medium text-foreground">5 bloques por día</span></li>
-            <li>• Cada tarea genera un bloque en tu horario</li>
-            <li>• Como un horario escolar</li>
-          </ul>
+          <p className="text-xs text-muted-foreground">
+            Escribe lo que tienes en la cabeza. Focus On lo ordena en tareas para que empieces.
+          </p>
+          <p className="text-[11px] text-muted-foreground/70">
+            Tú decides el horario y el tiempo después.
+          </p>
         </div>
         <button
           onClick={handleDismiss}
