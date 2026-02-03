@@ -92,10 +92,7 @@ export const EmotionalChatButton = forwardRef<HTMLDivElement, EmotionalChatButto
     }
   };
 
-  // Don't show the emotional chat button for guests
-  if (isGuest) {
-    return null;
-  }
+  // Now available for both guests and authenticated users
 
   return (
     <div ref={ref}>

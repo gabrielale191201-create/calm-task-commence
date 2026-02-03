@@ -41,26 +41,48 @@ function isRateLimited(userId: string): boolean {
   return false;
 }
 
-async function validateAuth(req: Request): Promise<{ userId: string | null; error: string | null }> {
+// Generate anonymous identifier for rate limiting (IP + User-Agent hash)
+function getAnonymousId(req: Request): string {
+  const forwarded = req.headers.get('x-forwarded-for');
+  const ip = forwarded ? forwarded.split(',')[0].trim() : 'unknown';
+  const ua = req.headers.get('user-agent') || 'unknown';
+  // Simple hash for rate limiting only
+  const combined = `${ip}-${ua.slice(0, 50)}`;
+  let hash = 0;
+  for (let i = 0; i < combined.length; i++) {
+    hash = ((hash << 5) - hash) + combined.charCodeAt(i);
+    hash |= 0;
+  }
+  return `anon_${Math.abs(hash).toString(36)}`;
+}
+
+async function validateAuth(req: Request): Promise<{ userId: string; isGuest: boolean }> {
   const authHeader = req.headers.get('Authorization');
-  if (!authHeader?.startsWith('Bearer ')) {
-    return { userId: null, error: 'Unauthorized' };
-  }
-
-  const supabase = createClient(
-    Deno.env.get('SUPABASE_URL')!,
-    Deno.env.get('SUPABASE_ANON_KEY')!,
-    { global: { headers: { Authorization: authHeader } } }
-  );
-
-  const token = authHeader.replace('Bearer ', '');
-  const { data, error } = await supabase.auth.getClaims(token);
   
-  if (error || !data?.claims) {
-    return { userId: null, error: 'Invalid token' };
+  // If no valid auth header, treat as guest
+  if (!authHeader?.startsWith('Bearer ')) {
+    return { userId: getAnonymousId(req), isGuest: true };
   }
 
-  return { userId: data.claims.sub as string, error: null };
+  try {
+    const supabase = createClient(
+      Deno.env.get('SUPABASE_URL')!,
+      Deno.env.get('SUPABASE_ANON_KEY')!,
+      { global: { headers: { Authorization: authHeader } } }
+    );
+
+    const token = authHeader.replace('Bearer ', '');
+    const { data, error } = await supabase.auth.getClaims(token);
+    
+    if (error || !data?.claims) {
+      // Invalid token, treat as guest
+      return { userId: getAnonymousId(req), isGuest: true };
+    }
+
+    return { userId: data.claims.sub as string, isGuest: false };
+  } catch {
+    return { userId: getAnonymousId(req), isGuest: true };
+  }
 }
 
 const systemPrompt = `ROL DEL SISTEMA
@@ -160,14 +182,9 @@ serve(async (req) => {
     return new Response("ok", { headers: corsHeaders });
   }
 
-  // Validate authentication
-  const { userId, error: authError } = await validateAuth(req);
-  if (authError || !userId) {
-    return new Response(
-      JSON.stringify({ error: "Unauthorized" }),
-      { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
-  }
+  // Validate authentication (guests get an anonymous ID for rate limiting)
+  const { userId, isGuest } = await validateAuth(req);
+  console.log(`CHAT_EMOCIONAL: ${isGuest ? 'guest' : 'user'} ${userId.slice(0, 8)}...`);
 
   // Rate limiting per user
   if (isRateLimited(userId)) {
