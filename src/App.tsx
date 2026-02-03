@@ -29,11 +29,21 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     // Check guest mode first
-    setIsGuest(isGuestMode());
+    const guestMode = isGuestMode();
+    setIsGuest(guestMode);
 
-    // Get initial session
+    // If guest mode, skip Supabase auth entirely
+    if (guestMode) {
+      setLoading(false);
+      return;
+    }
+
+    // Get initial session only for non-guests
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
+      setLoading(false);
+    }).catch(() => {
+      // Handle errors gracefully
       setLoading(false);
     });
 
