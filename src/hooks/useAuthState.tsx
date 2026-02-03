@@ -121,6 +121,36 @@ export function AuthStateProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     let mounted = true;
 
+    // Set up auth state listener FIRST (before checking session)
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      (event, newSession) => {
+        if (!mounted) return;
+        
+        console.log('[Auth] State change:', event, newSession ? 'has session' : 'no session');
+        
+        // Ignore auth changes if in guest mode
+        if (checkGuestMode()) {
+          console.log('[Auth] In guest mode, ignoring auth change');
+          return;
+        }
+
+        if (newSession) {
+          setSession(newSession);
+          setUser(newSession.user);
+          setAuthStatus('authenticated');
+          // Defer profile sync to avoid deadlock
+          setTimeout(() => {
+            if (mounted) ensureProfile(newSession.user);
+          }, 0);
+        } else if (event === 'SIGNED_OUT') {
+          setSession(null);
+          setUser(null);
+          setAuthStatus('unauthenticated');
+        }
+      }
+    );
+
+    // THEN check for existing session
     const initAuth = async () => {
       try {
         // Check guest mode first (synchronous, fast)
@@ -128,66 +158,47 @@ export function AuthStateProvider({ children }: { children: ReactNode }) {
         
         if (isGuestModeActive) {
           if (mounted) {
+            console.log('[Auth] Guest mode active');
             setGuestId(getOrCreateGuestId());
             setAuthStatus('guest');
           }
-          return; // Don't check Supabase if in guest mode
+          return;
         }
 
         // Not in guest mode, check Supabase session
+        console.log('[Auth] Checking existing session...');
         const { data: { session: currentSession }, error } = await supabase.auth.getSession();
         
         if (!mounted) return;
 
         if (error) {
-          console.error('Error getting session:', error);
-          // On error, mark as unauthenticated so redirect can happen
+          console.error('[Auth] Error getting session:', error.message);
           setAuthStatus('unauthenticated');
           return;
         }
 
         if (currentSession) {
+          console.log('[Auth] Found existing session');
           setSession(currentSession);
           setUser(currentSession.user);
           setAuthStatus('authenticated');
-          // Ensure profile exists for authenticated user
-          await ensureProfile(currentSession.user);
+          // Defer profile sync
+          setTimeout(() => {
+            if (mounted) ensureProfile(currentSession.user);
+          }, 0);
         } else {
-          // No session and not guest = unauthenticated, need to login
+          console.log('[Auth] No session found');
           setAuthStatus('unauthenticated');
         }
       } catch (err) {
-        console.error('Auth initialization error:', err);
+        console.error('[Auth] Initialization error:', err);
         if (mounted) {
-          // On error, mark as unauthenticated
           setAuthStatus('unauthenticated');
         }
       }
     };
 
     initAuth();
-
-    // Listen for auth changes (only if not in guest mode)
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, newSession) => {
-        if (!mounted) return;
-        
-        // Ignore auth changes if in guest mode
-        if (checkGuestMode()) return;
-
-        if (newSession) {
-          setSession(newSession);
-          setUser(newSession.user);
-          setAuthStatus('authenticated');
-          // Ensure profile exists when auth state changes
-          ensureProfile(newSession.user);
-        } else {
-          setSession(null);
-          setUser(null);
-          setAuthStatus('unauthenticated');
-        }
-      }
-    );
 
     return () => {
       mounted = false;

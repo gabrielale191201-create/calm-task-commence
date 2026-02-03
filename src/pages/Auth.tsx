@@ -42,18 +42,20 @@ export default function Auth() {
   const handleGoogleSignIn = async () => {
     setIsGoogleLoading(true);
     try {
+      console.log('[Auth] Starting Google sign-in...');
       const { error } = await lovable.auth.signInWithOAuth('google', {
-        redirect_uri: window.location.origin,
+        redirect_uri: `${window.location.origin}/auth/callback`,
       });
       
       if (error) {
-        console.error('Google sign-in error:', error);
+        console.error('[Auth] Google sign-in error:', error);
         toast.error('Algo salió mal. Intenta de nuevo.');
+        setIsGoogleLoading(false);
       }
+      // Don't set loading to false on success - we're redirecting
     } catch (err) {
-      console.error('Google sign-in exception:', err);
+      console.error('[Auth] Google sign-in exception:', err);
       toast.error('Algo salió mal. Intenta de nuevo.');
-    } finally {
       setIsGoogleLoading(false);
     }
   };
