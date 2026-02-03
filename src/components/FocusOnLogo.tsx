@@ -1,3 +1,4 @@
+import { forwardRef } from 'react';
 import { cn } from "@/lib/utils";
 
 interface FocusOnLogoProps {
@@ -10,9 +11,11 @@ interface FocusOnLogoProps {
  * FocusON primary mark: green circle + white power symbol.
  * Visual-only: do not wrap in links/buttons.
  */
-export function FocusOnLogo({ size = 56, className }: FocusOnLogoProps) {
+export const FocusOnLogo = forwardRef<SVGSVGElement, FocusOnLogoProps>(
+  function FocusOnLogo({ size = 56, className }, ref) {
   return (
     <svg
+      ref={ref}
       width={size}
       height={size}
       viewBox="0 0 64 64"
@@ -32,4 +35,4 @@ export function FocusOnLogo({ size = 56, className }: FocusOnLogoProps) {
       />
     </svg>
   );
-}
+});
