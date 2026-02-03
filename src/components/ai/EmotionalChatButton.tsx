@@ -1,7 +1,8 @@
 import { useState } from 'react';
-import { X, Send, Loader2 } from 'lucide-react';
+import { X, Send, Loader2, AlertCircle } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { cn } from '@/lib/utils';
+import { useGuestMode } from '@/hooks/useGuestMode';
 
 interface ChatMessage {
   role: 'user' | 'assistant';
@@ -14,6 +15,7 @@ interface EmotionalChatButtonProps {
 }
 
 export function EmotionalChatButton({ variant = 'full', onWritingModeChange }: EmotionalChatButtonProps) {
+  const { isGuest } = useGuestMode();
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState('');
@@ -88,6 +90,11 @@ export function EmotionalChatButton({ variant = 'full', onWritingModeChange }: E
       sendMessage();
     }
   };
+
+  // Don't show the emotional chat button for guests
+  if (isGuest) {
+    return null;
+  }
 
   return (
     <>
