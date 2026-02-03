@@ -5,6 +5,45 @@ import { supabase } from '@/integrations/supabase/client';
 // Auth status types - 'unauthenticated' added for explicit no-session state
 export type AuthStatus = 'loading' | 'authenticated' | 'guest' | 'unauthenticated';
 
+// Ensure user profile exists in database (idempotent)
+async function ensureProfile(user: User): Promise<void> {
+  try {
+    // Check if profile exists
+    const { data: existing, error: selectError } = await supabase
+      .from('profiles')
+      .select('id')
+      .eq('user_id', user.id)
+      .maybeSingle();
+
+    if (selectError) {
+      console.error('Error checking profile:', selectError.message);
+      return;
+    }
+
+    // If no profile, create one
+    if (!existing) {
+      const displayName = user.user_metadata?.name || 
+                         user.user_metadata?.full_name || 
+                         user.email?.split('@')[0] || 
+                         'Usuario';
+      
+      const { error: insertError } = await supabase
+        .from('profiles')
+        .insert({
+          user_id: user.id,
+          email: user.email,
+          display_name: displayName,
+        });
+
+      if (insertError && !insertError.message.includes('duplicate')) {
+        console.error('Error creating profile:', insertError.message);
+      }
+    }
+  } catch (err) {
+    console.error('Profile sync error:', err);
+  }
+}
+
 // Storage keys
 const GUEST_MODE_KEY = 'focuson-guest-mode';
 const GUEST_ID_KEY = 'focuson-guest-id';
@@ -111,6 +150,8 @@ export function AuthStateProvider({ children }: { children: ReactNode }) {
           setSession(currentSession);
           setUser(currentSession.user);
           setAuthStatus('authenticated');
+          // Ensure profile exists for authenticated user
+          await ensureProfile(currentSession.user);
         } else {
           // No session and not guest = unauthenticated, need to login
           setAuthStatus('unauthenticated');
@@ -138,6 +179,8 @@ export function AuthStateProvider({ children }: { children: ReactNode }) {
           setSession(newSession);
           setUser(newSession.user);
           setAuthStatus('authenticated');
+          // Ensure profile exists when auth state changes
+          ensureProfile(newSession.user);
         } else {
           setSession(null);
           setUser(null);
