@@ -5,6 +5,16 @@ import { useAuth } from './useAuth';
 const DEVICE_ID_KEY = 'focuson_device_id';
 const VAPID_PUBLIC_KEY = import.meta.env.VITE_VAPID_PUBLIC_KEY || '';
 
+// Check if user is in guest mode
+function isGuestMode(): boolean {
+  try {
+    const stored = localStorage.getItem('focuson-guest-mode');
+    return stored ? JSON.parse(stored) === true : false;
+  } catch {
+    return false;
+  }
+}
+
 function getOrCreateDeviceId(): string {
   let deviceId = localStorage.getItem(DEVICE_ID_KEY);
   if (!deviceId) {
@@ -65,6 +75,12 @@ export function usePushNotifications() {
       return false;
     }
 
+    // Skip for guest mode
+    if (isGuestMode()) {
+      console.log('Push notifications not available in guest mode');
+      return false;
+    }
+
     if (!isAuthenticated || !session) {
       console.error('User not authenticated');
       return false;
@@ -117,6 +133,12 @@ export function usePushNotifications() {
   }, [isSupported, isAuthenticated, session]);
 
   const scheduleReminder = useCallback(async (taskId: string, taskText: string, runAt: Date): Promise<boolean> => {
+    // Skip for guest mode
+    if (isGuestMode()) {
+      console.log('Reminders not available in guest mode');
+      return false;
+    }
+
     if (!isAuthenticated || !session) {
       console.error('User not authenticated');
       return false;
@@ -154,6 +176,11 @@ export function usePushNotifications() {
   }, [isSubscribed, subscribe, isAuthenticated, session]);
 
   const cancelReminder = useCallback(async (taskId: string): Promise<boolean> => {
+    // Skip for guest mode
+    if (isGuestMode()) {
+      return false;
+    }
+
     if (!isAuthenticated || !session) {
       console.error('User not authenticated');
       return false;
