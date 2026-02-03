@@ -44,6 +44,15 @@ export default function Auth() {
     setIsGoogleLoading(true);
     try {
       console.log('[Auth] Starting Google sign-in...');
+
+      // If user previously entered guest mode, we must exit it before OAuth.
+      // Otherwise AuthStateProvider will ignore auth updates and the app will look "stuck".
+      try {
+        localStorage.removeItem('focuson-guest-mode');
+      } catch {
+        // ignore
+      }
+
       const redirectUrl = `${window.location.origin}/auth/callback`;
       
       const { error } = await lovable.auth.signInWithOAuth('google', {
@@ -142,7 +151,7 @@ export default function Auth() {
         <button
           onClick={handleGoogleSignIn}
           disabled={isGoogleLoading}
-          className="w-full flex items-center justify-center gap-3 py-4 px-6 bg-white text-gray-800 border border-gray-300 rounded-2xl font-medium text-base shadow-sm hover:bg-gray-50 transition-all active:scale-[0.98] disabled:opacity-70"
+          className="w-full flex items-center justify-center gap-3 py-4 px-6 bg-card text-foreground border border-border rounded-2xl font-medium text-base shadow-sm hover:bg-muted transition-all active:scale-[0.98] disabled:opacity-70"
         >
           {isGoogleLoading ? (
             <Loader2 size={20} className="animate-spin" />

@@ -19,6 +19,14 @@ export default function AuthCallback() {
     const handleCallback = async () => {
       try {
         console.log('[Auth Callback] Processing OAuth callback...');
+
+        // If guest mode is enabled, AuthStateProvider will ignore auth updates.
+        // Clear it here to allow the session to become "authenticated".
+        try {
+          localStorage.removeItem('focuson-guest-mode');
+        } catch {
+          // ignore
+        }
         
         // Check for error in URL first
         const hashParams = new URLSearchParams(window.location.hash.substring(1));
@@ -31,6 +39,57 @@ export default function AuthCallback() {
           setError(errorDescription || errorParam);
           setTimeout(() => navigate('/auth', { replace: true }), 3000);
           return;
+        }
+
+        // PKCE flow: exchange authorization code for a session
+        const code = queryParams.get('code');
+        if (code) {
+          console.log('[Auth Callback] Found code, exchanging for session...');
+          const { data, error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
+
+          if (!mounted) return;
+
+          if (exchangeError) {
+            console.error('[Auth Callback] Code exchange error:', exchangeError.message);
+            setError('No se pudo completar el inicio de sesión. Intenta de nuevo.');
+            setTimeout(() => navigate('/auth', { replace: true }), 3000);
+            return;
+          }
+
+          if (data.session) {
+            console.log('[Auth Callback] Session established via PKCE');
+            window.history.replaceState({}, document.title, '/');
+            navigate('/', { replace: true });
+            return;
+          }
+        }
+
+        // Implicit flow fallback: access token in hash
+        const accessToken = hashParams.get('access_token');
+        if (accessToken) {
+          console.log('[Auth Callback] Found access_token, setting session...');
+          const refreshToken = hashParams.get('refresh_token') || '';
+
+          const { data, error: setSessionError } = await supabase.auth.setSession({
+            access_token: accessToken,
+            refresh_token: refreshToken,
+          });
+
+          if (!mounted) return;
+
+          if (setSessionError) {
+            console.error('[Auth Callback] setSession error:', setSessionError.message);
+            setError('No se pudo completar el inicio de sesión. Intenta de nuevo.');
+            setTimeout(() => navigate('/auth', { replace: true }), 3000);
+            return;
+          }
+
+          if (data.session) {
+            console.log('[Auth Callback] Session established via implicit flow');
+            window.history.replaceState({}, document.title, '/');
+            navigate('/', { replace: true });
+            return;
+          }
         }
 
         // Try to get session - the Lovable auth helper should have already set it
@@ -107,7 +166,7 @@ export default function AuthCallback() {
       } catch (err: any) {
         console.error('[Auth Callback] Error:', err);
         if (mounted) {
-          setError('Error al procesar el inicio de sesión. Intenta de nuevo.');
+          setError('La conexión fue interrumpida. Por favor intenta de nuevo.');
           setTimeout(() => navigate('/auth', { replace: true }), 3000);
         }
       }
