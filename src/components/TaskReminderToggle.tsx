@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Bell, BellOff, Clock } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
 import { usePushNotifications } from '@/hooks/usePushNotifications';
+import { useGuestMode } from '@/hooks/useGuestMode';
 import { toast } from 'sonner';
 
 interface TaskReminderToggleProps {
@@ -13,12 +14,13 @@ interface TaskReminderToggleProps {
 
 export function TaskReminderToggle({ taskId, taskText, scheduledDate, scheduledTime }: TaskReminderToggleProps) {
   const { isSupported, scheduleReminder, permission } = usePushNotifications();
+  const { isGuest } = useGuestMode();
   const [isEnabled, setIsEnabled] = useState(false);
   const [reminderDateTime, setReminderDateTime] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
-  // Only show if push is supported and task has scheduling info
-  if (!isSupported) return null;
+  // Don't show reminders in guest mode or if push not supported
+  if (isGuest || !isSupported) return null;
 
   const handleToggle = async (checked: boolean) => {
     if (checked) {
