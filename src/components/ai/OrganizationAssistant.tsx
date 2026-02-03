@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Sparkles, Send, Loader2 } from 'lucide-react';
+import { Sparkles, Send, Loader2, AlertCircle, RefreshCw } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
@@ -17,38 +17,46 @@ export function OrganizationAssistant({
   const [input, setInput] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
   const [response, setResponse] = useState<AIResponse | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   const processWithAI = async () => {
     if (!input.trim()) return;
     
     setIsProcessing(true);
+    setError(null);
     
     try {
-      const { data, error } = await supabase.functions.invoke('organize-tasks', {
+      const { data, error: fnError } = await supabase.functions.invoke('organize-tasks', {
         body: { input: input.trim() }
       });
 
-      if (error) {
-        console.error('Edge function error:', error);
-        toast.error('Error al procesar. Intenta de nuevo.');
+      if (fnError) {
+        console.error('Edge function error:', fnError);
+        setError('Error al conectar con el servicio. Intenta de nuevo.');
         setIsProcessing(false);
         return;
       }
 
-      if (data.error) {
-        toast.error(data.error);
+      if (data?.error) {
+        // Handle specific error types
+        if (data.error === 'rate_limited') {
+          setError('Has hecho muchas solicitudes. Espera un momento.');
+        } else {
+          setError(data.error);
+        }
         setIsProcessing(false);
         return;
       }
 
       const organized: AIResponse = {
-        tasks: data.tasks || [],
+        tasks: Array.isArray(data?.tasks) ? data.tasks : [],
       };
 
       setResponse(organized);
+      setError(null);
     } catch (err) {
       console.error('Failed to process with AI:', err);
-      toast.error('Error de conexión. Intenta de nuevo.');
+      setError('Error de conexión. Verifica tu internet e intenta de nuevo.');
     } finally {
       setIsProcessing(false);
     }
@@ -65,6 +73,7 @@ export function OrganizationAssistant({
   const handleReset = () => {
     setResponse(null);
     setInput('');
+    setError(null);
   };
 
   return (
@@ -78,6 +87,23 @@ export function OrganizationAssistant({
             className="w-full min-h-[120px] px-4 py-3 rounded-xl bg-muted/50 border border-border/50 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 resize-none"
             disabled={isProcessing}
           />
+
+          {/* Error display with retry */}
+          {error && (
+            <div className="mt-3 p-3 rounded-xl bg-destructive/10 border border-destructive/30 flex items-start gap-2">
+              <AlertCircle size={18} className="text-destructive shrink-0 mt-0.5" />
+              <div className="flex-1">
+                <p className="text-sm text-destructive">{error}</p>
+                <button
+                  onClick={processWithAI}
+                  className="mt-2 text-xs text-destructive hover:underline flex items-center gap-1"
+                >
+                  <RefreshCw size={12} />
+                  Reintentar
+                </button>
+              </div>
+            </div>
+          )}
 
           <button
             onClick={processWithAI}
