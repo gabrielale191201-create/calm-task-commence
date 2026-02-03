@@ -5,6 +5,16 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
 };
 
+// Validation constants
+const MAX_DEVICE_ID_LENGTH = 100;
+const MAX_TASK_ID_LENGTH = 100;
+
+// Truncate sensitive IDs for logging
+function truncateId(id: string): string {
+  if (!id || id.length <= 8) return id;
+  return id.substring(0, 8) + '...';
+}
+
 async function validateAuth(req: Request): Promise<{ userId: string | null; error: string | null }> {
   const authHeader = req.headers.get('Authorization');
   if (!authHeader?.startsWith('Bearer ')) {
@@ -42,11 +52,29 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const { deviceId, taskId } = await req.json();
+    const body = await req.json();
+    const { deviceId, taskId } = body;
 
+    // Validate required fields presence
     if (!deviceId || !taskId) {
       return new Response(
-        JSON.stringify({ error: 'Missing deviceId or taskId' }),
+        JSON.stringify({ error: 'Missing required fields' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Validate field types
+    if (typeof deviceId !== 'string' || typeof taskId !== 'string') {
+      return new Response(
+        JSON.stringify({ error: 'Invalid field types' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Validate field lengths
+    if (deviceId.length > MAX_DEVICE_ID_LENGTH || taskId.length > MAX_TASK_ID_LENGTH) {
+      return new Response(
+        JSON.stringify({ error: 'Invalid request data' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
@@ -66,20 +94,20 @@ Deno.serve(async (req) => {
       .eq('sent', false);
 
     if (error) {
-      console.error('Error deleting reminder:', error);
+      console.error('[delete-reminder] DB error for user:', truncateId(userId));
       return new Response(
         JSON.stringify({ error: 'Failed to delete reminder' }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    console.log(`Deleted ${count || 0} reminder(s) for user ${userId}, task ${taskId}`);
+    console.log('[delete-reminder] Success for user:', truncateId(userId), 'count:', count || 0);
     return new Response(
       JSON.stringify({ success: true, deleted: count || 0 }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   } catch (err) {
-    console.error('Error:', err);
+    console.error('[delete-reminder] Error:', err instanceof Error ? err.message : 'Unknown error');
     return new Response(
       JSON.stringify({ error: 'Internal server error' }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }

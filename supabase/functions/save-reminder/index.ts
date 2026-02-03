@@ -5,6 +5,35 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
 };
 
+// Validation constants
+const MAX_DEVICE_ID_LENGTH = 100;
+const MAX_TASK_ID_LENGTH = 100;
+const MAX_TASK_TEXT_LENGTH = 1000;
+const MAX_FUTURE_DAYS = 365; // Max 1 year in the future
+
+// Truncate sensitive IDs for logging
+function truncateId(id: string): string {
+  if (!id || id.length <= 8) return id;
+  return id.substring(0, 8) + '...';
+}
+
+// Validate runAt is a reasonable future date
+function isValidRunAt(runAt: string): boolean {
+  try {
+    const date = new Date(runAt);
+    if (isNaN(date.getTime())) return false;
+    
+    const now = new Date();
+    const maxFutureDate = new Date();
+    maxFutureDate.setDate(maxFutureDate.getDate() + MAX_FUTURE_DAYS);
+    
+    // Must be in the future but not more than 1 year
+    return date > now && date <= maxFutureDate;
+  } catch {
+    return false;
+  }
+}
+
 async function validateAuth(req: Request): Promise<{ userId: string | null; error: string | null }> {
   const authHeader = req.headers.get('Authorization');
   if (!authHeader?.startsWith('Bearer ')) {
@@ -42,11 +71,52 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const { deviceId, taskId, taskText, runAt } = await req.json();
+    const body = await req.json();
+    const { deviceId, taskId, taskText, runAt } = body;
 
+    // Validate required fields presence
     if (!deviceId || !taskId || !taskText || !runAt) {
       return new Response(
         JSON.stringify({ error: 'Missing required fields' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Validate field types
+    if (typeof deviceId !== 'string' || typeof taskId !== 'string' || 
+        typeof taskText !== 'string' || typeof runAt !== 'string') {
+      return new Response(
+        JSON.stringify({ error: 'Invalid field types' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Validate field lengths
+    if (deviceId.length > MAX_DEVICE_ID_LENGTH) {
+      return new Response(
+        JSON.stringify({ error: 'Invalid request data' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    if (taskId.length > MAX_TASK_ID_LENGTH) {
+      return new Response(
+        JSON.stringify({ error: 'Invalid request data' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    if (taskText.length > MAX_TASK_TEXT_LENGTH) {
+      return new Response(
+        JSON.stringify({ error: 'Task text too long' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Validate runAt is a valid future date
+    if (!isValidRunAt(runAt)) {
+      return new Response(
+        JSON.stringify({ error: 'Invalid reminder time' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
@@ -65,8 +135,9 @@ Deno.serve(async (req) => {
       .single();
 
     if (!sub) {
+      // Generic error message - don't reveal if device exists
       return new Response(
-        JSON.stringify({ error: 'Device not subscribed or not owned by user' }),
+        JSON.stringify({ error: 'Unable to process request' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
@@ -85,26 +156,26 @@ Deno.serve(async (req) => {
       .insert({
         device_id: deviceId,
         task_id: taskId,
-        task_text: taskText,
+        task_text: taskText.substring(0, MAX_TASK_TEXT_LENGTH), // Ensure length limit
         run_at: runAt,
         user_id: userId
       });
 
     if (error) {
-      console.error('Error saving reminder:', error);
+      console.error('[save-reminder] DB error for user:', truncateId(userId));
       return new Response(
         JSON.stringify({ error: 'Failed to save reminder' }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    console.log('Reminder saved for user:', userId, 'task:', taskId);
+    console.log('[save-reminder] Success for user:', truncateId(userId));
     return new Response(
       JSON.stringify({ success: true }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   } catch (err) {
-    console.error('Error:', err);
+    console.error('[save-reminder] Error:', err instanceof Error ? err.message : 'Unknown error');
     return new Response(
       JSON.stringify({ error: 'Internal server error' }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
