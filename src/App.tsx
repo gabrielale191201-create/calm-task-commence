@@ -3,96 +3,61 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
-import { useState, useEffect } from "react";
-import { Session } from "@supabase/supabase-js";
-import { supabase } from "@/integrations/supabase/client";
+import { AuthStateProvider, useAuthState } from "@/hooks/useAuthState";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { LoadingScreen } from "@/components/LoadingScreen";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
 
-// Check if user is in guest mode (stored in localStorage)
-function isGuestMode(): boolean {
-  try {
-    const stored = localStorage.getItem('focuson-guest-mode');
-    return stored ? JSON.parse(stored) === true : false;
-  } catch {
-    return false;
-  }
-}
-
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
-  const [session, setSession] = useState<Session | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [isGuest, setIsGuest] = useState(false);
+  const { authStatus, isLoading, isAuthenticated, isGuest } = useAuthState();
 
-  useEffect(() => {
-    // Check guest mode first
-    const guestMode = isGuestMode();
-    setIsGuest(guestMode);
-
-    // If guest mode, skip Supabase auth entirely
-    if (guestMode) {
-      setLoading(false);
-      return;
-    }
-
-    // Get initial session only for non-guests
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setLoading(false);
-    }).catch(() => {
-      // Handle errors gracefully
-      setLoading(false);
-    });
-
-    // Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (_event, session) => {
-        setSession(session);
-        setLoading(false);
-      }
-    );
-
-    return () => subscription.unsubscribe();
-  }, []);
-
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <div className="animate-pulse text-muted-foreground">Cargando...</div>
-      </div>
-    );
+  // Show loading screen while determining auth status
+  if (isLoading) {
+    return <LoadingScreen message="Preparando tu espacio..." />;
   }
 
   // Allow access if authenticated OR in guest mode
-  if (!session && !isGuest) {
-    return <Navigate to="/auth" replace />;
+  if (isAuthenticated || isGuest) {
+    return <>{children}</>;
   }
 
-  return <>{children}</>;
+  // Unauthenticated = redirect to auth
+  return <Navigate to="/auth" replace />;
+}
+
+function AppRoutes() {
+  return (
+    <Routes>
+      <Route path="/auth" element={<Auth />} />
+      <Route path="/" element={
+        <ProtectedRoute>
+          <Index />
+        </ProtectedRoute>
+      } />
+      {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+      <Route path="*" element={<NotFound />} />
+    </Routes>
+  );
 }
 
 const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <Toaster />
-      <Sonner />
-      <BrowserRouter>
-        <Routes>
-          <Route path="/auth" element={<Auth />} />
-          <Route path="/" element={
-            <ProtectedRoute>
-              <Index />
-            </ProtectedRoute>
-          } />
-          {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-          <Route path="*" element={<NotFound />} />
-        </Routes>
-      </BrowserRouter>
-    </TooltipProvider>
-  </QueryClientProvider>
+  <ErrorBoundary>
+    <QueryClientProvider client={queryClient}>
+      <AuthStateProvider>
+        <TooltipProvider>
+          <Toaster />
+          <Sonner />
+          <BrowserRouter>
+            <AppRoutes />
+          </BrowserRouter>
+        </TooltipProvider>
+      </AuthStateProvider>
+    </QueryClientProvider>
+  </ErrorBoundary>
 );
 
 export default App;

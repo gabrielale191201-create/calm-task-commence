@@ -1,26 +1,32 @@
-import { useLocalStorage } from './useLocalStorage';
+import { useAuthState } from './useAuthState';
 
 export function useGuestMode() {
-  const [isGuest, setIsGuest] = useLocalStorage<boolean>('focuson-guest-mode', false);
-  const [guestBannerDismissed, setGuestBannerDismissed] = useLocalStorage<boolean>('focuson-guest-banner-dismissed', false);
-
-  const enterGuestMode = () => {
-    setIsGuest(true);
-  };
-
-  const exitGuestMode = () => {
-    setIsGuest(false);
+  const { isGuest, guestId, enterGuestMode, exitGuestMode } = useAuthState();
+  
+  // Get banner dismissed state from localStorage
+  const getGuestBannerDismissed = (): boolean => {
+    try {
+      const stored = localStorage.getItem('focuson-guest-banner-dismissed');
+      return stored ? JSON.parse(stored) === true : false;
+    } catch {
+      return false;
+    }
   };
 
   const dismissGuestBanner = () => {
-    setGuestBannerDismissed(true);
+    try {
+      localStorage.setItem('focuson-guest-banner-dismissed', 'true');
+    } catch {
+      console.error('Failed to dismiss banner');
+    }
   };
 
   return {
     isGuest,
+    guestId,
     enterGuestMode,
     exitGuestMode,
-    guestBannerDismissed,
+    guestBannerDismissed: getGuestBannerDismissed(),
     dismissGuestBanner,
   };
 }

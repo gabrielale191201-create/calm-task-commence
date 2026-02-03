@@ -1,19 +1,9 @@
 import { useState, useCallback, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { useAuth } from './useAuth';
+import { useAuthState, isGuestMode } from './useAuthState';
 
 const DEVICE_ID_KEY = 'focuson_device_id';
 const VAPID_PUBLIC_KEY = import.meta.env.VITE_VAPID_PUBLIC_KEY || '';
-
-// Check if user is in guest mode
-function isGuestMode(): boolean {
-  try {
-    const stored = localStorage.getItem('focuson-guest-mode');
-    return stored ? JSON.parse(stored) === true : false;
-  } catch {
-    return false;
-  }
-}
 
 function getOrCreateDeviceId(): string {
   let deviceId = localStorage.getItem(DEVICE_ID_KEY);
@@ -36,7 +26,7 @@ function urlBase64ToUint8Array(base64String: string): ArrayBuffer {
 }
 
 export function usePushNotifications() {
-  const { session, isAuthenticated } = useAuth();
+  const { session, isAuthenticated } = useAuthState();
   const [isSubscribed, setIsSubscribed] = useState(false);
   const [isSupported, setIsSupported] = useState(false);
   const [permission, setPermission] = useState<NotificationPermission>('default');
