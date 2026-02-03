@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthState } from '@/hooks/useAuthState';
+import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -43,19 +44,70 @@ export default function Auth() {
     setIsGoogleLoading(true);
     try {
       console.log('[Auth] Starting Google sign-in...');
-      const { error } = await lovable.auth.signInWithOAuth('google', {
-        redirect_uri: `${window.location.origin}/auth/callback`,
-      });
       
-      if (error) {
-        console.error('[Auth] Google sign-in error:', error);
-        toast.error('Algo salió mal. Intenta de nuevo.');
-        setIsGoogleLoading(false);
+      // Check if we're on a custom domain (not lovable.app)
+      const isCustomDomain = 
+        !window.location.hostname.includes('lovable.app') &&
+        !window.location.hostname.includes('lovableproject.com') &&
+        !window.location.hostname.includes('localhost');
+      
+      const redirectUrl = `${window.location.origin}/auth/callback`;
+      console.log('[Auth] Redirect URL:', redirectUrl);
+      console.log('[Auth] Is custom domain:', isCustomDomain);
+
+      if (isCustomDomain) {
+        // For custom domains, use Supabase directly with skipBrowserRedirect
+        // This bypasses auth-bridge which can cause issues on custom domains
+        const { data, error } = await supabase.auth.signInWithOAuth({
+          provider: 'google',
+          options: {
+            redirectTo: redirectUrl,
+            skipBrowserRedirect: true,
+          },
+        });
+
+        if (error) {
+          console.error('[Auth] Google sign-in error:', error);
+          toast.error(`Error: ${error.message}`);
+          setIsGoogleLoading(false);
+          return;
+        }
+
+        if (data?.url) {
+          console.log('[Auth] Redirecting to OAuth URL...');
+          // Validate OAuth URL for security
+          try {
+            const oauthUrl = new URL(data.url);
+            const allowedHosts = ['accounts.google.com', 'www.google.com'];
+            if (!allowedHosts.some(host => oauthUrl.hostname.includes(host))) {
+              // If not Google, it might be Supabase auth endpoint which is also valid
+              if (!oauthUrl.hostname.includes('supabase')) {
+                throw new Error('URL de OAuth no válida');
+              }
+            }
+            window.location.href = data.url;
+          } catch (urlError) {
+            console.error('[Auth] Invalid OAuth URL:', urlError);
+            toast.error('Error en la URL de autenticación');
+            setIsGoogleLoading(false);
+          }
+        }
+      } else {
+        // For lovable.app domains, use the managed auth flow
+        const { error } = await lovable.auth.signInWithOAuth('google', {
+          redirect_uri: redirectUrl,
+        });
+        
+        if (error) {
+          console.error('[Auth] Google sign-in error:', error);
+          toast.error(`Error: ${error.message}`);
+          setIsGoogleLoading(false);
+        }
       }
       // Don't set loading to false on success - we're redirecting
-    } catch (err) {
+    } catch (err: any) {
       console.error('[Auth] Google sign-in exception:', err);
-      toast.error('Algo salió mal. Intenta de nuevo.');
+      toast.error(`Error: ${err.message || 'Algo salió mal. Intenta de nuevo.'}`);
       setIsGoogleLoading(false);
     }
   };
