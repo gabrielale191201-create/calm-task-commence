@@ -1,8 +1,7 @@
 import { useState } from 'react';
-import { Sparkles, Send, Loader2, AlertCircle } from 'lucide-react';
+import { Sparkles, Send, Loader2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { useGuestMode } from '@/hooks/useGuestMode';
 
 interface AIResponse {
   tasks: string[];
@@ -15,29 +14,9 @@ interface OrganizationAssistantProps {
 export function OrganizationAssistant({
   onSendToTasks,
 }: OrganizationAssistantProps) {
-  const { isGuest } = useGuestMode();
   const [input, setInput] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
   const [response, setResponse] = useState<AIResponse | null>(null);
-
-  // Show guest mode message
-  if (isGuest) {
-    return (
-      <div className="focus-card animate-slide-up">
-        <div className="flex items-center gap-3 p-4 rounded-xl bg-amber-50/50 dark:bg-amber-900/10 border border-amber-200 dark:border-amber-800/50">
-          <AlertCircle className="text-amber-600 dark:text-amber-400 flex-shrink-0" size={20} />
-          <div>
-            <p className="text-sm font-medium text-amber-800 dark:text-amber-300">
-              Función no disponible en modo invitado
-            </p>
-            <p className="text-xs text-amber-600 dark:text-amber-400 mt-1">
-              Crea una cuenta para usar el asistente de organización con IA.
-            </p>
-          </div>
-        </div>
-      </div>
-    );
-  }
 
   const processWithAI = async () => {
     if (!input.trim()) return;
