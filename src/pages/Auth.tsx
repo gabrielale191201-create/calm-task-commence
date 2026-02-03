@@ -51,63 +51,98 @@ export default function Auth() {
         !window.location.hostname.includes('lovableproject.com') &&
         !window.location.hostname.includes('localhost');
       
-      const redirectUrl = `${window.location.origin}/auth/callback`;
+      // Use origin as redirect base - ensure consistent domain
+      const origin = window.location.origin;
+      const redirectUrl = `${origin}/auth/callback`;
+      
+      console.log('[Auth] Origin:', origin);
       console.log('[Auth] Redirect URL:', redirectUrl);
       console.log('[Auth] Is custom domain:', isCustomDomain);
 
       if (isCustomDomain) {
-        // For custom domains, use Supabase directly with skipBrowserRedirect
-        // This bypasses auth-bridge which can cause issues on custom domains
+        // For custom domains (focusonlife.app), bypass auth-bridge
+        // This prevents "signal is aborted" errors from the managed OAuth flow
+        console.log('[Auth] Using direct Supabase OAuth for custom domain...');
+        
         const { data, error } = await supabase.auth.signInWithOAuth({
           provider: 'google',
           options: {
             redirectTo: redirectUrl,
-            skipBrowserRedirect: true,
+            skipBrowserRedirect: true, // Critical: get URL instead of auto-redirect
+            queryParams: {
+              prompt: 'select_account', // Always show account picker
+            },
           },
         });
 
         if (error) {
           console.error('[Auth] Google sign-in error:', error);
-          toast.error(`Error: ${error.message}`);
+          // Handle specific error cases
+          if (error.message.includes('signal is aborted') || error.message.includes('aborted')) {
+            toast.error('La autenticación fue cancelada. Por favor intenta de nuevo.');
+          } else if (error.message.includes('redirect_uri_mismatch')) {
+            toast.error('Error de configuración. Contacta al administrador.');
+            console.error('[Auth] redirect_uri_mismatch - Check Supabase/Google console redirect URLs');
+          } else {
+            toast.error(`Error: ${error.message}`);
+          }
           setIsGoogleLoading(false);
           return;
         }
 
         if (data?.url) {
-          console.log('[Auth] Redirecting to OAuth URL...');
-          // Validate OAuth URL for security
+          // Validate OAuth URL before redirect (security)
           try {
             const oauthUrl = new URL(data.url);
             const allowedHosts = ['accounts.google.com', 'www.google.com'];
-            if (!allowedHosts.some(host => oauthUrl.hostname.includes(host))) {
-              // If not Google, it might be Supabase auth endpoint which is also valid
-              if (!oauthUrl.hostname.includes('supabase')) {
-                throw new Error('URL de OAuth no válida');
-              }
+            const isGoogleUrl = allowedHosts.some(host => oauthUrl.hostname.includes(host));
+            const isSupabaseUrl = oauthUrl.hostname.includes('supabase');
+            
+            if (!isGoogleUrl && !isSupabaseUrl) {
+              console.error('[Auth] Unexpected OAuth host:', oauthUrl.hostname);
+              throw new Error('URL de OAuth no reconocida');
             }
-            window.location.href = data.url;
-          } catch (urlError) {
+            
+            console.log('[Auth] Redirecting to:', oauthUrl.hostname);
+            // Use replace to prevent back button issues
+            window.location.replace(data.url);
+          } catch (urlError: any) {
             console.error('[Auth] Invalid OAuth URL:', urlError);
-            toast.error('Error en la URL de autenticación');
+            toast.error('Error en la URL de autenticación. Intenta de nuevo.');
             setIsGoogleLoading(false);
           }
+        } else {
+          console.error('[Auth] No OAuth URL returned');
+          toast.error('No se pudo iniciar la autenticación. Intenta de nuevo.');
+          setIsGoogleLoading(false);
         }
       } else {
         // For lovable.app domains, use the managed auth flow
+        console.log('[Auth] Using Lovable managed OAuth...');
         const { error } = await lovable.auth.signInWithOAuth('google', {
           redirect_uri: redirectUrl,
         });
         
         if (error) {
           console.error('[Auth] Google sign-in error:', error);
-          toast.error(`Error: ${error.message}`);
+          if (error.message.includes('signal is aborted') || error.message.includes('aborted')) {
+            toast.error('La autenticación fue cancelada. Por favor intenta de nuevo.');
+          } else {
+            toast.error(`Error: ${error.message}`);
+          }
           setIsGoogleLoading(false);
         }
       }
       // Don't set loading to false on success - we're redirecting
     } catch (err: any) {
       console.error('[Auth] Google sign-in exception:', err);
-      toast.error(`Error: ${err.message || 'Algo salió mal. Intenta de nuevo.'}`);
+      // Handle abort errors specifically
+      const errorMessage = err.message || '';
+      if (errorMessage.includes('signal is aborted') || errorMessage.includes('aborted') || err.name === 'AbortError') {
+        toast.error('La autenticación fue interrumpida. Por favor intenta de nuevo.');
+      } else {
+        toast.error(`Error inesperado: ${errorMessage || 'Intenta de nuevo.'}`);
+      }
       setIsGoogleLoading(false);
     }
   };

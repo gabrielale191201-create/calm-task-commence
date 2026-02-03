@@ -13,52 +13,66 @@ export default function AuthCallback() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    let mounted = true;
+    
     const handleCallback = async () => {
       try {
         console.log('[Auth Callback] Processing OAuth callback...');
-        console.log('[Auth Callback] URL:', window.location.href);
+        console.log('[Auth Callback] Full URL:', window.location.href);
+        console.log('[Auth Callback] Origin:', window.location.origin);
         
         // Get the hash fragment and query params
         const hashParams = new URLSearchParams(window.location.hash.substring(1));
         const queryParams = new URLSearchParams(window.location.search);
         
-        // Check for error in callback
+        // Check for error in callback (from OAuth provider)
         const errorParam = hashParams.get('error') || queryParams.get('error');
         const errorDescription = hashParams.get('error_description') || queryParams.get('error_description');
         
         if (errorParam) {
           console.error('[Auth Callback] OAuth error:', errorParam, errorDescription);
-          setError(`${errorParam}: ${errorDescription || 'Error desconocido'}`);
-          setTimeout(() => navigate('/auth', { replace: true }), 5000);
+          const friendlyError = errorDescription?.includes('access_denied') 
+            ? 'Acceso denegado. ¿Cancelaste el inicio de sesión?'
+            : `${errorParam}: ${errorDescription || 'Error desconocido'}`;
+          setError(friendlyError);
+          setTimeout(() => navigate('/auth', { replace: true }), 4000);
           return;
         }
 
-        // Check for authorization code (PKCE flow)
+        // Check for authorization code (PKCE flow - preferred for security)
         const code = queryParams.get('code');
         
         if (code) {
-          console.log('[Auth Callback] Found authorization code, exchanging...');
+          console.log('[Auth Callback] Found authorization code, exchanging for session...');
           const { data, error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
+          
+          if (!mounted) return;
           
           if (exchangeError) {
             console.error('[Auth Callback] Code exchange error:', exchangeError.message);
-            setError(`Error de intercambio: ${exchangeError.message}`);
-            setTimeout(() => navigate('/auth', { replace: true }), 5000);
+            // Handle specific errors
+            if (exchangeError.message.includes('code verifier')) {
+              setError('Error de verificación. Por favor intenta iniciar sesión de nuevo.');
+            } else {
+              setError(`Error: ${exchangeError.message}`);
+            }
+            setTimeout(() => navigate('/auth', { replace: true }), 4000);
             return;
           }
           
           if (data.session) {
-            console.log('[Auth Callback] Session established via code exchange');
+            console.log('[Auth Callback] Session established successfully via PKCE');
+            // Clean URL and redirect
             window.history.replaceState({}, document.title, '/');
             navigate('/', { replace: true });
             return;
           }
         }
 
-        // Check for tokens in hash (implicit flow)
+        // Check for tokens in hash (implicit flow - fallback)
         const accessToken = hashParams.get('access_token');
         if (accessToken) {
-          console.log('[Auth Callback] Found access token in hash, setting session...');
+          console.log('[Auth Callback] Found access token in hash (implicit flow)...');
           const refreshToken = hashParams.get('refresh_token') || '';
           
           const { data, error: setSessionError } = await supabase.auth.setSession({
@@ -66,77 +80,95 @@ export default function AuthCallback() {
             refresh_token: refreshToken,
           });
           
+          if (!mounted) return;
+          
           if (setSessionError) {
             console.error('[Auth Callback] Set session error:', setSessionError.message);
             setError(`Error de sesión: ${setSessionError.message}`);
-            setTimeout(() => navigate('/auth', { replace: true }), 5000);
+            setTimeout(() => navigate('/auth', { replace: true }), 4000);
             return;
           }
           
           if (data.session) {
-            console.log('[Auth Callback] Session established via tokens');
+            console.log('[Auth Callback] Session established via implicit flow');
             window.history.replaceState({}, document.title, '/');
             navigate('/', { replace: true });
             return;
           }
         }
 
-        // Fallback: Try to get existing session
-        console.log('[Auth Callback] No code/tokens found, checking existing session...');
+        // No code or tokens - check if session already exists
+        console.log('[Auth Callback] No code/tokens in URL, checking existing session...');
         const { data: { session }, error: sessionError } = await supabase.auth.getSession();
         
+        if (!mounted) return;
+        
         if (sessionError) {
-          console.error('[Auth Callback] Session error:', sessionError.message);
+          console.error('[Auth Callback] Session check error:', sessionError.message);
           setError(sessionError.message);
-          setTimeout(() => navigate('/auth', { replace: true }), 5000);
+          setTimeout(() => navigate('/auth', { replace: true }), 4000);
           return;
         }
 
         if (session) {
-          console.log('[Auth Callback] Existing session found');
+          console.log('[Auth Callback] Existing session found, redirecting to home');
           window.history.replaceState({}, document.title, '/');
           navigate('/', { replace: true });
-        } else {
-          // No session yet - wait for onAuthStateChange with timeout
-          console.log('[Auth Callback] No session, waiting for auth state change...');
-          
-          let resolved = false;
-          
-          const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-            if (resolved) return;
-            console.log('[Auth Callback] Auth state changed:', event);
-            
-            if (session) {
-              resolved = true;
-              subscription.unsubscribe();
-              window.history.replaceState({}, document.title, '/');
-              navigate('/', { replace: true });
-            } else if (event === 'SIGNED_OUT') {
-              resolved = true;
-              subscription.unsubscribe();
-              navigate('/auth', { replace: true });
-            }
-          });
-
-          // Timeout fallback - if no session after 8 seconds, show error
-          setTimeout(() => {
-            if (!resolved) {
-              resolved = true;
-              subscription.unsubscribe();
-              console.log('[Auth Callback] Timeout - no session established');
-              setError('No se pudo establecer la sesión. Intenta de nuevo.');
-              setTimeout(() => navigate('/auth', { replace: true }), 3000);
-            }
-          }, 8000);
+          return;
         }
+        
+        // No session yet - wait for auth state change with timeout
+        console.log('[Auth Callback] No session yet, waiting for auth state...');
+        
+        let resolved = false;
+        
+        const { data: { subscription } } = supabase.auth.onAuthStateChange((event, newSession) => {
+          if (resolved || !mounted) return;
+          console.log('[Auth Callback] Auth state changed:', event);
+          
+          if (newSession) {
+            resolved = true;
+            subscription.unsubscribe();
+            window.history.replaceState({}, document.title, '/');
+            navigate('/', { replace: true });
+          } else if (event === 'SIGNED_OUT') {
+            resolved = true;
+            subscription.unsubscribe();
+            navigate('/auth', { replace: true });
+          }
+        });
+
+        // Timeout fallback - if no session after 10 seconds, redirect to auth
+        setTimeout(() => {
+          if (!resolved && mounted) {
+            resolved = true;
+            subscription.unsubscribe();
+            console.log('[Auth Callback] Timeout - no session established');
+            setError('No se pudo completar el inicio de sesión. Por favor intenta de nuevo.');
+            setTimeout(() => navigate('/auth', { replace: true }), 3000);
+          }
+        }, 10000);
+        
       } catch (err: any) {
         console.error('[Auth Callback] Unexpected error:', err);
-        setError(`Error inesperado: ${err.message || 'Error desconocido'}`);
-        setTimeout(() => navigate('/auth', { replace: true }), 5000);
+        if (mounted) {
+          // Handle abort/signal errors specifically
+          const msg = err.message || '';
+          if (msg.includes('signal is aborted') || msg.includes('aborted') || err.name === 'AbortError') {
+            setError('La conexión fue interrumpida. Por favor intenta de nuevo.');
+          } else {
+            setError(`Error inesperado: ${msg || 'Error desconocido'}`);
+          }
+          setTimeout(() => navigate('/auth', { replace: true }), 4000);
+        }
       }
     };
 
     handleCallback();
+    
+    return () => {
+      mounted = false;
+    };
   }, [navigate]);
 
   if (error) {
