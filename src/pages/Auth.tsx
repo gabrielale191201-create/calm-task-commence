@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '@/hooks/useAuth';
-import { useGuestMode } from '@/hooks/useGuestMode';
+import { useAuthState } from '@/hooks/useAuthState';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -11,14 +10,14 @@ import { toast } from 'sonner';
 import { z } from 'zod';
 import { FocusOnLogo } from '@/components/FocusOnLogo';
 import { User } from 'lucide-react';
+import { LoadingScreen } from '@/components/LoadingScreen';
 
 const emailSchema = z.string().email('Email inválido');
 const passwordSchema = z.string().min(6, 'La contraseña debe tener al menos 6 caracteres');
 
 export default function Auth() {
   const navigate = useNavigate();
-  const { signIn, signUp, isAuthenticated, loading } = useAuth();
-  const { isGuest, enterGuestMode } = useGuestMode();
+  const { signIn, signUp, isAuthenticated, isGuest, isLoading, enterGuestMode } = useAuthState();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -26,10 +25,10 @@ export default function Auth() {
 
   // If already guest or authenticated, go to home
   useEffect(() => {
-    if (!loading && (isAuthenticated || isGuest)) {
+    if (!isLoading && (isAuthenticated || isGuest)) {
       navigate('/', { replace: true });
     }
-  }, [isAuthenticated, isGuest, loading, navigate]);
+  }, [isAuthenticated, isGuest, isLoading, navigate]);
 
   const handleContinueAsGuest = () => {
     enterGuestMode();
@@ -98,12 +97,8 @@ export default function Auth() {
     toast.success('¡Cuenta creada! Revisa tu email para confirmar tu cuenta.');
   };
 
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <div className="animate-pulse">Cargando...</div>
-      </div>
-    );
+  if (isLoading) {
+    return <LoadingScreen message="Verificando sesión..." />;
   }
 
   return (

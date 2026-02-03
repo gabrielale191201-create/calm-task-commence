@@ -17,7 +17,7 @@ import { GuestModeBanner } from '@/components/GuestModeBanner';
 import { useTimer } from '@/hooks/useTimer';
 import { useAlarmSound } from '@/hooks/useAlarmSound';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
-import { useAuth } from '@/hooks/useAuth';
+import { useAuthState } from '@/hooks/useAuthState';
 import { useGuestMode } from '@/hooks/useGuestMode';
 import { TabType, Task, Routine, JournalEntry, FocusSession, UserProfile, QuickNote } from '@/types/focuson';
 import { AppLogo } from '@/components/AppLogo';
@@ -36,7 +36,7 @@ interface FloatingNote {
 }
 
 export default function Index() {
-  const { signOut, user } = useAuth();
+  const { signOut } = useAuthState();
   const { isGuest, exitGuestMode } = useGuestMode();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useLocalStorage<TabType>('focuson-tab', 'hoy');
