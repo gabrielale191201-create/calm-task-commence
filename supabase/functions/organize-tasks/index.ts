@@ -41,26 +41,34 @@ function isRateLimited(userId: string): boolean {
   return false;
 }
 
-async function validateAuth(req: Request): Promise<{ userId: string | null; error: string | null }> {
+async function getIdentifier(req: Request): Promise<string> {
+  // Try to get user ID from auth token
   const authHeader = req.headers.get('Authorization');
-  if (!authHeader?.startsWith('Bearer ')) {
-    return { userId: null, error: 'Unauthorized' };
+  if (authHeader?.startsWith('Bearer ')) {
+    try {
+      const supabase = createClient(
+        Deno.env.get('SUPABASE_URL')!,
+        Deno.env.get('SUPABASE_ANON_KEY')!,
+        { global: { headers: { Authorization: authHeader } } }
+      );
+
+      const token = authHeader.replace('Bearer ', '');
+      const { data, error } = await supabase.auth.getClaims(token);
+      
+      if (!error && data?.claims?.sub) {
+        return `user:${data.claims.sub}`;
+      }
+    } catch (e) {
+      // Fall through to device ID
+    }
   }
-
-  const supabase = createClient(
-    Deno.env.get('SUPABASE_URL')!,
-    Deno.env.get('SUPABASE_ANON_KEY')!,
-    { global: { headers: { Authorization: authHeader } } }
-  );
-
-  const token = authHeader.replace('Bearer ', '');
-  const { data, error } = await supabase.auth.getClaims(token);
   
-  if (error || !data?.claims) {
-    return { userId: null, error: 'Invalid token' };
-  }
-
-  return { userId: data.claims.sub as string, error: null };
+  // Fall back to device ID from request body or generate anonymous ID
+  // Use IP + user agent hash as fallback for rate limiting
+  const forwarded = req.headers.get('x-forwarded-for');
+  const ip = forwarded ? forwarded.split(',')[0].trim() : 'unknown';
+  const ua = req.headers.get('user-agent') || 'unknown';
+  return `guest:${ip.slice(0, 10)}:${ua.slice(0, 20)}`;
 }
 
 const systemPrompt = `Eres la IA de Organización de Focus On.
@@ -97,18 +105,12 @@ serve(async (req) => {
     return new Response("ok", { headers: corsHeaders });
   }
 
-  // Validate authentication
-  const { userId, error: authError } = await validateAuth(req);
-  if (authError || !userId) {
-    return new Response(
-      JSON.stringify({ error: "Unauthorized" }),
-      { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
-  }
+  // Get identifier for rate limiting (works for guests and authenticated users)
+  const identifier = await getIdentifier(req);
 
-  // Rate limiting per user
-  if (isRateLimited(userId)) {
-    console.log("Rate limited user:", userId);
+  // Rate limiting per identifier
+  if (isRateLimited(identifier)) {
+    console.log("Rate limited:", identifier.slice(0, 15) + "...");
     return new Response(
       JSON.stringify({ error: "rate_limited" }),
       { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -141,7 +143,7 @@ serve(async (req) => {
       );
     }
 
-    console.log("Processing organize request for user:", userId);
+    console.log("Processing organize request for:", identifier.slice(0, 15) + "...");
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
@@ -190,7 +192,7 @@ serve(async (req) => {
       );
     }
 
-    console.log("Request processed successfully for user:", userId);
+    console.log("Request processed successfully for:", identifier.slice(0, 15) + "...");
 
     let organized;
     try {
