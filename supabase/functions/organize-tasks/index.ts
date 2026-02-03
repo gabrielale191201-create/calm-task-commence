@@ -1,36 +1,23 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
-// Allowed origins for CORS
-const allowedOrigins = [
-  "https://id-preview--ee67add7-fb83-488d-a1bb-f6aa1acc5d65.lovable.app",
-  "https://ee67add7-fb83-488d-a1bb-f6aa1acc5d65.lovableproject.com",
-  "https://calm-task-commence.lovable.app",
-  "http://localhost:5173",
-  "http://localhost:8080"
-];
-
-function getCorsHeaders(origin: string | null): Record<string, string> {
-  const allowedOrigin = origin && allowedOrigins.includes(origin) ? origin : allowedOrigins[0];
-  return {
-    "Access-Control-Allow-Origin": allowedOrigin,
-    "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-beta-token, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
-  };
-}
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
+};
 
 // Input validation limits
 const MAX_INPUT_LENGTH = 5000;
 const MAX_TASKS_RETURNED = 100;
 
-// Rate limiting: 20 requests per 5 minutes per IP
+// Rate limiting: 20 requests per 5 minutes per user
 const rateLimitMap = new Map<string, number[]>();
-const RATE_LIMIT_WINDOW = 5 * 60 * 1000; // 5 minutes
+const RATE_LIMIT_WINDOW = 5 * 60 * 1000;
 const RATE_LIMIT_MAX = 20;
 
-function isRateLimited(ip: string): boolean {
+function isRateLimited(userId: string): boolean {
   const now = Date.now();
-  const timestamps = rateLimitMap.get(ip) || [];
-  
-  // Filter out old timestamps
+  const timestamps = rateLimitMap.get(userId) || [];
   const recentTimestamps = timestamps.filter(t => now - t < RATE_LIMIT_WINDOW);
   
   if (recentTimestamps.length >= RATE_LIMIT_MAX) {
@@ -38,9 +25,8 @@ function isRateLimited(ip: string): boolean {
   }
   
   recentTimestamps.push(now);
-  rateLimitMap.set(ip, recentTimestamps);
+  rateLimitMap.set(userId, recentTimestamps);
   
-  // Cleanup old entries periodically
   if (rateLimitMap.size > 1000) {
     for (const [key, times] of rateLimitMap.entries()) {
       const filtered = times.filter(t => now - t < RATE_LIMIT_WINDOW);
@@ -55,10 +41,26 @@ function isRateLimited(ip: string): boolean {
   return false;
 }
 
-function getClientIP(req: Request): string {
-  return req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || 
-         req.headers.get("x-real-ip") || 
-         "unknown";
+async function validateAuth(req: Request): Promise<{ userId: string | null; error: string | null }> {
+  const authHeader = req.headers.get('Authorization');
+  if (!authHeader?.startsWith('Bearer ')) {
+    return { userId: null, error: 'Unauthorized' };
+  }
+
+  const supabase = createClient(
+    Deno.env.get('SUPABASE_URL')!,
+    Deno.env.get('SUPABASE_ANON_KEY')!,
+    { global: { headers: { Authorization: authHeader } } }
+  );
+
+  const token = authHeader.replace('Bearer ', '');
+  const { data, error } = await supabase.auth.getClaims(token);
+  
+  if (error || !data?.claims) {
+    return { userId: null, error: 'Invalid token' };
+  }
+
+  return { userId: data.claims.sub as string, error: null };
 }
 
 const systemPrompt = `Eres la IA de Organización de Focus On.
@@ -91,22 +93,22 @@ El array "tasks" puede contener cualquier cantidad de tareas (ilimitadas).
 No incluyas explicaciones, solo el JSON.`;
 
 serve(async (req) => {
-  const origin = req.headers.get("origin");
-  const corsHeaders = getCorsHeaders(origin);
-
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
   }
 
-  // Security is provided by:
-  // 1. CORS - only allowed origins can call this function
-  // 2. Rate limiting - 20 requests per 5 minutes per IP
-  // Token validation removed - CORS + rate limiting is sufficient
+  // Validate authentication
+  const { userId, error: authError } = await validateAuth(req);
+  if (authError || !userId) {
+    return new Response(
+      JSON.stringify({ error: "Unauthorized" }),
+      { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  }
 
-  // Rate limiting
-  const clientIP = getClientIP(req);
-  if (isRateLimited(clientIP)) {
-    console.log("Rate limited request");
+  // Rate limiting per user
+  if (isRateLimited(userId)) {
+    console.log("Rate limited user:", userId);
     return new Response(
       JSON.stringify({ error: "rate_limited" }),
       { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -116,7 +118,6 @@ serve(async (req) => {
   try {
     const { input } = await req.json();
     
-    // Input validation
     if (!input || typeof input !== 'string' || input.trim().length === 0) {
       return new Response(
         JSON.stringify({ error: "Se requiere texto para organizar." }),
@@ -124,7 +125,6 @@ serve(async (req) => {
       );
     }
 
-    // Input length validation
     if (input.length > MAX_INPUT_LENGTH) {
       return new Response(
         JSON.stringify({ error: `Entrada demasiado larga. Máximo ${MAX_INPUT_LENGTH} caracteres.` }),
@@ -141,7 +141,7 @@ serve(async (req) => {
       );
     }
 
-    console.log("Processing request", { timestamp: new Date().toISOString(), inputLength: input.length });
+    console.log("Processing organize request for user:", userId);
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
@@ -172,7 +172,6 @@ serve(async (req) => {
           { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
-      // Log error internally but return generic message
       console.error("AI service error:", response.status);
       return new Response(
         JSON.stringify({ error: "Error temporal del servicio. Intenta de nuevo." }),
@@ -191,12 +190,10 @@ serve(async (req) => {
       );
     }
 
-    console.log("Request processed successfully");
+    console.log("Request processed successfully for user:", userId);
 
-    // Parse the JSON response from the AI
     let organized;
     try {
-      // Try to extract JSON from the response (in case there's extra text)
       const jsonMatch = content.match(/\{[\s\S]*\}/);
       if (jsonMatch) {
         organized = JSON.parse(jsonMatch[0]);
@@ -205,23 +202,17 @@ serve(async (req) => {
       }
     } catch (parseError) {
       console.error("Parse error - using fallback");
-      // Fallback: create a simple structure from the input
       const lines = input.split(/[,.\n]+/).map((l: string) => l.trim()).filter((l: string) => l.length > 0);
-      organized = {
-        tasks: lines,
-      };
+      organized = { tasks: lines };
     }
 
-    // Ensure the response has the expected structure and limit task count
     let tasks = Array.isArray(organized.tasks) ? organized.tasks : [];
     if (tasks.length > MAX_TASKS_RETURNED) {
       tasks = tasks.slice(0, MAX_TASKS_RETURNED);
     }
 
-    const result = { tasks };
-
     return new Response(
-      JSON.stringify(result),
+      JSON.stringify({ tasks }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
 

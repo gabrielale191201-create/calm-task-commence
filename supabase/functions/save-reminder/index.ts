@@ -2,12 +2,43 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
 };
+
+async function validateAuth(req: Request): Promise<{ userId: string | null; error: string | null }> {
+  const authHeader = req.headers.get('Authorization');
+  if (!authHeader?.startsWith('Bearer ')) {
+    return { userId: null, error: 'Unauthorized' };
+  }
+
+  const supabase = createClient(
+    Deno.env.get('SUPABASE_URL')!,
+    Deno.env.get('SUPABASE_ANON_KEY')!,
+    { global: { headers: { Authorization: authHeader } } }
+  );
+
+  const token = authHeader.replace('Bearer ', '');
+  const { data, error } = await supabase.auth.getClaims(token);
+  
+  if (error || !data?.claims) {
+    return { userId: null, error: 'Invalid token' };
+  }
+
+  return { userId: data.claims.sub as string, error: null };
+}
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
+  }
+
+  // Validate authentication
+  const { userId, error: authError } = await validateAuth(req);
+  if (authError || !userId) {
+    return new Response(
+      JSON.stringify({ error: 'Unauthorized' }),
+      { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
   }
 
   try {
@@ -25,16 +56,17 @@ Deno.serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
     );
 
-    // Check if subscription exists
+    // Verify that the subscription belongs to this user
     const { data: sub } = await supabase
       .from('push_subscriptions')
-      .select('device_id')
+      .select('device_id, user_id')
       .eq('device_id', deviceId)
+      .eq('user_id', userId)
       .single();
 
     if (!sub) {
       return new Response(
-        JSON.stringify({ error: 'Device not subscribed to push notifications' }),
+        JSON.stringify({ error: 'Device not subscribed or not owned by user' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
@@ -44,16 +76,18 @@ Deno.serve(async (req) => {
       .from('reminders')
       .delete()
       .eq('device_id', deviceId)
-      .eq('task_id', taskId);
+      .eq('task_id', taskId)
+      .eq('user_id', userId);
 
-    // Insert new reminder
+    // Insert new reminder with user_id
     const { error } = await supabase
       .from('reminders')
       .insert({
         device_id: deviceId,
         task_id: taskId,
         task_text: taskText,
-        run_at: runAt
+        run_at: runAt,
+        user_id: userId
       });
 
     if (error) {
@@ -64,7 +98,7 @@ Deno.serve(async (req) => {
       );
     }
 
-    console.log('Reminder saved:', { taskId, runAt });
+    console.log('Reminder saved for user:', userId, 'task:', taskId);
     return new Response(
       JSON.stringify({ success: true }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }

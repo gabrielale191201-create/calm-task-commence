@@ -23,6 +23,7 @@ export type Database = {
           id: string
           p256dh: string
           updated_at: string
+          user_id: string | null
         }
         Insert: {
           auth: string
@@ -32,6 +33,7 @@ export type Database = {
           id?: string
           p256dh: string
           updated_at?: string
+          user_id?: string | null
         }
         Update: {
           auth?: string
@@ -41,6 +43,7 @@ export type Database = {
           id?: string
           p256dh?: string
           updated_at?: string
+          user_id?: string | null
         }
         Relationships: []
       }
@@ -53,6 +56,7 @@ export type Database = {
           sent: boolean
           task_id: string
           task_text: string
+          user_id: string | null
         }
         Insert: {
           created_at?: string
@@ -62,6 +66,7 @@ export type Database = {
           sent?: boolean
           task_id: string
           task_text: string
+          user_id?: string | null
         }
         Update: {
           created_at?: string
@@ -71,6 +76,7 @@ export type Database = {
           sent?: boolean
           task_id?: string
           task_text?: string
+          user_id?: string | null
         }
         Relationships: [
           {
