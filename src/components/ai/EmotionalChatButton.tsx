@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { X, Send, Loader2, AlertCircle } from 'lucide-react';
+import { useState, forwardRef } from 'react';
+import { X, Send, Loader2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { cn } from '@/lib/utils';
 import { useGuestMode } from '@/hooks/useGuestMode';
@@ -14,7 +14,8 @@ interface EmotionalChatButtonProps {
   onWritingModeChange?: (active: boolean) => void;
 }
 
-export function EmotionalChatButton({ variant = 'full', onWritingModeChange }: EmotionalChatButtonProps) {
+export const EmotionalChatButton = forwardRef<HTMLDivElement, EmotionalChatButtonProps>(
+  function EmotionalChatButton({ variant = 'full', onWritingModeChange }, ref) {
   const { isGuest } = useGuestMode();
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -97,7 +98,7 @@ export function EmotionalChatButton({ variant = 'full', onWritingModeChange }: E
   }
 
   return (
-    <>
+    <div ref={ref}>
       {/* Floating button - Emotional writing space */}
       <button
         onClick={handleOpen}
@@ -210,6 +211,6 @@ export function EmotionalChatButton({ variant = 'full', onWritingModeChange }: E
           </div>
         </div>
       )}
-    </>
+    </div>
   );
-}
+});

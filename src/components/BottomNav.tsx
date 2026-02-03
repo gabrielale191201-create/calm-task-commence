@@ -1,3 +1,4 @@
+import { forwardRef } from 'react';
 import { Home, Target, CalendarClock, CheckSquare, BookOpen, BarChart3 } from 'lucide-react';
 import { TabType } from '@/types/focuson';
 import { cn } from '@/lib/utils';
@@ -18,9 +19,10 @@ const navItems: { id: TabType; label: string; icon: React.ElementType }[] = [
   { id: 'progreso', label: 'Progreso', icon: BarChart3 },
 ];
 
-export function BottomNav({ activeTab, onTabChange }: BottomNavProps) {
+export const BottomNav = forwardRef<HTMLDivElement, BottomNavProps>(
+  function BottomNav({ activeTab, onTabChange }, ref) {
   return (
-    <nav className="bottom-nav z-50 relative">
+    <nav ref={ref} className="bottom-nav z-50 relative">
       {/* Visual-only mark (not a tab / not clickable) */}
       <div className="pointer-events-none select-none absolute left-1/2 top-1.5 -translate-x-1/2 opacity-25">
         <FocusOnLogo size={18} />
@@ -56,4 +58,4 @@ export function BottomNav({ activeTab, onTabChange }: BottomNavProps) {
       </div>
     </nav>
   );
-}
+});
