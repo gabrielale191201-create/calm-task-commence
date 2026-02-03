@@ -12,11 +12,25 @@ import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
 
+// Check if user is in guest mode (stored in localStorage)
+function isGuestMode(): boolean {
+  try {
+    const stored = localStorage.getItem('focuson-guest-mode');
+    return stored ? JSON.parse(stored) === true : false;
+  } catch {
+    return false;
+  }
+}
+
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
+  const [isGuest, setIsGuest] = useState(false);
 
   useEffect(() => {
+    // Check guest mode first
+    setIsGuest(isGuestMode());
+
     // Get initial session
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
@@ -42,7 +56,8 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
     );
   }
 
-  if (!session) {
+  // Allow access if authenticated OR in guest mode
+  if (!session && !isGuest) {
     return <Navigate to="/auth" replace />;
   }
 

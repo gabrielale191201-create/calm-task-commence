@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
+import { useGuestMode } from '@/hooks/useGuestMode';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -9,6 +10,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from 'sonner';
 import { z } from 'zod';
 import { FocusOnLogo } from '@/components/FocusOnLogo';
+import { User } from 'lucide-react';
 
 const emailSchema = z.string().email('Email inválido');
 const passwordSchema = z.string().min(6, 'La contraseña debe tener al menos 6 caracteres');
@@ -16,16 +18,25 @@ const passwordSchema = z.string().min(6, 'La contraseña debe tener al menos 6 c
 export default function Auth() {
   const navigate = useNavigate();
   const { signIn, signUp, isAuthenticated, loading } = useAuth();
+  const { isGuest, enterGuestMode } = useGuestMode();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errors, setErrors] = useState<{ email?: string; password?: string }>({});
 
+  // If already guest or authenticated, go to home
   useEffect(() => {
-    if (!loading && isAuthenticated) {
+    if (!loading && (isAuthenticated || isGuest)) {
       navigate('/', { replace: true });
     }
-  }, [isAuthenticated, loading, navigate]);
+  }, [isAuthenticated, isGuest, loading, navigate]);
+
+  const handleContinueAsGuest = () => {
+    enterGuestMode();
+    toast.success('¡Bienvenido! Tus datos se guardarán en este dispositivo.');
+    navigate('/', { replace: true });
+  };
+
 
   const validateForm = (): boolean => {
     const newErrors: { email?: string; password?: string } = {};
@@ -101,18 +112,39 @@ export default function Auth() {
         <FocusOnLogo />
       </div>
       
-      <Card className="w-full max-w-md">
-        <CardHeader className="text-center">
-          <CardTitle className="text-2xl">Bienvenido a Focus On</CardTitle>
-          <CardDescription>
-            Inicia sesión o crea una cuenta para continuar
+      {/* Guest Mode - Primary CTA */}
+      <div className="w-full max-w-md mb-6">
+        <button
+          onClick={handleContinueAsGuest}
+          className="w-full flex items-center justify-center gap-3 py-4 px-6 bg-primary text-primary-foreground rounded-2xl font-medium text-lg shadow-lg hover:opacity-90 transition-all active:scale-[0.98]"
+        >
+          <User size={22} />
+          Empezar ahora
+        </button>
+        <p className="text-center text-xs text-muted-foreground mt-3 px-4">
+          Sin registro. Tus datos se guardan solo en este dispositivo.
+        </p>
+      </div>
+
+      {/* Divider */}
+      <div className="w-full max-w-md flex items-center gap-4 mb-6">
+        <div className="flex-1 h-px bg-border" />
+        <span className="text-xs text-muted-foreground">o si ya tienes cuenta</span>
+        <div className="flex-1 h-px bg-border" />
+      </div>
+      
+      <Card className="w-full max-w-md border-border/50">
+        <CardHeader className="text-center pb-4">
+          <CardTitle className="text-lg font-medium">Accede a tu espacio</CardTitle>
+          <CardDescription className="text-xs">
+            Para sincronizar en la nube y acceder desde cualquier lugar
           </CardDescription>
         </CardHeader>
         <CardContent>
           <Tabs defaultValue="signin" className="w-full">
             <TabsList className="grid w-full grid-cols-2">
               <TabsTrigger value="signin">Iniciar Sesión</TabsTrigger>
-              <TabsTrigger value="signup">Registrarse</TabsTrigger>
+              <TabsTrigger value="signup">Crear Cuenta</TabsTrigger>
             </TabsList>
             
             <TabsContent value="signin">
@@ -145,7 +177,7 @@ export default function Auth() {
                     <p className="text-sm text-destructive">{errors.password}</p>
                   )}
                 </div>
-                <Button type="submit" className="w-full" disabled={isSubmitting}>
+                <Button type="submit" className="w-full" variant="secondary" disabled={isSubmitting}>
                   {isSubmitting ? 'Iniciando sesión...' : 'Iniciar Sesión'}
                 </Button>
               </form>
@@ -181,8 +213,8 @@ export default function Auth() {
                     <p className="text-sm text-destructive">{errors.password}</p>
                   )}
                 </div>
-                <Button type="submit" className="w-full" disabled={isSubmitting}>
-                  {isSubmitting ? 'Registrando...' : 'Crear Cuenta'}
+                <Button type="submit" className="w-full" variant="secondary" disabled={isSubmitting}>
+                  {isSubmitting ? 'Creando cuenta...' : 'Crear Cuenta'}
                 </Button>
               </form>
             </TabsContent>
