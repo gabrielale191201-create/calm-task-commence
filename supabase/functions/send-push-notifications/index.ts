@@ -11,7 +11,6 @@ async function sendWebPush(subscription: { endpoint: string; p256dh: string; aut
   const vapidPrivateKey = Deno.env.get('VAPID_PRIVATE_KEY')!;
 
   try {
-    // Import the web-push library for Deno
     const webpush = await import('https://esm.sh/web-push@3.6.7');
     
     webpush.setVapidDetails(
@@ -42,6 +41,9 @@ Deno.serve(async (req) => {
     return new Response('ok', { headers: corsHeaders });
   }
 
+  // This function is called by a cron job, not by users directly
+  // It uses service_role to access data and send notifications
+
   try {
     const supabase = createClient(
       Deno.env.get('SUPABASE_URL')!,
@@ -52,7 +54,7 @@ Deno.serve(async (req) => {
     const now = new Date().toISOString();
     const { data: reminders, error: fetchError } = await supabase
       .from('reminders')
-      .select('id, task_id, task_text, device_id')
+      .select('id, task_id, task_text, device_id, user_id')
       .eq('sent', false)
       .lte('run_at', now)
       .limit(50);
@@ -79,11 +81,12 @@ Deno.serve(async (req) => {
     const failedIds: string[] = [];
 
     for (const reminder of reminders) {
-      // Fetch subscription separately
+      // Fetch subscription - verify user ownership
       const { data: subscription } = await supabase
         .from('push_subscriptions')
         .select('endpoint, p256dh, auth')
         .eq('device_id', reminder.device_id)
+        .eq('user_id', reminder.user_id)
         .single();
       
       if (!subscription) {
@@ -102,7 +105,6 @@ Deno.serve(async (req) => {
 
       if (success) {
         sentCount++;
-        // Mark as sent
         await supabase
           .from('reminders')
           .update({ sent: true })
@@ -112,7 +114,7 @@ Deno.serve(async (req) => {
       }
     }
 
-    // Clean up failed reminders (subscription might be invalid)
+    // Clean up failed reminders
     if (failedIds.length > 0) {
       await supabase
         .from('reminders')

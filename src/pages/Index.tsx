@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import { HelpCircle } from 'lucide-react';
+import { HelpCircle, LogOut } from 'lucide-react';
 import { BottomNav } from '@/components/BottomNav';
 import { TimerIndicator } from '@/components/TimerIndicator';
 import { HomePage } from '@/components/pages/HomePage';
@@ -16,8 +16,10 @@ import { EmotionalChatButton } from '@/components/ai/EmotionalChatButton';
 import { useTimer } from '@/hooks/useTimer';
 import { useAlarmSound } from '@/hooks/useAlarmSound';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
+import { useAuth } from '@/hooks/useAuth';
 import { TabType, Task, Routine, JournalEntry, FocusSession, UserProfile, QuickNote } from '@/types/focuson';
 import { AppLogo } from '@/components/AppLogo';
+import { toast } from 'sonner';
 
 function generateId() {
   return Math.random().toString(36).substr(2, 9);
@@ -31,10 +33,20 @@ interface FloatingNote {
 }
 
 export default function Index() {
+  const { signOut, user } = useAuth();
   const [activeTab, setActiveTab] = useLocalStorage<TabType>('focuson-tab', 'hoy');
   const [showHowTo, setShowHowTo] = useState(false);
   const [isWritingMode, setIsWritingMode] = useState(false);
   const [profile, setProfile] = useLocalStorage<UserProfile>('focuson-profile', { name: '' });
+
+  const handleSignOut = async () => {
+    const { error } = await signOut();
+    if (error) {
+      toast.error('Error al cerrar sesión');
+    } else {
+      toast.success('Sesión cerrada');
+    }
+  };
   const [tasks, setTasks] = useLocalStorage<Task[]>('focuson-tasks', []);
   const [routines, setRoutines] = useLocalStorage<Routine[]>('focuson-routines', []);
   const [journalEntries, setJournalEntries] = useLocalStorage<JournalEntry[]>('focuson-journal', []);
@@ -492,13 +504,22 @@ export default function Index() {
               </h1>
             </div>
           )}
-          <button
-            onClick={() => setShowHowTo(true)}
-            className="p-2 rounded-xl hover:bg-muted transition-colors"
-            title="¿Cómo funciona Focus On?"
-          >
-            <HelpCircle size={22} className="text-muted-foreground" />
-          </button>
+          <div className="flex items-center gap-1">
+            <button
+              onClick={() => setShowHowTo(true)}
+              className="p-2 rounded-xl hover:bg-muted transition-colors"
+              title="¿Cómo funciona Focus On?"
+            >
+              <HelpCircle size={22} className="text-muted-foreground" />
+            </button>
+            <button
+              onClick={handleSignOut}
+              className="p-2 rounded-xl hover:bg-muted transition-colors"
+              title="Cerrar sesión"
+            >
+              <LogOut size={20} className="text-muted-foreground" />
+            </button>
+          </div>
         </div>
       </header>
 

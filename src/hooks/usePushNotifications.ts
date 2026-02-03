@@ -1,5 +1,6 @@
 import { useState, useCallback, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from './useAuth';
 
 const DEVICE_ID_KEY = 'focuson_device_id';
 const VAPID_PUBLIC_KEY = import.meta.env.VITE_VAPID_PUBLIC_KEY || '';
@@ -25,6 +26,7 @@ function urlBase64ToUint8Array(base64String: string): ArrayBuffer {
 }
 
 export function usePushNotifications() {
+  const { session, isAuthenticated } = useAuth();
   const [isSubscribed, setIsSubscribed] = useState(false);
   const [isSupported, setIsSupported] = useState(false);
   const [permission, setPermission] = useState<NotificationPermission>('default');
@@ -63,6 +65,11 @@ export function usePushNotifications() {
       return false;
     }
 
+    if (!isAuthenticated || !session) {
+      console.error('User not authenticated');
+      return false;
+    }
+
     try {
       // Request permission
       const perm = await Notification.requestPermission();
@@ -85,7 +92,7 @@ export function usePushNotifications() {
       const json = subscription.toJSON();
       const deviceId = getOrCreateDeviceId();
 
-      // Save to backend
+      // Save to backend with auth token
       const { error } = await supabase.functions.invoke('save-push-subscription', {
         body: {
           deviceId,
@@ -107,9 +114,14 @@ export function usePushNotifications() {
       console.error('Error subscribing to push:', err);
       return false;
     }
-  }, [isSupported]);
+  }, [isSupported, isAuthenticated, session]);
 
   const scheduleReminder = useCallback(async (taskId: string, taskText: string, runAt: Date): Promise<boolean> => {
+    if (!isAuthenticated || !session) {
+      console.error('User not authenticated');
+      return false;
+    }
+
     if (!isSubscribed) {
       // Try to subscribe first
       const subscribed = await subscribe();
@@ -139,9 +151,14 @@ export function usePushNotifications() {
       console.error('Error scheduling reminder:', err);
       return false;
     }
-  }, [isSubscribed, subscribe]);
+  }, [isSubscribed, subscribe, isAuthenticated, session]);
 
   const cancelReminder = useCallback(async (taskId: string): Promise<boolean> => {
+    if (!isAuthenticated || !session) {
+      console.error('User not authenticated');
+      return false;
+    }
+
     try {
       const deviceId = getOrCreateDeviceId();
       
@@ -160,7 +177,7 @@ export function usePushNotifications() {
       console.error('Error canceling reminder:', err);
       return false;
     }
-  }, []);
+  }, [isAuthenticated, session]);
 
   return {
     isSupported,
@@ -168,6 +185,7 @@ export function usePushNotifications() {
     permission,
     subscribe,
     scheduleReminder,
-    cancelReminder
+    cancelReminder,
+    isAuthenticated
   };
 }

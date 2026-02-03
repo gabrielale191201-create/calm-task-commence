@@ -1,26 +1,44 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
-const ALLOWED_ORIGINS = [
-  'https://id-preview--ee67add7-fb83-488d-a1bb-f6aa1acc5d65.lovable.app',
-  'https://calm-task-commence.lovable.app',
-  'http://localhost:5173',
-  'http://localhost:8080',
-];
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
+};
 
-function getCorsHeaders(origin: string | null) {
-  const allowedOrigin = origin && ALLOWED_ORIGINS.includes(origin) ? origin : ALLOWED_ORIGINS[0];
-  return {
-    'Access-Control-Allow-Origin': allowedOrigin,
-    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-  };
+async function validateAuth(req: Request): Promise<{ userId: string | null; error: string | null }> {
+  const authHeader = req.headers.get('Authorization');
+  if (!authHeader?.startsWith('Bearer ')) {
+    return { userId: null, error: 'Unauthorized' };
+  }
+
+  const supabase = createClient(
+    Deno.env.get('SUPABASE_URL')!,
+    Deno.env.get('SUPABASE_ANON_KEY')!,
+    { global: { headers: { Authorization: authHeader } } }
+  );
+
+  const token = authHeader.replace('Bearer ', '');
+  const { data, error } = await supabase.auth.getClaims(token);
+  
+  if (error || !data?.claims) {
+    return { userId: null, error: 'Invalid token' };
+  }
+
+  return { userId: data.claims.sub as string, error: null };
 }
 
 Deno.serve(async (req) => {
-  const origin = req.headers.get('origin');
-  const corsHeaders = getCorsHeaders(origin);
-
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
+  }
+
+  // Validate authentication
+  const { userId, error: authError } = await validateAuth(req);
+  if (authError || !userId) {
+    return new Response(
+      JSON.stringify({ error: 'Unauthorized' }),
+      { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
   }
 
   try {
@@ -38,12 +56,13 @@ Deno.serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
     );
 
-    // Delete all unsent reminders for this device and task
+    // Delete all unsent reminders for this device, task, and user
     const { error, count } = await supabase
       .from('reminders')
       .delete()
       .eq('device_id', deviceId)
       .eq('task_id', taskId)
+      .eq('user_id', userId)
       .eq('sent', false);
 
     if (error) {
@@ -54,7 +73,7 @@ Deno.serve(async (req) => {
       );
     }
 
-    console.log(`Deleted ${count || 0} reminder(s) for task ${taskId}`);
+    console.log(`Deleted ${count || 0} reminder(s) for user ${userId}, task ${taskId}`);
     return new Response(
       JSON.stringify({ success: true, deleted: count || 0 }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
