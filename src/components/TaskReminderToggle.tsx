@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Bell, BellOff, Clock, AlertCircle, LogIn } from 'lucide-react';
+import { Bell, BellOff, Clock, AlertCircle, LogIn, Check } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
 import { useGuestMode } from '@/hooks/useGuestMode';
 import { useAuthState } from '@/hooks/useAuthState';
@@ -14,6 +14,7 @@ interface TaskReminderToggleProps {
 }
 
 const DEVICE_ID_KEY = 'focuson_device_id';
+const REMINDERS_STORAGE_KEY = 'focuson_active_reminders';
 const VAPID_PUBLIC_KEY = import.meta.env.VITE_VAPID_PUBLIC_KEY || '';
 
 function getOrCreateDeviceId(): string {
@@ -36,21 +37,58 @@ function urlBase64ToUint8Array(base64String: string): ArrayBuffer {
   return outputArray.buffer as ArrayBuffer;
 }
 
+// Local storage helpers for persisting reminder state
+function getActiveReminders(): Record<string, string> {
+  try {
+    const stored = localStorage.getItem(REMINDERS_STORAGE_KEY);
+    return stored ? JSON.parse(stored) : {};
+  } catch {
+    return {};
+  }
+}
+
+function saveActiveReminder(taskId: string, dateTime: string) {
+  const reminders = getActiveReminders();
+  reminders[taskId] = dateTime;
+  localStorage.setItem(REMINDERS_STORAGE_KEY, JSON.stringify(reminders));
+}
+
+function removeActiveReminder(taskId: string) {
+  const reminders = getActiveReminders();
+  delete reminders[taskId];
+  localStorage.setItem(REMINDERS_STORAGE_KEY, JSON.stringify(reminders));
+}
+
 export function TaskReminderToggle({ taskId, taskText, scheduledDate, scheduledTime }: TaskReminderToggleProps) {
   const { isGuest } = useGuestMode();
   const { session, isAuthenticated } = useAuthState();
   
-  const [isEnabled, setIsEnabled] = useState(false);
+  // UI state - switch is OFF until reminder is successfully saved
+  const [showDatePicker, setShowDatePicker] = useState(false);
   const [reminderDateTime, setReminderDateTime] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [step, setStep] = useState<'idle' | 'datetime' | 'ready'>('idle');
+  const [savedDateTime, setSavedDateTime] = useState<string | null>(null);
 
   // Check browser support
   const isSupported = 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window;
 
-  // Initialize datetime when opening
+  // Load persisted reminder state on mount
   useEffect(() => {
-    if (step === 'datetime' && !reminderDateTime) {
+    const reminders = getActiveReminders();
+    if (reminders[taskId]) {
+      const savedTime = new Date(reminders[taskId]);
+      // Only show as active if it's in the future
+      if (savedTime > new Date()) {
+        setSavedDateTime(reminders[taskId]);
+      } else {
+        removeActiveReminder(taskId);
+      }
+    }
+  }, [taskId]);
+
+  // Initialize datetime when opening picker
+  useEffect(() => {
+    if (showDatePicker && !reminderDateTime) {
       if (scheduledDate && scheduledTime) {
         setReminderDateTime(`${scheduledDate}T${scheduledTime}`);
       } else {
@@ -58,69 +96,89 @@ export function TaskReminderToggle({ taskId, taskText, scheduledDate, scheduledT
         setReminderDateTime(defaultTime.toISOString().slice(0, 16));
       }
     }
-  }, [step, scheduledDate, scheduledTime, reminderDateTime]);
+  }, [showDatePicker, scheduledDate, scheduledTime, reminderDateTime]);
 
-  // Handle toggle - robust step-by-step validation
+  // Computed state: switch is ON only if we have a saved reminder
+  const isEnabled = savedDateTime !== null;
+
+  // Handle toggle click
   const handleToggle = useCallback(async (checked: boolean) => {
-    if (!checked) {
-      // Turning off - reset state
-      setIsEnabled(false);
-      setStep('idle');
-      setReminderDateTime('');
-      console.log('[Reminder] Toggle OFF - estado reseteado');
-      return;
-    }
-
-    console.log('[Reminder] Toggle ON - iniciando validaciones...');
-
-    // STEP 1: Check browser support
-    if (!isSupported) {
-      console.error('[Reminder] Navegador no soportado');
-      toast.error('Tu navegador no soporta recordatorios. Usa Chrome o instala la PWA.');
-      return;
-    }
-    console.log('[Reminder] ✓ Navegador soportado');
-
-    // STEP 2: Check notification permission
-    const currentPermission = Notification.permission;
-    console.log('[Reminder] Permiso actual:', currentPermission);
-
-    if (currentPermission === 'denied') {
-      console.error('[Reminder] Permiso denegado');
-      toast.error('Activa notificaciones en Configuración del sitio para recibir recordatorios.');
-      return;
-    }
-
-    // Request permission if needed
-    if (currentPermission === 'default') {
-      console.log('[Reminder] Solicitando permiso...');
+    // Turning OFF - cancel reminder
+    if (!checked && savedDateTime) {
+      console.log('[Reminder] Desactivando recordatorio...');
       setIsLoading(true);
+      
       try {
-        const permission = await Notification.requestPermission();
-        console.log('[Reminder] Respuesta de permiso:', permission);
+        const deviceId = getOrCreateDeviceId();
+        await supabase.functions.invoke('delete-reminder', {
+          body: { deviceId, taskId }
+        });
         
-        if (permission !== 'granted') {
-          toast.info('Necesitas permitir notificaciones para usar recordatorios.');
-          setIsLoading(false);
-          return;
-        }
+        removeActiveReminder(taskId);
+        setSavedDateTime(null);
+        setReminderDateTime('');
+        setShowDatePicker(false);
+        console.log('[Reminder] Recordatorio cancelado');
       } catch (err) {
-        console.error('[Reminder] Error solicitando permiso:', err);
-        toast.error('Error al solicitar permisos de notificación.');
+        console.error('[Reminder] Error al cancelar:', err);
+      } finally {
         setIsLoading(false);
+      }
+      return;
+    }
+
+    // Turning ON - show date picker (don't activate switch yet)
+    if (checked && !savedDateTime) {
+      console.log('[Reminder] Abriendo selector de fecha...');
+      
+      // STEP 1: Check browser support
+      if (!isSupported) {
+        console.error('[Reminder] Navegador no soportado');
+        toast.error('Tu navegador no soporta recordatorios. Usa Chrome o instala la PWA.');
         return;
       }
+      console.log('[Reminder] ✓ Navegador soportado');
+
+      // STEP 2: Check notification permission
+      const currentPermission = Notification.permission;
+      console.log('[Reminder] Permiso actual:', currentPermission);
+
+      if (currentPermission === 'denied') {
+        console.error('[Reminder] Permiso denegado');
+        toast.error('Activa notificaciones en Configuración del sitio para recibir recordatorios.');
+        return;
+      }
+
+      // Request permission if needed
+      if (currentPermission === 'default') {
+        console.log('[Reminder] Solicitando permiso...');
+        setIsLoading(true);
+        try {
+          const permission = await Notification.requestPermission();
+          console.log('[Reminder] Respuesta de permiso:', permission);
+          
+          if (permission !== 'granted') {
+            toast.info('Necesitas permitir notificaciones para usar recordatorios.');
+            setIsLoading(false);
+            return;
+          }
+        } catch (err) {
+          console.error('[Reminder] Error solicitando permiso:', err);
+          toast.error('Error al solicitar permisos de notificación.');
+          setIsLoading(false);
+          return;
+        } finally {
+          setIsLoading(false);
+        }
+      }
+      console.log('[Reminder] ✓ Permiso de notificaciones concedido');
+
+      // Show date picker - switch stays OFF until save succeeds
+      setShowDatePicker(true);
     }
-    console.log('[Reminder] ✓ Permiso de notificaciones concedido');
+  }, [isSupported, savedDateTime, taskId]);
 
-    // Enable and show datetime picker - DON'T schedule yet
-    setIsEnabled(true);
-    setStep('datetime');
-    setIsLoading(false);
-    console.log('[Reminder] ✓ Mostrando selector de fecha/hora');
-  }, [isSupported]);
-
-  // Schedule the reminder (called when user clicks "Programar")
+  // Schedule the reminder - this is what actually turns the switch ON
   const handleSchedule = useCallback(async () => {
     if (!reminderDateTime) {
       toast.error('Selecciona fecha y hora para el recordatorio');
@@ -155,9 +213,7 @@ export function TaskReminderToggle({ taskId, taskText, scheduledDate, scheduledT
         console.log('[Reminder] ✓ Service Worker activo:', registration.active?.state);
       } catch (swError) {
         console.error('[Reminder] Error con Service Worker:', swError);
-        toast.error('No se pudo activar el servicio de notificaciones. Recarga e intenta.');
-        setIsEnabled(false);
-        setStep('idle');
+        toast.error('No se pudo activar el servicio de notificaciones. Recarga la página.');
         setIsLoading(false);
         return;
       }
@@ -168,6 +224,14 @@ export function TaskReminderToggle({ taskId, taskText, scheduledDate, scheduledT
       
       if (!subscription) {
         console.log('[Reminder] Creando nueva suscripción push...');
+        
+        if (!VAPID_PUBLIC_KEY) {
+          console.error('[Reminder] VAPID_PUBLIC_KEY no configurada');
+          toast.error('Configuración de notificaciones incompleta. Contacta soporte.');
+          setIsLoading(false);
+          return;
+        }
+        
         try {
           subscription = await registration.pushManager.subscribe({
             userVisibleOnly: true,
@@ -181,17 +245,15 @@ export function TaskReminderToggle({ taskId, taskText, scheduledDate, scheduledT
           } else if (subError.name === 'AbortError') {
             toast.error('Suscripción cancelada. Intenta de nuevo.');
           } else {
-            toast.error(`Error al suscribirse: ${subError.message || 'Error desconocido'}`);
+            toast.error('Error al suscribirse a notificaciones.');
           }
-          setIsEnabled(false);
-          setStep('idle');
           setIsLoading(false);
           return;
         }
       }
       console.log('[Reminder] ✓ Suscripción push activa');
 
-      // STEP 5: Save subscription to database (if needed)
+      // STEP 5: Save subscription to database
       const json = subscription.toJSON();
       const deviceId = getOrCreateDeviceId();
       
@@ -207,7 +269,15 @@ export function TaskReminderToggle({ taskId, taskText, scheduledDate, scheduledT
 
       if (subSaveError) {
         console.error('[Reminder] Error guardando suscripción:', subSaveError);
-        // Continue anyway - subscription might already exist
+        
+        // Check for auth errors
+        const errorMsg = subSaveError.message || '';
+        if (errorMsg.includes('401') || errorMsg.includes('Unauthorized')) {
+          toast.error('Sesión expirada. Vuelve a iniciar sesión.');
+          setIsLoading(false);
+          return;
+        }
+        // Non-fatal for other errors - subscription might already exist
         console.log('[Reminder] Continuando (suscripción podría ya existir)...');
       } else {
         console.log('[Reminder] ✓ Suscripción guardada en BD');
@@ -219,7 +289,7 @@ export function TaskReminderToggle({ taskId, taskText, scheduledDate, scheduledT
         body: {
           deviceId,
           taskId,
-          taskText,
+          taskText: taskText.substring(0, 200), // Truncate for safety
           runAt: runAt.toISOString()
         }
       });
@@ -228,23 +298,25 @@ export function TaskReminderToggle({ taskId, taskText, scheduledDate, scheduledT
         console.error('[Reminder] Error guardando recordatorio:', reminderError);
         
         // Parse specific errors
-        if (reminderError.message?.includes('401') || reminderError.message?.includes('Unauthorized')) {
+        const errorMsg = reminderError.message || '';
+        if (errorMsg.includes('401') || errorMsg.includes('Unauthorized')) {
           toast.error('Sesión expirada. Vuelve a iniciar sesión.');
-        } else if (reminderError.message?.includes('400')) {
+        } else if (errorMsg.includes('400')) {
           toast.error('Datos inválidos. Verifica la fecha y hora.');
         } else {
-          toast.error('No se pudo guardar el recordatorio. Intenta de nuevo.');
+          toast.error('No se pudo guardar el recordatorio.');
         }
         
-        setIsEnabled(false);
-        setStep('idle');
         setIsLoading(false);
         return;
       }
 
-      // SUCCESS!
+      // SUCCESS! Now we can turn the switch ON
       console.log('[Reminder] ✓ Recordatorio guardado exitosamente');
-      setStep('ready');
+      saveActiveReminder(taskId, reminderDateTime);
+      setSavedDateTime(reminderDateTime);
+      setShowDatePicker(false);
+      
       toast.success(`Recordatorio: ${runAt.toLocaleDateString('es-ES', { 
         weekday: 'short', 
         day: 'numeric', 
@@ -255,13 +327,17 @@ export function TaskReminderToggle({ taskId, taskText, scheduledDate, scheduledT
       
     } catch (error: any) {
       console.error('[Reminder] Error inesperado:', error);
-      toast.error(`Error: ${error.message || 'Error desconocido'}`);
-      setIsEnabled(false);
-      setStep('idle');
+      toast.error('Error inesperado al guardar el recordatorio.');
     } finally {
       setIsLoading(false);
     }
   }, [reminderDateTime, taskId, taskText]);
+
+  // Cancel without saving
+  const handleCancel = useCallback(() => {
+    setShowDatePicker(false);
+    setReminderDateTime('');
+  }, []);
 
   // Guest mode - show login prompt
   if (isGuest) {
@@ -318,21 +394,22 @@ export function TaskReminderToggle({ taskId, taskText, scheduledDate, scheduledT
             <BellOff size={14} />
           )}
           <span>Recordatorio</span>
-          {step === 'ready' && (
-            <span className="text-xs text-primary bg-primary/10 px-2 py-0.5 rounded-full">
+          {isEnabled && (
+            <span className="text-xs text-primary bg-primary/10 px-2 py-0.5 rounded-full flex items-center gap-1">
+              <Check size={10} />
               Activo
             </span>
           )}
         </div>
         <Switch
-          checked={isEnabled}
+          checked={isEnabled || showDatePicker}
           onCheckedChange={handleToggle}
           disabled={isLoading}
         />
       </div>
 
-      {/* Datetime picker - only show when enabled and not yet scheduled */}
-      {isEnabled && step === 'datetime' && (
+      {/* Datetime picker - only show when picking date */}
+      {showDatePicker && !savedDateTime && (
         <div className="mt-3 space-y-3 animate-fade-in">
           <div className="flex items-center gap-2">
             <Clock size={14} className="text-muted-foreground flex-shrink-0" />
@@ -345,13 +422,22 @@ export function TaskReminderToggle({ taskId, taskText, scheduledDate, scheduledT
             />
           </div>
           
-          <button
-            onClick={handleSchedule}
-            disabled={isLoading || !reminderDateTime}
-            className="w-full py-2.5 px-3 rounded-lg bg-primary text-primary-foreground text-sm font-medium disabled:opacity-50 hover:bg-primary/90 transition-colors"
-          >
-            {isLoading ? 'Guardando...' : 'Programar recordatorio'}
-          </button>
+          <div className="flex gap-2">
+            <button
+              onClick={handleCancel}
+              disabled={isLoading}
+              className="flex-1 py-2.5 px-3 rounded-lg border border-border text-foreground text-sm font-medium hover:bg-muted transition-colors"
+            >
+              Cancelar
+            </button>
+            <button
+              onClick={handleSchedule}
+              disabled={isLoading || !reminderDateTime}
+              className="flex-1 py-2.5 px-3 rounded-lg bg-primary text-primary-foreground text-sm font-medium disabled:opacity-50 hover:bg-primary/90 transition-colors"
+            >
+              {isLoading ? 'Guardando...' : 'Guardar recordatorio'}
+            </button>
+          </div>
           
           <p className="text-xs text-muted-foreground text-center">
             Recibirás una notificación aunque la app esté cerrada
@@ -360,12 +446,12 @@ export function TaskReminderToggle({ taskId, taskText, scheduledDate, scheduledT
       )}
 
       {/* Scheduled confirmation */}
-      {step === 'ready' && (
+      {savedDateTime && !showDatePicker && (
         <div className="mt-3 animate-fade-in">
           <div className="flex items-center gap-2 text-xs text-primary bg-primary/5 p-2 rounded-lg">
             <Bell size={12} />
             <span>
-              {new Date(reminderDateTime).toLocaleDateString('es-ES', {
+              {new Date(savedDateTime).toLocaleDateString('es-ES', {
                 weekday: 'short',
                 day: 'numeric',
                 month: 'short',
