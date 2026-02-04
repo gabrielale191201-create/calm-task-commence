@@ -37,9 +37,10 @@ export function TaskItem({ task, onToggle, onDelete, onStartFocus, showFocusButt
         {isDone && <Check size={14} className="text-white" />}
       </button>
       
-      <div className="flex-1 min-w-0">
+      <div className="flex-1 min-w-0 overflow-hidden">
         <span className={cn(
-          "block text-foreground transition-all duration-300 truncate",
+          "block text-foreground transition-all duration-300",
+          "break-words overflow-wrap-anywhere hyphens-auto",
           isDone && "line-through text-muted-foreground"
         )}>
           {task.text}

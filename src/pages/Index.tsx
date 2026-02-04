@@ -500,27 +500,15 @@ export default function Index() {
       {/* Header with help button */}
       <header className="fixed top-0 left-0 right-0 z-30 bg-background/80 backdrop-blur-lg border-b border-border/50">
         <div className="flex items-center justify-between px-6 py-3">
-          {activeTab === 'hoy' ? (
-            <div className="flex-1 flex flex-col items-center justify-center gap-2">
-              <div className="pointer-events-none select-none">
-                <AppLogo size={48} />
-              </div>
-              <h1 className="text-sm font-display font-semibold tracking-[0.22em] text-foreground">
-                FOCUS ON
-              </h1>
+          {/* Logo - fixed size, calm positioning */}
+          <div className="flex items-center gap-2">
+            <div className="pointer-events-none select-none">
+              <AppLogo size={32} />
             </div>
-          ) : (
-            <div className="flex items-center gap-3">
-              {activeTab === 'enfoque' ? (
-                <div className="pointer-events-none select-none">
-                  <AppLogo size={28} />
-                </div>
-              ) : null}
-              <h1 className="text-xl font-display font-semibold text-primary">
-                Focus On
-              </h1>
-            </div>
-          )}
+            <h1 className="text-lg font-display font-semibold text-primary">
+              Focus On
+            </h1>
+          </div>
           <div className="flex items-center gap-1">
             <button
               onClick={() => setShowHowTo(true)}
@@ -563,8 +551,8 @@ export default function Index() {
       <ProductTagline />
       <OnboardingBanner />
 
-      {/* Main content - extra padding when banner is shown */}
-      <main className="pt-36">
+      {/* Main content */}
+      <main className="pt-20">
         {renderPage()}
       </main>
 
