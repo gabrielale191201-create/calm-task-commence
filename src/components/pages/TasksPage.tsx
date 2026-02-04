@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { Plus, Clock, Calendar, Edit2, Check, X } from 'lucide-react';
 import { Task } from '@/types/focuson';
 import { TaskItem } from '@/components/TaskItem';
-import { TaskReminderToggle } from '@/components/TaskReminderToggle';
+import { TaskReminderToggle } from '@/components/TaskReminderToggleV2';
 import { StartFocusDialog } from '@/components/StartFocusDialog';
 import { toISODate, parseDateString } from '@/lib/dateUtils';
 
