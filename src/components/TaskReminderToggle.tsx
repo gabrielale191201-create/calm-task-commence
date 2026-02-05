@@ -36,10 +36,12 @@ function urlBase64ToUint8Array(base64String: string): ArrayBuffer {
 }
 
 function isValidVapidKey(key: string): boolean {
-  if (!key || key.length < 20) return false;
-  // VAPID public keys are typically 87 characters in base64url
-  const base64urlRegex = /^[A-Za-z0-9_-]+$/;
-  return base64urlRegex.test(key);
+  const k = (key || '').trim().replace(/^"|"$/g, '');
+  if (!k || k.length < 20) return false;
+
+  // Accept both base64url and standard base64 (some generators output +,/ and optional = padding)
+  const base64OrBase64UrlRegex = /^[A-Za-z0-9_\-+/]+=*$/;
+  return base64OrBase64UrlRegex.test(k);
 }
 
 function getReminderStorageKey(taskId: string): string {
