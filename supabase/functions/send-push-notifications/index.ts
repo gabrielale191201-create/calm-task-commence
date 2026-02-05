@@ -6,18 +6,17 @@ const corsHeaders = {
 };
 
 // Web Push implementation
-async function sendWebPush(subscription: { endpoint: string; p256dh: string; auth: string }, payload: string): Promise<boolean> {
-  const vapidPublicKey = Deno.env.get('VAPID_PUBLIC_KEY')!;
-  const vapidPrivateKey = Deno.env.get('VAPID_PRIVATE_KEY')!;
-
+async function sendWebPush(
+  subscription: { endpoint: string; p256dh: string; auth: string },
+  payload: string,
+  vapidPublicKey: string,
+  vapidPrivateKey: string,
+  vapidSubject: string
+): Promise<{ success: boolean; shouldDelete: boolean }> {
   try {
     const webpush = await import('https://esm.sh/web-push@3.6.7');
     
-    webpush.setVapidDetails(
-      'mailto:focuson@lovable.app',
-      vapidPublicKey,
-      vapidPrivateKey
-    );
+    webpush.setVapidDetails(vapidSubject, vapidPublicKey, vapidPrivateKey);
 
     const pushSubscription = {
       endpoint: subscription.endpoint,
@@ -28,19 +27,23 @@ async function sendWebPush(subscription: { endpoint: string; p256dh: string; aut
     };
 
     await webpush.sendNotification(pushSubscription, payload);
-    console.log('Push sent successfully to:', subscription.endpoint.substring(0, 50));
-    return true;
+    console.log('[push] Sent to:', subscription.endpoint.substring(0, 50));
+    return { success: true, shouldDelete: false };
   } catch (error) {
-    // web-push throws rich errors with statusCode / body in many cases.
     const anyErr = error as any;
-    console.error('Failed to send push:', {
+    const statusCode = anyErr?.statusCode;
+    
+    console.error('[push] Failed:', {
       name: anyErr?.name,
       message: anyErr?.message,
-      statusCode: anyErr?.statusCode,
+      statusCode,
       body: anyErr?.body,
       endpointPrefix: subscription.endpoint?.substring(0, 60),
     });
-    return false;
+
+    // 404 or 410 means the subscription is no longer valid
+    const shouldDelete = statusCode === 404 || statusCode === 410;
+    return { success: false, shouldDelete };
   }
 }
 
@@ -49,8 +52,18 @@ Deno.serve(async (req) => {
     return new Response('ok', { headers: corsHeaders });
   }
 
-  // This function is called by a cron job, not by users directly
-  // It uses service_role to access data and send notifications
+  // Validate VAPID configuration
+  const vapidPublicKey = Deno.env.get('VAPID_PUBLIC_KEY');
+  const vapidPrivateKey = Deno.env.get('VAPID_PRIVATE_KEY');
+  const vapidSubject = Deno.env.get('VAPID_SUBJECT') || 'mailto:focuson@lovable.app';
+
+  if (!vapidPublicKey || !vapidPrivateKey) {
+    console.error('[push] Missing VAPID keys');
+    return new Response(
+      JSON.stringify({ error: 'VAPID configuration missing' }),
+      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
+  }
 
   try {
     const supabase = createClient(
@@ -68,7 +81,7 @@ Deno.serve(async (req) => {
       .limit(50);
 
     if (fetchError) {
-      console.error('Error fetching reminders:', fetchError);
+      console.error('[push] Error fetching reminders:', fetchError);
       return new Response(
         JSON.stringify({ error: 'Failed to fetch reminders' }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -76,67 +89,83 @@ Deno.serve(async (req) => {
     }
 
     if (!reminders || reminders.length === 0) {
-      console.log('No pending reminders to send');
+      console.log('[push] No pending reminders');
       return new Response(
         JSON.stringify({ sent: 0 }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    console.log(`Found ${reminders.length} reminders to send`);
+    console.log(`[push] Found ${reminders.length} reminders to send`);
 
     let sentCount = 0;
-    const failedIds: string[] = [];
+    const subscriptionsToDelete: string[] = [];
 
     for (const reminder of reminders) {
-      // Fetch subscription - verify user ownership
-      const { data: subscription } = await supabase
+      // Fetch ALL subscriptions for this user (not just one device)
+      const { data: subscriptions } = await supabase
         .from('push_subscriptions')
-        .select('endpoint, p256dh, auth')
-        .eq('device_id', reminder.device_id)
-        .eq('user_id', reminder.user_id)
-        .single();
+        .select('device_id, endpoint, p256dh, auth')
+        .eq('user_id', reminder.user_id);
       
-      if (!subscription) {
-        console.log('No subscription for reminder:', reminder.id);
-        failedIds.push(reminder.id);
+      if (!subscriptions || subscriptions.length === 0) {
+        console.log('[push] No subscriptions for user:', reminder.user_id);
+        // Mark reminder as sent to avoid retrying forever
+        await supabase.from('reminders').update({ sent: true }).eq('id', reminder.id);
         continue;
       }
 
       const payload = JSON.stringify({
-        title: reminder.task_text,
-        body: 'Es momento de empezar',
-        taskId: reminder.task_id
+        title: `Recordatorio: ${reminder.task_text}`,
+        body: `Ahora: ${reminder.task_text}`,
+        taskId: reminder.task_id,
+        url: '/tareas'
       });
 
-      const success = await sendWebPush(subscription, payload);
+      let anySent = false;
 
-      if (success) {
-        sentCount++;
-        await supabase
-          .from('reminders')
-          .update({ sent: true })
-          .eq('id', reminder.id);
-      } else {
-        failedIds.push(reminder.id);
+      for (const sub of subscriptions) {
+        const result = await sendWebPush(
+          { endpoint: sub.endpoint, p256dh: sub.p256dh, auth: sub.auth },
+          payload,
+          vapidPublicKey,
+          vapidPrivateKey,
+          vapidSubject
+        );
+
+        if (result.success) {
+          anySent = true;
+        }
+        
+        if (result.shouldDelete) {
+          subscriptionsToDelete.push(sub.device_id);
+        }
       }
+
+      if (anySent) {
+        sentCount++;
+      }
+
+      // Mark reminder as sent regardless of success to avoid infinite retries
+      await supabase.from('reminders').update({ sent: true }).eq('id', reminder.id);
     }
 
-    // Clean up failed reminders
-    if (failedIds.length > 0) {
+    // Clean up invalid subscriptions
+    if (subscriptionsToDelete.length > 0) {
+      console.log(`[push] Deleting ${subscriptionsToDelete.length} invalid subscriptions`);
       await supabase
-        .from('reminders')
-        .update({ sent: true })
-        .in('id', failedIds);
+        .from('push_subscriptions')
+        .delete()
+        .in('device_id', subscriptionsToDelete);
     }
 
-    console.log(`Sent ${sentCount}/${reminders.length} notifications`);
+    console.log(`[push] Sent ${sentCount}/${reminders.length} notifications`);
     return new Response(
-      JSON.stringify({ sent: sentCount, total: reminders.length }),
+      JSON.stringify({ sent: sentCount, total: reminders.length, deleted: subscriptionsToDelete.length }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   } catch (err) {
-    console.error('Error:', err);
+    console.error('[push] Error:', err);
     return new Response(
       JSON.stringify({ error: 'Internal server error' }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
