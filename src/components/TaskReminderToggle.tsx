@@ -49,14 +49,32 @@ function isValidVapidKey(key: string): boolean {
 }
 
 async function resolveVapidPublicKey(): Promise<string> {
+  // Try env first
   const envKey = normalizeVapidKey(VAPID_PUBLIC_KEY_ENV);
-  if (isValidVapidKey(envKey)) return envKey;
+  console.log('[Reminder] VAPID env key length:', envKey.length, 'valid:', isValidVapidKey(envKey));
+  
+  if (isValidVapidKey(envKey)) {
+    console.log('[Reminder] Using VAPID key from env');
+    return envKey;
+  }
 
-  const { data, error } = await supabase.functions.invoke('push-config');
-  if (error) return '';
+  // Fallback to backend
+  console.log('[Reminder] Fetching VAPID key from backend...');
+  try {
+    const { data, error } = await supabase.functions.invoke('push-config');
+    
+    if (error) {
+      console.error('[Reminder] push-config error:', error);
+      return '';
+    }
 
-  const fromBackend = normalizeVapidKey((data as any)?.vapidPublicKey || '');
-  return fromBackend;
+    const fromBackend = normalizeVapidKey((data as any)?.vapidPublicKey || '');
+    console.log('[Reminder] Backend VAPID key length:', fromBackend.length, 'valid:', isValidVapidKey(fromBackend));
+    return fromBackend;
+  } catch (err) {
+    console.error('[Reminder] push-config fetch failed:', err);
+    return '';
+  }
 }
 
 function getReminderStorageKey(taskId: string): string {
