@@ -4,6 +4,7 @@ import { Switch } from '@/components/ui/switch';
 import { Capacitor } from '@capacitor/core';
 import { useLocalNotifications, taskIdToNumericId } from '@/hooks/useLocalNotifications';
 import { useAuthState, isGuestMode } from '@/hooks/useAuthState';
+import { usePWAInstalled } from '@/hooks/usePWAInstalled';
 import { parseDateString } from '@/lib/dateUtils';
 
 interface TaskReminderToggleProps {
@@ -33,6 +34,7 @@ export function TaskReminderToggle({
 }: TaskReminderToggleProps) {
   const { isAuthenticated } = useAuthState();
   const [state, setState] = useState<ReminderState>({ status: 'idle' });
+  const isPWAInstalled = usePWAInstalled();
   const { 
     isNative, 
     isSupported, 
@@ -80,13 +82,26 @@ export function TaskReminderToggle({
     );
   }
 
-  // Web platform without native: show unsupported message
-  if (!isNative && Capacitor.getPlatform() === 'web') {
+  // Web platform (not native Capacitor): show install suggestion only if NOT installed as PWA
+  if (!isNative && Capacitor.getPlatform() === 'web' && !isPWAInstalled) {
     return (
       <div className="mt-3 pt-3 border-t border-border/30">
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
           <Bell size={14} className="opacity-50" />
           <span>Instala la app para recordatorios</span>
+        </div>
+      </div>
+    );
+  }
+
+  // PWA installed but not native Capacitor - can't use local notifications
+  // Show informative message about native app requirement
+  if (!isNative && isPWAInstalled) {
+    return (
+      <div className="mt-3 pt-3 border-t border-border/30">
+        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+          <Bell size={14} className="opacity-50" />
+          <span>Recordatorios disponibles en la app nativa</span>
         </div>
       </div>
     );
