@@ -1,7 +1,8 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import { Bell, BellOff, Loader2, AlertCircle, CheckCircle2 } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
-import { supabase } from '@/integrations/supabase/client';
+import { Capacitor } from '@capacitor/core';
+import { useLocalNotifications, taskIdToNumericId } from '@/hooks/useLocalNotifications';
 import { useAuthState, isGuestMode } from '@/hooks/useAuthState';
 import { parseDateString } from '@/lib/dateUtils';
 
@@ -10,71 +11,6 @@ interface TaskReminderToggleProps {
   taskText: string;
   scheduledDate?: string;
   scheduledTime?: string;
-}
-
-const DEVICE_ID_KEY = 'focuson_device_id';
-const VAPID_PUBLIC_KEY_ENV = import.meta.env.VITE_VAPID_PUBLIC_KEY || '';
-
-function normalizeVapidKey(key: string): string {
-  return (key || '').trim().replace(/^"|"$/g, '');
-}
-
-function getOrCreateDeviceId(): string {
-  let deviceId = localStorage.getItem(DEVICE_ID_KEY);
-  if (!deviceId) {
-    deviceId = crypto.randomUUID();
-    localStorage.setItem(DEVICE_ID_KEY, deviceId);
-  }
-  return deviceId;
-}
-
-function urlBase64ToUint8Array(base64String: string): ArrayBuffer {
-  const padding = '='.repeat((4 - base64String.length % 4) % 4);
-  const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
-  const rawData = window.atob(base64);
-  const outputArray = new Uint8Array(rawData.length);
-  for (let i = 0; i < rawData.length; ++i) {
-    outputArray[i] = rawData.charCodeAt(i);
-  }
-  return outputArray.buffer as ArrayBuffer;
-}
-
-function isValidVapidKey(key: string): boolean {
-  const k = (key || '').trim().replace(/^"|"$/g, '');
-  if (!k || k.length < 20) return false;
-
-  // Accept both base64url and standard base64 (some generators output +,/ and optional = padding)
-  const base64OrBase64UrlRegex = /^[A-Za-z0-9_\-+/]+=*$/;
-  return base64OrBase64UrlRegex.test(k);
-}
-
-async function resolveVapidPublicKey(): Promise<string> {
-  // Try env first
-  const envKey = normalizeVapidKey(VAPID_PUBLIC_KEY_ENV);
-  console.log('[Reminder] VAPID env key length:', envKey.length, 'valid:', isValidVapidKey(envKey));
-  
-  if (isValidVapidKey(envKey)) {
-    console.log('[Reminder] Using VAPID key from env');
-    return envKey;
-  }
-
-  // Fallback to backend
-  console.log('[Reminder] Fetching VAPID key from backend...');
-  try {
-    const { data, error } = await supabase.functions.invoke('push-config');
-    
-    if (error) {
-      console.error('[Reminder] push-config error:', error);
-      return '';
-    }
-
-    const fromBackend = normalizeVapidKey((data as any)?.vapidPublicKey || '');
-    console.log('[Reminder] Backend VAPID key length:', fromBackend.length, 'valid:', isValidVapidKey(fromBackend));
-    return fromBackend;
-  } catch (err) {
-    console.error('[Reminder] push-config fetch failed:', err);
-    return '';
-  }
 }
 
 function getReminderStorageKey(taskId: string): string {
@@ -95,8 +31,16 @@ export function TaskReminderToggle({
   scheduledDate, 
   scheduledTime 
 }: TaskReminderToggleProps) {
-  const { isAuthenticated, session } = useAuthState();
+  const { isAuthenticated } = useAuthState();
   const [state, setState] = useState<ReminderState>({ status: 'idle' });
+  const { 
+    isNative, 
+    isSupported, 
+    hasPermission, 
+    requestPermissions, 
+    scheduleNotification, 
+    cancelNotificationByTaskId 
+  } = useLocalNotifications();
   
   // Check if reminder is already set from localStorage
   useEffect(() => {
@@ -111,8 +55,8 @@ export function TaskReminderToggle({
     return null;
   }
 
-  // Guest mode - show login prompt
-  if (isGuestMode()) {
+  // Guest mode - show login prompt (only needed for cloud sync, not local notifications)
+  if (isGuestMode() && !isNative) {
     return (
       <div className="mt-3 pt-3 border-t border-border/30">
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -123,8 +67,9 @@ export function TaskReminderToggle({
     );
   }
 
-  // Not authenticated
-  if (!isAuthenticated || !session) {
+  // Native platform: always available
+  // Web platform: needs auth for push
+  if (!isNative && (!isAuthenticated)) {
     return (
       <div className="mt-3 pt-3 border-t border-border/30">
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -135,7 +80,17 @@ export function TaskReminderToggle({
     );
   }
 
-  // VAPID key availability is resolved at runtime (env first, then backend)
+  // Web platform without native: show unsupported message
+  if (!isNative && Capacitor.getPlatform() === 'web') {
+    return (
+      <div className="mt-3 pt-3 border-t border-border/30">
+        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+          <Bell size={14} className="opacity-50" />
+          <span>Instala la app para recordatorios</span>
+        </div>
+      </div>
+    );
+  }
 
   const calculateReminderTime = (): Date | null => {
     try {
@@ -153,82 +108,20 @@ export function TaskReminderToggle({
   };
 
   const enableReminder = async () => {
-    console.log('[Reminder] Starting enableReminder flow');
+    console.log('[Reminder] Starting enableReminder flow (native local notifications)');
     setState({ status: 'loading' });
 
     try {
-      // Step 1: Resolve VAPID key (env first, then backend)
-      const vapidPublicKey = await resolveVapidPublicKey();
-      if (!isValidVapidKey(vapidPublicKey)) {
-        throw new Error('VAPID_CONFIG_MISSING|La configuración de notificaciones no está disponible. Contacta al administrador.');
-      }
-
-      // Step 2: Check browser support
-      if (!('serviceWorker' in navigator)) {
-        throw new Error('SW_NOT_SUPPORTED|Tu navegador no soporta Service Workers');
-      }
-      if (!('PushManager' in window)) {
-        throw new Error('PUSH_NOT_SUPPORTED|Tu navegador no soporta notificaciones push');
-      }
-      if (!('Notification' in window)) {
-        throw new Error('NOTIF_NOT_SUPPORTED|Tu navegador no soporta notificaciones');
-      }
-
-      // Step 3: Request notification permission
-      console.log('[Reminder] Requesting notification permission...');
-      const permission = await Notification.requestPermission();
-      console.log('[Reminder] Permission result:', permission);
-      
-      if (permission !== 'granted') {
-        throw new Error('PERMISSION_DENIED|Necesitas permitir las notificaciones para recibir recordatorios');
-      }
-
-      // Step 4: Register service worker
-      console.log('[Reminder] Registering service worker...');
-      const registration = await navigator.serviceWorker.register('/sw.js', { scope: '/' });
-      await navigator.serviceWorker.ready;
-      console.log('[Reminder] Service worker ready, scope:', registration.scope);
-
-      // Step 5: Subscribe to push
-      console.log('[Reminder] Subscribing to push...');
-      let subscription = await registration.pushManager.getSubscription();
-      
-      if (!subscription) {
-        try {
-          subscription = await registration.pushManager.subscribe({
-            userVisibleOnly: true,
-            applicationServerKey: urlBase64ToUint8Array(vapidPublicKey)
-          });
-          console.log('[Reminder] New subscription created');
-        } catch (subscribeError: any) {
-          console.error('[Reminder] Subscribe error:', subscribeError);
-          throw new Error(`SUBSCRIBE_FAILED|Error al suscribirse: ${subscribeError.name} - ${subscribeError.message}`);
+      // Step 1: Request permissions if needed
+      if (!hasPermission) {
+        console.log('[Reminder] Requesting notification permissions...');
+        const granted = await requestPermissions();
+        if (!granted) {
+          throw new Error('PERMISSION_DENIED|Necesitas permitir las notificaciones para recibir recordatorios');
         }
-      } else {
-        console.log('[Reminder] Using existing subscription');
       }
 
-      const subscriptionJson = subscription.toJSON();
-      const deviceId = getOrCreateDeviceId();
-
-      // Step 6: Save subscription to database
-      console.log('[Reminder] Saving subscription to database...');
-      const { error: subError } = await supabase.functions.invoke('save-push-subscription', {
-        body: {
-          deviceId,
-          endpoint: subscriptionJson.endpoint,
-          p256dh: subscriptionJson.keys?.p256dh,
-          auth: subscriptionJson.keys?.auth
-        }
-      });
-
-      if (subError) {
-        console.error('[Reminder] Save subscription error:', subError);
-        throw new Error(`SAVE_SUB_FAILED|Error al guardar suscripción: ${subError.message}`);
-      }
-      console.log('[Reminder] Subscription saved successfully');
-
-      // Step 7: Calculate reminder time
+      // Step 2: Calculate reminder time
       const reminderTime = calculateReminderTime();
       if (!reminderTime) {
         throw new Error('INVALID_TIME|No se pudo calcular la hora del recordatorio');
@@ -239,26 +132,26 @@ export function TaskReminderToggle({
         throw new Error('TIME_PASSED|La hora programada ya pasó');
       }
 
-      // Step 8: Save reminder
-      console.log('[Reminder] Saving reminder for:', reminderTime.toISOString());
-      const { error: reminderError } = await supabase.functions.invoke('save-reminder', {
-        body: {
-          deviceId,
-          taskId,
-          taskText,
-          runAt: reminderTime.toISOString()
-        }
+      // Step 3: Schedule local notification
+      const notificationId = taskIdToNumericId(taskId);
+      console.log('[Reminder] Scheduling local notification:', notificationId, 'for:', reminderTime.toISOString());
+      
+      const success = await scheduleNotification({
+        id: notificationId,
+        title: '⏰ Recordatorio',
+        body: taskText,
+        scheduleAt: reminderTime,
+        extra: { taskId }
       });
 
-      if (reminderError) {
-        console.error('[Reminder] Save reminder error:', reminderError);
-        throw new Error(`SAVE_REMINDER_FAILED|Error al guardar recordatorio: ${reminderError.message}`);
+      if (!success) {
+        throw new Error('SCHEDULE_FAILED|No se pudo programar la notificación');
       }
 
       // Success - save to localStorage
       localStorage.setItem(getReminderStorageKey(taskId), reminderTime.toISOString());
       setState({ status: 'enabled' });
-      console.log('[Reminder] Reminder enabled successfully!');
+      console.log('[Reminder] Local notification scheduled successfully!');
 
     } catch (error: any) {
       console.error('[Reminder] Error:', error);
@@ -280,17 +173,7 @@ export function TaskReminderToggle({
     setState({ status: 'loading' });
 
     try {
-      const deviceId = getOrCreateDeviceId();
-      
-      const { error } = await supabase.functions.invoke('delete-reminder', {
-        body: { deviceId, taskId }
-      });
-
-      if (error) {
-        console.error('[Reminder] Delete error:', error);
-        // Still remove from localStorage even if server fails
-      }
-
+      await cancelNotificationByTaskId(taskId);
       localStorage.removeItem(getReminderStorageKey(taskId));
       setState({ status: 'idle' });
       console.log('[Reminder] Reminder disabled');
