@@ -13,7 +13,11 @@ interface TaskReminderToggleProps {
 }
 
 const DEVICE_ID_KEY = 'focuson_device_id';
-const VAPID_PUBLIC_KEY = import.meta.env.VITE_VAPID_PUBLIC_KEY || '';
+const VAPID_PUBLIC_KEY_ENV = import.meta.env.VITE_VAPID_PUBLIC_KEY || '';
+
+function normalizeVapidKey(key: string): string {
+  return (key || '').trim().replace(/^"|"$/g, '');
+}
 
 function getOrCreateDeviceId(): string {
   let deviceId = localStorage.getItem(DEVICE_ID_KEY);
@@ -42,6 +46,17 @@ function isValidVapidKey(key: string): boolean {
   // Accept both base64url and standard base64 (some generators output +,/ and optional = padding)
   const base64OrBase64UrlRegex = /^[A-Za-z0-9_\-+/]+=*$/;
   return base64OrBase64UrlRegex.test(k);
+}
+
+async function resolveVapidPublicKey(): Promise<string> {
+  const envKey = normalizeVapidKey(VAPID_PUBLIC_KEY_ENV);
+  if (isValidVapidKey(envKey)) return envKey;
+
+  const { data, error } = await supabase.functions.invoke('push-config');
+  if (error) return '';
+
+  const fromBackend = normalizeVapidKey((data as any)?.vapidPublicKey || '');
+  return fromBackend;
 }
 
 function getReminderStorageKey(taskId: string): string {
@@ -102,8 +117,7 @@ export function TaskReminderToggle({
     );
   }
 
-  // Check VAPID key availability
-  const vapidAvailable = isValidVapidKey(VAPID_PUBLIC_KEY);
+  // VAPID key availability is resolved at runtime (env first, then backend)
 
   const calculateReminderTime = (): Date | null => {
     try {
@@ -125,8 +139,9 @@ export function TaskReminderToggle({
     setState({ status: 'loading' });
 
     try {
-      // Step 1: Check VAPID key
-      if (!vapidAvailable) {
+      // Step 1: Resolve VAPID key (env first, then backend)
+      const vapidPublicKey = await resolveVapidPublicKey();
+      if (!isValidVapidKey(vapidPublicKey)) {
         throw new Error('VAPID_CONFIG_MISSING|La configuración de notificaciones no está disponible. Contacta al administrador.');
       }
 
@@ -164,7 +179,7 @@ export function TaskReminderToggle({
         try {
           subscription = await registration.pushManager.subscribe({
             userVisibleOnly: true,
-            applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY)
+            applicationServerKey: urlBase64ToUint8Array(vapidPublicKey)
           });
           console.log('[Reminder] New subscription created');
         } catch (subscribeError: any) {
