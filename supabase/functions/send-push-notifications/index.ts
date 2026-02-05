@@ -31,7 +31,15 @@ async function sendWebPush(subscription: { endpoint: string; p256dh: string; aut
     console.log('Push sent successfully to:', subscription.endpoint.substring(0, 50));
     return true;
   } catch (error) {
-    console.error('Failed to send push:', error);
+    // web-push throws rich errors with statusCode / body in many cases.
+    const anyErr = error as any;
+    console.error('Failed to send push:', {
+      name: anyErr?.name,
+      message: anyErr?.message,
+      statusCode: anyErr?.statusCode,
+      body: anyErr?.body,
+      endpointPrefix: subscription.endpoint?.substring(0, 60),
+    });
     return false;
   }
 }

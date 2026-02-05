@@ -17,6 +17,27 @@ const DEVICE_ID_KEY = 'focuson_device_id';
 const REMINDERS_STORAGE_KEY = 'focuson_active_reminders';
 const VAPID_PUBLIC_KEY = import.meta.env.VITE_VAPID_PUBLIC_KEY || '';
 
+function formatUnknownError(err: unknown): { name: string; message: string } {
+  if (err instanceof Error) {
+    return { name: err.name || 'Error', message: err.message || 'Unknown error' };
+  }
+  try {
+    return { name: 'Error', message: JSON.stringify(err) };
+  } catch {
+    return { name: 'Error', message: String(err) };
+  }
+}
+
+function isProbablyValidVapidPublicKey(key: string): boolean {
+  // WebPush expects a base64url-encoded 65-byte (uncompressed P-256) public key.
+  // We can’t fully validate without decoding; this is a pragmatic guardrail.
+  if (!key) return false;
+  if (key.length < 80 || key.length > 120) return false;
+  // base64url charset
+  if (!/^[A-Za-z0-9_-]+$/.test(key)) return false;
+  return true;
+}
+
 function getOrCreateDeviceId(): string {
   let deviceId = localStorage.getItem(DEVICE_ID_KEY);
   if (!deviceId) {
@@ -68,6 +89,7 @@ export function TaskReminderToggle({ taskId, taskText, scheduledDate, scheduledT
   const [reminderDateTime, setReminderDateTime] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [savedDateTime, setSavedDateTime] = useState<string | null>(null);
+  const [lastError, setLastError] = useState<string | null>(null);
 
   // Check browser support
   const isSupported = 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window;
@@ -109,6 +131,7 @@ export function TaskReminderToggle({ taskId, taskText, scheduledDate, scheduledT
       setIsLoading(true);
       
       try {
+        setLastError(null);
         const deviceId = getOrCreateDeviceId();
         await supabase.functions.invoke('delete-reminder', {
           body: { deviceId, taskId }
@@ -130,6 +153,7 @@ export function TaskReminderToggle({ taskId, taskText, scheduledDate, scheduledT
     // Turning ON - show date picker (don't activate switch yet)
     if (checked && !savedDateTime) {
       console.log('[Reminder] Abriendo selector de fecha...');
+      setLastError(null);
       
       // STEP 1: Check browser support
       if (!isSupported) {
@@ -163,8 +187,10 @@ export function TaskReminderToggle({ taskId, taskText, scheduledDate, scheduledT
             return;
           }
         } catch (err) {
-          console.error('[Reminder] Error solicitando permiso:', err);
-          toast.error('Error al solicitar permisos de notificación.');
+          const e = formatUnknownError(err);
+          console.error('[Reminder] Error solicitando permiso:', e);
+          setLastError(`[Notification.requestPermission] ${e.name}: ${e.message}`);
+          toast.error(`${e.name}: ${e.message}`);
           setIsLoading(false);
           return;
         } finally {
@@ -205,29 +231,62 @@ export function TaskReminderToggle({ taskId, taskText, scheduledDate, scheduledT
     console.log('[Reminder] Iniciando programación para:', runAt.toISOString());
 
     try {
+      setLastError(null);
+
       // STEP 3: Verify/register Service Worker
       console.log('[Reminder] Verificando Service Worker...');
       let registration: ServiceWorkerRegistration;
       try {
-        registration = await navigator.serviceWorker.ready;
-        console.log('[Reminder] ✓ Service Worker activo:', registration.active?.state);
+        const ready = await navigator.serviceWorker.ready;
+        registration = ready;
+        const activeState = registration.active?.state;
+        const scope = registration.scope;
+        const scriptURL = registration.active?.scriptURL;
+        console.log('[Reminder] ✓ Service Worker activo:', { activeState, scope, scriptURL });
+        if (!scope || !scope.endsWith('/')) {
+          console.warn('[Reminder] Service Worker scope inesperado:', scope);
+        }
       } catch (swError) {
-        console.error('[Reminder] Error con Service Worker:', swError);
-        toast.error('No se pudo activar el servicio de notificaciones. Recarga la página.');
+        const e = formatUnknownError(swError);
+        console.error('[Reminder] Error con Service Worker:', e);
+        setLastError(`[serviceWorker.ready] ${e.name}: ${e.message}`);
+        toast.error(`${e.name}: ${e.message}`);
         setIsLoading(false);
         return;
       }
 
       // STEP 4: Create/get push subscription
       console.log('[Reminder] Verificando suscripción push...');
-      let subscription = await registration.pushManager.getSubscription();
+      let subscription: PushSubscription | null = null;
+      try {
+        subscription = await registration.pushManager.getSubscription();
+        console.log('[Reminder] pushManager.getSubscription() =>', subscription ? 'EXISTS' : 'NULL');
+      } catch (err) {
+        const e = formatUnknownError(err);
+        console.error('[Reminder] Error en getSubscription:', e);
+        setLastError(`[pushManager.getSubscription] ${e.name}: ${e.message}`);
+        toast.error(`${e.name}: ${e.message}`);
+        setIsLoading(false);
+        return;
+      }
       
       if (!subscription) {
         console.log('[Reminder] Creando nueva suscripción push...');
         
         if (!VAPID_PUBLIC_KEY) {
-          console.error('[Reminder] VAPID_PUBLIC_KEY no configurada');
-          toast.error('Configuración de notificaciones incompleta. Contacta soporte.');
+          const msg = 'Falta VAPID_PUBLIC_KEY (configuración de push)';
+          console.error('[Reminder] ' + msg);
+          setLastError(msg);
+          toast.error(msg);
+          setIsLoading(false);
+          return;
+        }
+
+        if (!isProbablyValidVapidPublicKey(VAPID_PUBLIC_KEY)) {
+          const msg = 'VAPID_PUBLIC_KEY inválida (debe ser base64url)';
+          console.error('[Reminder] ' + msg, { length: VAPID_PUBLIC_KEY.length });
+          setLastError(msg);
+          toast.error(msg);
           setIsLoading(false);
           return;
         }
@@ -239,14 +298,10 @@ export function TaskReminderToggle({ taskId, taskText, scheduledDate, scheduledT
           });
           console.log('[Reminder] ✓ Suscripción creada');
         } catch (subError: any) {
-          console.error('[Reminder] Error creando suscripción:', subError);
-          if (subError.name === 'NotAllowedError') {
-            toast.error('Permiso de notificaciones denegado por el navegador.');
-          } else if (subError.name === 'AbortError') {
-            toast.error('Suscripción cancelada. Intenta de nuevo.');
-          } else {
-            toast.error('Error al suscribirse a notificaciones.');
-          }
+          const e = formatUnknownError(subError);
+          console.error('[Reminder] Error creando suscripción:', e);
+          setLastError(`[pushManager.subscribe] ${e.name}: ${e.message}`);
+          toast.error(`${e.name}: ${e.message}`);
           setIsLoading(false);
           return;
         }
@@ -258,7 +313,7 @@ export function TaskReminderToggle({ taskId, taskText, scheduledDate, scheduledT
       const deviceId = getOrCreateDeviceId();
       
       console.log('[Reminder] Guardando suscripción en BD...');
-      const { error: subSaveError } = await supabase.functions.invoke('save-push-subscription', {
+      const { data: subSaveData, error: subSaveError } = await supabase.functions.invoke('save-push-subscription', {
         body: {
           deviceId,
           endpoint: json.endpoint,
@@ -269,6 +324,7 @@ export function TaskReminderToggle({ taskId, taskText, scheduledDate, scheduledT
 
       if (subSaveError) {
         console.error('[Reminder] Error guardando suscripción:', subSaveError);
+        setLastError(`[save-push-subscription] ${subSaveError.name}: ${subSaveError.message}`);
         
         // Check for auth errors
         const errorMsg = subSaveError.message || '';
@@ -280,12 +336,12 @@ export function TaskReminderToggle({ taskId, taskText, scheduledDate, scheduledT
         // Non-fatal for other errors - subscription might already exist
         console.log('[Reminder] Continuando (suscripción podría ya existir)...');
       } else {
-        console.log('[Reminder] ✓ Suscripción guardada en BD');
+        console.log('[Reminder] ✓ Suscripción guardada en BD', subSaveData);
       }
 
       // STEP 6: Save reminder to database
       console.log('[Reminder] Guardando recordatorio en BD...');
-      const { error: reminderError } = await supabase.functions.invoke('save-reminder', {
+      const { data: reminderData, error: reminderError } = await supabase.functions.invoke('save-reminder', {
         body: {
           deviceId,
           taskId,
@@ -296,6 +352,7 @@ export function TaskReminderToggle({ taskId, taskText, scheduledDate, scheduledT
 
       if (reminderError) {
         console.error('[Reminder] Error guardando recordatorio:', reminderError);
+        setLastError(`[save-reminder] ${reminderError.name}: ${reminderError.message}`);
         
         // Parse specific errors
         const errorMsg = reminderError.message || '';
@@ -304,12 +361,14 @@ export function TaskReminderToggle({ taskId, taskText, scheduledDate, scheduledT
         } else if (errorMsg.includes('400')) {
           toast.error('Datos inválidos. Verifica la fecha y hora.');
         } else {
-          toast.error('No se pudo guardar el recordatorio.');
+          toast.error(`${reminderError.name}: ${reminderError.message}`);
         }
         
         setIsLoading(false);
         return;
       }
+
+      console.log('[Reminder] save-reminder OK:', reminderData);
 
       // SUCCESS! Now we can turn the switch ON
       console.log('[Reminder] ✓ Recordatorio guardado exitosamente');
@@ -326,8 +385,10 @@ export function TaskReminderToggle({ taskId, taskText, scheduledDate, scheduledT
       })}`);
       
     } catch (error: any) {
-      console.error('[Reminder] Error inesperado:', error);
-      toast.error('Error inesperado al guardar el recordatorio.');
+      const e = formatUnknownError(error);
+      console.error('[Reminder] Error inesperado:', e);
+      setLastError(`[unexpected] ${e.name}: ${e.message}`);
+      toast.error(`${e.name}: ${e.message}`);
     } finally {
       setIsLoading(false);
     }
@@ -442,6 +503,46 @@ export function TaskReminderToggle({ taskId, taskText, scheduledDate, scheduledT
           <p className="text-xs text-muted-foreground text-center">
             Recibirás una notificación aunque la app esté cerrada
           </p>
+
+          {lastError ? (
+            <div className="mt-2 text-xs text-destructive bg-destructive/10 border border-destructive/20 rounded-lg p-2">
+              <div className="font-medium">Error técnico</div>
+              <div className="break-words">{lastError}</div>
+            </div>
+          ) : null}
+
+          {/* Debug action (internal): send immediate test push */}
+          {window.location.search.includes('debugPush=1') ? (
+            <button
+              type="button"
+              disabled={isLoading}
+              onClick={async () => {
+                try {
+                  setLastError(null);
+                  console.log('[Reminder][Debug] Invocando test-push...');
+                  const { data, error } = await supabase.functions.invoke('test-push', {
+                    body: { title: 'Test Focus On', body: 'Notificación de prueba', taskId }
+                  });
+                  if (error) {
+                    console.error('[Reminder][Debug] test-push error:', error);
+                    setLastError(`[test-push] ${error.name}: ${error.message}`);
+                    toast.error(`${error.name}: ${error.message}`);
+                    return;
+                  }
+                  console.log('[Reminder][Debug] test-push OK:', data);
+                  toast.success('Test push enviado (revisa notificación)');
+                } catch (err) {
+                  const e = formatUnknownError(err);
+                  console.error('[Reminder][Debug] test-push unexpected:', e);
+                  setLastError(`[test-push] ${e.name}: ${e.message}`);
+                  toast.error(`${e.name}: ${e.message}`);
+                }
+              }}
+              className="w-full py-2 px-3 rounded-lg border border-border text-foreground text-xs font-medium hover:bg-muted transition-colors"
+            >
+              Probar push inmediato (debug)
+            </button>
+          ) : null}
         </div>
       )}
 
