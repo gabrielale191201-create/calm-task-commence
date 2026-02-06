@@ -200,6 +200,15 @@ export function TaskReminderToggleStable({
   const handlePermissionModalActivate = async () => {
     log('permission modal: ACTIVATE action triggered');
 
+    // If auth is missing (or guest), we must route to login (push requires an account)
+    if (isGuestMode() || !isAuthenticated) {
+      setEnabled(false);
+      pendingScheduleRef.current = null;
+      toast('Inicia sesión para activar recordatorios');
+      navigate('/auth');
+      return;
+    }
+
     try {
       // IMPORTANT: do NOT defer. Permission prompts require a direct user gesture on mobile browsers.
       const ok = isNative ? await requestNativePermissions() : await subscribeWebPush();
@@ -243,6 +252,13 @@ export function TaskReminderToggleStable({
 
   const handleReminderToggle = (desired: boolean) => {
     log('toggle clicked', { taskId, desired });
+
+    // If user tries to enable reminders without an account, route to login immediately.
+    if (desired && (isGuestMode() || !isAuthenticated)) {
+      toast('Inicia sesión para activar recordatorios');
+      navigate('/auth');
+      return;
+    }
 
     // Always immediate, visible action: flip UI instantly
     setEnabled(desired);
