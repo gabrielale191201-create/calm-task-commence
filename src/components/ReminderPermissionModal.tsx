@@ -9,6 +9,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
+import type { PointerEvent } from 'react';
 
 interface ReminderPermissionModalProps {
   open: boolean;
@@ -25,21 +26,21 @@ export function ReminderPermissionModal({
   onActivate,
   onDismiss,
 }: ReminderPermissionModalProps) {
-
-  const handleActivate = (e: React.MouseEvent) => {
-    e.stopPropagation();
+  const activate = (e: PointerEvent) => {
     e.preventDefault();
+    e.stopPropagation();
     console.info('REMINDERS_ACTIVATE_CLICK');
     onOpenChange(false);
-    setTimeout(() => onActivate?.(), 10);
+    // Next tick: let the dialog start closing before starting system prompts.
+    setTimeout(() => onActivate?.(), 0);
   };
 
-  const handleDismiss = (e: React.MouseEvent) => {
-    e.stopPropagation();
+  const dismiss = (e: PointerEvent) => {
     e.preventDefault();
+    e.stopPropagation();
     console.info('REMINDERS_DISMISS_CLICK');
     onOpenChange(false);
-    setTimeout(() => onDismiss?.(), 10);
+    setTimeout(() => onDismiss?.(), 0);
   };
 
   if (variant === 'request') {
@@ -54,12 +55,17 @@ export function ReminderPermissionModal({
           </AlertDialogHeader>
           <AlertDialogFooter className="flex-row gap-2 sm:gap-2">
             <AlertDialogCancel asChild>
-              <Button variant="outline" className="mt-0 flex-1" onClick={handleDismiss}>
+              <Button
+                type="button"
+                variant="outline"
+                className="mt-0 flex-1"
+                onPointerDown={dismiss}
+              >
                 Ahora no
               </Button>
             </AlertDialogCancel>
             <AlertDialogAction asChild>
-              <Button className="flex-1" onClick={handleActivate}>
+              <Button type="button" className="flex-1" onPointerDown={activate}>
                 Activar
               </Button>
             </AlertDialogAction>
@@ -81,7 +87,7 @@ export function ReminderPermissionModal({
         </AlertDialogHeader>
         <AlertDialogFooter>
           <AlertDialogAction asChild>
-            <Button onClick={handleDismiss}>Entendido</Button>
+            <Button type="button" onPointerDown={dismiss}>Entendido</Button>
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>
