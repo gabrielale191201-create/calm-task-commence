@@ -8,6 +8,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import { useRef } from 'react';
 
 interface ReminderPermissionModalProps {
   open: boolean;
@@ -17,66 +18,85 @@ interface ReminderPermissionModalProps {
   onDismiss?: () => void;
 }
 
+type CloseReason = 'activate' | 'dismiss' | null;
+
 export function ReminderPermissionModal({
   open,
   onOpenChange,
   variant,
   onActivate,
-  onDismiss
+  onDismiss,
 }: ReminderPermissionModalProps) {
-  
-  const handleActivateClick = () => {
-    console.info('[ReminderModal] REMINDERS_ACTIVATE_CLICK');
-    // Close modal first, then trigger activation
+  const closeReasonRef = useRef<CloseReason>(null);
+
+  const close = (reason: CloseReason) => {
+    closeReasonRef.current = reason;
     onOpenChange(false);
-    onActivate?.();
   };
 
-  const handleDismissClick = () => {
-    console.info('[ReminderModal] REMINDERS_DISMISS_CLICK');
-    // Guard: This should NEVER call onActivate
+  const handleActivateClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    console.info('REMINDERS_ACTIVATE_CLICK');
+
+    // Mark reason BEFORE closing; otherwise onOpenChange(false) could be treated as dismiss.
+    close('activate');
+
+    // Run activation after close to avoid overlay conflicts.
+    setTimeout(() => {
+      onActivate?.();
+    }, 0);
+  };
+
+  const handleDismissClick = (e?: React.SyntheticEvent) => {
+    e?.stopPropagation();
+    console.info('REMINDERS_DISMISS_CLICK');
+
+    // Guard: dismiss must never activate
     if (process.env.NODE_ENV === 'development') {
-      // Extra safety check in dev
+      // Intentionally left as an explicit guard location.
     }
-    onOpenChange(false);
+
+    close('dismiss');
     onDismiss?.();
+  };
+
+  const handleOpenChange = (newOpen: boolean) => {
+    if (!newOpen) {
+      const reason = closeReasonRef.current;
+      closeReasonRef.current = null;
+
+      // If the dialog closed without an explicit button action, treat as dismiss.
+      if (reason === null) {
+        console.info('REMINDERS_DISMISS_CLICK');
+        onDismiss?.();
+      }
+    }
+
+    onOpenChange(newOpen);
   };
 
   if (variant === 'request') {
     return (
-      <AlertDialog open={open} onOpenChange={(newOpen) => {
-        if (!newOpen) {
-          // Modal closing without explicit action = dismiss
-          console.info('[ReminderModal] REMINDERS_DISMISS_VIA_CLOSE');
-          onDismiss?.();
-        }
-        onOpenChange(newOpen);
-      }}>
+      <AlertDialog open={open} onOpenChange={handleOpenChange}>
         <AlertDialogContent className="max-w-sm">
           <AlertDialogHeader>
-            <AlertDialogTitle className="text-lg">
-              Activar recordatorios
-            </AlertDialogTitle>
+            <AlertDialogTitle className="text-lg">Activar recordatorios</AlertDialogTitle>
             <AlertDialogDescription className="text-sm text-muted-foreground">
               Focus On puede avisarte a la hora de tus tareas. Solo recordatorios, sin ruido.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter className="flex-row gap-2 sm:gap-2">
-            <AlertDialogCancel 
+            <AlertDialogCancel
               className="mt-0 flex-1"
-              onClick={(e) => {
-                e.preventDefault();
-                handleDismissClick();
-              }}
+              onClick={(e) => handleDismissClick(e)}
+              onPointerDown={(e) => e.stopPropagation()}
             >
               Ahora no
             </AlertDialogCancel>
-            <AlertDialogAction 
-              onClick={(e) => {
-                e.preventDefault();
-                handleActivateClick();
-              }}
+            <AlertDialogAction
               className="flex-1"
+              onClick={handleActivateClick}
+              onPointerDown={(e) => e.stopPropagation()}
             >
               Activar
             </AlertDialogAction>
@@ -88,22 +108,23 @@ export function ReminderPermissionModal({
 
   // variant === 'denied'
   return (
-    <AlertDialog open={open} onOpenChange={onOpenChange}>
+    <AlertDialog open={open} onOpenChange={handleOpenChange}>
       <AlertDialogContent className="max-w-sm">
         <AlertDialogHeader>
-          <AlertDialogTitle className="text-lg">
-            Recordatorios desactivados
-          </AlertDialogTitle>
+          <AlertDialogTitle className="text-lg">Recordatorios desactivados</AlertDialogTitle>
           <AlertDialogDescription className="text-sm text-muted-foreground">
             Para activarlos, habilítalos en ajustes del dispositivo para Focus On.
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogAction onClick={() => {
-            console.info('[ReminderModal] REMINDERS_DENIED_UNDERSTOOD');
-            onOpenChange(false);
-            onDismiss?.();
-          }}>
+          <AlertDialogAction
+            onClick={(e) => {
+              e.stopPropagation();
+              console.info('REMINDERS_DISMISS_CLICK');
+              close('dismiss');
+              onDismiss?.();
+            }}
+          >
             Entendido
           </AlertDialogAction>
         </AlertDialogFooter>
@@ -111,3 +132,4 @@ export function ReminderPermissionModal({
     </AlertDialog>
   );
 }
+
