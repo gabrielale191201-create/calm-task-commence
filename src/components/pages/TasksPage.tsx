@@ -1,8 +1,8 @@
 import { useMemo, useState } from 'react';
-import { Plus, Clock, Calendar, Edit2, Check, X } from 'lucide-react';
+import { Plus, Edit2, Check, X } from 'lucide-react';
 import { Task } from '@/types/focuson';
 import { TaskItem } from '@/components/TaskItem';
-import { TaskReminderToggle } from '@/components/TaskReminderToggle';
+import { TaskReminderToggleStable } from '@/components/reminders/TaskReminderToggleStable';
 import { StartFocusDialog } from '@/components/StartFocusDialog';
 import { toISODate, parseDateString } from '@/lib/dateUtils';
 
@@ -253,7 +253,7 @@ export function TasksPage({ tasks, onAddTask, onToggleTask, onDeleteTask, onUpda
                   meta={formatChip(task)}
                   onPress={() => setSelectedTask(task)}
                 />
-                <TaskReminderToggle
+                <TaskReminderToggleStable
                   taskId={task.id}
                   taskText={task.text}
                   scheduledDate={task.scheduledDate}
@@ -284,7 +284,7 @@ export function TasksPage({ tasks, onAddTask, onToggleTask, onDeleteTask, onUpda
                   meta={formatChip(task)}
                   onPress={() => setSelectedTask(task)}
                 />
-                <TaskReminderToggle
+                <TaskReminderToggleStable
                   taskId={task.id}
                   taskText={task.text}
                   scheduledDate={task.scheduledDate}
