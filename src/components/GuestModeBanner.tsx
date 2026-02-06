@@ -1,9 +1,9 @@
-import { useState } from 'react';
+import { useState, forwardRef } from 'react';
 import { X, Cloud } from 'lucide-react';
 import { useGuestMode } from '@/hooks/useGuestMode';
 import { useNavigate } from 'react-router-dom';
 
-export function GuestModeBanner() {
+export const GuestModeBanner = forwardRef<HTMLDivElement, {}>(function GuestModeBanner(_, ref) {
   const { isGuest, guestBannerDismissed, dismissGuestBanner, exitGuestMode } = useGuestMode();
   const [visible, setVisible] = useState(true);
   const navigate = useNavigate();
@@ -53,4 +53,4 @@ export function GuestModeBanner() {
       </div>
     </div>
   );
-}
+});
