@@ -28,19 +28,27 @@ function urlBase64ToUint8Array(base64String: string): ArrayBuffer {
 let cachedVapidKey: string | null = null;
 
 async function fetchVapidPublicKey(): Promise<string | null> {
-  if (cachedVapidKey) return cachedVapidKey;
+  if (cachedVapidKey) {
+    console.log('[WebPush] Using cached VAPID key');
+    return cachedVapidKey;
+  }
   
   try {
+    console.log('[WebPush] Fetching VAPID key from backend...');
     const { data, error } = await supabase.functions.invoke('push-config');
+    
     if (error) {
       console.error('[WebPush] Error fetching VAPID key:', error);
       return null;
     }
+    
     if (data?.vapidPublicKey) {
       cachedVapidKey = data.vapidPublicKey;
       console.log('[WebPush] VAPID key fetched successfully');
       return cachedVapidKey;
     }
+    
+    console.error('[WebPush] VAPID key not in response:', data);
     return null;
   } catch (err) {
     console.error('[WebPush] Failed to fetch VAPID key:', err);
@@ -55,14 +63,35 @@ export function useWebPushNotifications() {
   const [permission, setPermission] = useState<NotificationPermission>('default');
   const [isLoading, setIsLoading] = useState(false);
 
+  const log = (...args: unknown[]) => console.log('[WebPush]', ...args);
+
+  // Check browser support and existing subscription
   useEffect(() => {
-    const supported = 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window;
-    setIsSupported(supported);
+    const checkSupport = async () => {
+      const supported = 
+        typeof window !== 'undefined' &&
+        window.isSecureContext &&
+        'serviceWorker' in navigator && 
+        'PushManager' in window && 
+        'Notification' in window;
+      
+      log('Browser support check:', {
+        isSecureContext: window.isSecureContext,
+        hasServiceWorker: 'serviceWorker' in navigator,
+        hasPushManager: 'PushManager' in window,
+        hasNotification: 'Notification' in window,
+        supported
+      });
+      
+      setIsSupported(supported);
+      
+      if (supported) {
+        setPermission(Notification.permission);
+        await checkExistingSubscription();
+      }
+    };
     
-    if (supported) {
-      setPermission(Notification.permission);
-      checkExistingSubscription();
-    }
+    checkSupport();
   }, []);
 
   const checkExistingSubscription = async () => {
@@ -71,67 +100,100 @@ export function useWebPushNotifications() {
       if (registration) {
         const subscription = await registration.pushManager.getSubscription();
         setIsSubscribed(!!subscription);
+        log('Existing subscription check:', subscription ? 'found' : 'none');
       }
     } catch (err) {
-      console.error('[WebPush] Error checking subscription:', err);
+      log('Error checking subscription:', err);
     }
   };
 
   const registerServiceWorker = async (): Promise<ServiceWorkerRegistration> => {
+    log('Registering service worker...');
     const registration = await navigator.serviceWorker.register('/sw.js', { scope: '/' });
+    log('SW registered, waiting for ready...');
     await navigator.serviceWorker.ready;
+    log('SW ready');
     return registration;
   };
 
   const subscribe = useCallback(async (): Promise<boolean> => {
+    log('Subscribe called');
+    
     if (!isSupported) {
-      console.error('[WebPush] Push notifications not supported');
+      log('Push notifications not supported');
       return false;
     }
 
     // Skip for guest mode
     if (isGuestMode()) {
-      console.log('[WebPush] Push notifications not available in guest mode');
+      log('Push notifications not available in guest mode');
       return false;
     }
 
     if (!isAuthenticated || !session) {
-      console.error('[WebPush] User not authenticated');
+      log('User not authenticated');
       return false;
     }
 
     setIsLoading(true);
 
     try {
-      // Request permission
+      // Step 1: Request permission
+      log('Requesting notification permission...');
       const perm = await Notification.requestPermission();
       setPermission(perm);
+      log('Permission result:', perm);
       
       if (perm !== 'granted') {
-        console.log('[WebPush] Notification permission denied');
+        log('Notification permission denied');
+        setIsLoading(false);
         return false;
       }
 
-      // Fetch VAPID key from backend
+      // Step 2: Fetch VAPID key from backend
+      log('Fetching VAPID key...');
       const vapidPublicKey = await fetchVapidPublicKey();
       if (!vapidPublicKey) {
-        console.error('[WebPush] VAPID key not available');
+        log('VAPID key not available');
+        setIsLoading(false);
         return false;
       }
 
-      // Register service worker
-      const registration = await registerServiceWorker();
+      // Step 3: Register service worker
+      log('Getting/registering service worker...');
+      let registration = await navigator.serviceWorker.getRegistration();
+      if (!registration) {
+        registration = await registerServiceWorker();
+      } else {
+        await navigator.serviceWorker.ready;
+      }
 
-      // Subscribe to push
-      const subscription = await registration.pushManager.subscribe({
-        userVisibleOnly: true,
-        applicationServerKey: urlBase64ToUint8Array(vapidPublicKey)
-      });
+      // Step 4: Check for existing subscription
+      let subscription = await registration.pushManager.getSubscription();
+      
+      // Step 5: Create new subscription if needed
+      if (!subscription) {
+        log('Creating new push subscription...');
+        try {
+          subscription = await registration.pushManager.subscribe({
+            userVisibleOnly: true,
+            applicationServerKey: urlBase64ToUint8Array(vapidPublicKey)
+          });
+          log('Subscription created:', subscription.endpoint.substring(0, 50) + '...');
+        } catch (subscribeError) {
+          log('Subscribe error:', subscribeError);
+          setIsLoading(false);
+          return false;
+        }
+      } else {
+        log('Using existing subscription');
+      }
 
+      // Step 6: Save to backend
       const json = subscription.toJSON();
       const deviceId = getOrCreateDeviceId();
 
-      // Save to backend with auth token
+      log('Saving subscription to backend...', { deviceId });
       const { error } = await supabase.functions.invoke('save-push-subscription', {
         body: {
           deviceId,
@@ -142,34 +204,37 @@ export function useWebPushNotifications() {
       });
 
       if (error) {
-        console.error('[WebPush] Error saving subscription:', error);
+        log('Error saving subscription:', error);
+        setIsLoading(false);
         return false;
       }
 
       setIsSubscribed(true);
-      console.log('[WebPush] Push subscription saved successfully');
+      log('Push subscription saved successfully');
+      setIsLoading(false);
       return true;
     } catch (err) {
-      console.error('[WebPush] Error subscribing to push:', err);
-      return false;
-    } finally {
+      log('Error in subscribe flow:', err);
       setIsLoading(false);
+      return false;
     }
   }, [isSupported, isAuthenticated, session]);
 
   const unsubscribe = useCallback(async (): Promise<boolean> => {
+    log('Unsubscribe called');
     try {
       const registration = await navigator.serviceWorker.getRegistration();
       if (registration) {
         const subscription = await registration.pushManager.getSubscription();
         if (subscription) {
           await subscription.unsubscribe();
+          log('Unsubscribed successfully');
         }
       }
       setIsSubscribed(false);
       return true;
     } catch (err) {
-      console.error('[WebPush] Error unsubscribing:', err);
+      log('Error unsubscribing:', err);
       return false;
     }
   }, []);
