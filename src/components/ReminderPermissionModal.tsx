@@ -8,7 +8,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { useRef } from 'react';
+import { Button } from '@/components/ui/button';
 
 interface ReminderPermissionModalProps {
   open: boolean;
@@ -18,8 +18,6 @@ interface ReminderPermissionModalProps {
   onDismiss?: () => void;
 }
 
-type CloseReason = 'activate' | 'dismiss' | null;
-
 export function ReminderPermissionModal({
   open,
   onOpenChange,
@@ -27,52 +25,26 @@ export function ReminderPermissionModal({
   onActivate,
   onDismiss,
 }: ReminderPermissionModalProps) {
-  // Single source of truth for what closed the dialog.
-  // We DO NOT call onActivate/onDismiss directly from button clicks; instead we mark
-  // the reason and let Radix close the dialog, then we run callbacks from onOpenChange.
-  const closeReasonRef = useRef<CloseReason>(null);
 
-  const markActivate = (e: React.MouseEvent) => {
-    e.preventDefault();
+  const handleActivate = (e: React.MouseEvent) => {
     e.stopPropagation();
+    e.preventDefault();
     console.info('REMINDERS_ACTIVATE_CLICK');
-    closeReasonRef.current = 'activate';
+    onOpenChange(false);
+    setTimeout(() => onActivate?.(), 10);
   };
 
-  const markDismiss = (e?: React.SyntheticEvent) => {
-    e?.preventDefault();
-    e?.stopPropagation();
+  const handleDismiss = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    e.preventDefault();
     console.info('REMINDERS_DISMISS_CLICK');
-    closeReasonRef.current = 'dismiss';
-
-    // Guard: dismiss must never activate.
-    if (process.env.NODE_ENV === 'development') {
-      // Intentionally explicit: if in the future someone wires dismiss to activation,
-      // put a breakpoint here.
-    }
-  };
-
-  const handleOpenChange = (newOpen: boolean) => {
-    if (!newOpen) {
-      const reason = closeReasonRef.current;
-      closeReasonRef.current = null;
-
-      // Run callbacks after the dialog has actually started closing.
-      // This avoids overlay / DOM interaction edge cases.
-      if (reason === 'activate') {
-        setTimeout(() => onActivate?.(), 0);
-      } else {
-        // Treat backdrop click / ESC (reason=null) as dismiss.
-        setTimeout(() => onDismiss?.(), 0);
-      }
-    }
-
-    onOpenChange(newOpen);
+    onOpenChange(false);
+    setTimeout(() => onDismiss?.(), 10);
   };
 
   if (variant === 'request') {
     return (
-      <AlertDialog open={open} onOpenChange={handleOpenChange}>
+      <AlertDialog open={open} onOpenChange={onOpenChange}>
         <AlertDialogContent className="max-w-sm">
           <AlertDialogHeader>
             <AlertDialogTitle className="text-lg">Activar recordatorios</AlertDialogTitle>
@@ -81,11 +53,15 @@ export function ReminderPermissionModal({
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter className="flex-row gap-2 sm:gap-2">
-            <AlertDialogCancel className="mt-0 flex-1" onClick={(e) => markDismiss(e)}>
-              Ahora no
+            <AlertDialogCancel asChild>
+              <Button variant="outline" className="mt-0 flex-1" onClick={handleDismiss}>
+                Ahora no
+              </Button>
             </AlertDialogCancel>
-            <AlertDialogAction className="flex-1" onClick={markActivate}>
-              Activar
+            <AlertDialogAction asChild>
+              <Button className="flex-1" onClick={handleActivate}>
+                Activar
+              </Button>
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -95,7 +71,7 @@ export function ReminderPermissionModal({
 
   // variant === 'denied'
   return (
-    <AlertDialog open={open} onOpenChange={handleOpenChange}>
+    <AlertDialog open={open} onOpenChange={onOpenChange}>
       <AlertDialogContent className="max-w-sm">
         <AlertDialogHeader>
           <AlertDialogTitle className="text-lg">Recordatorios desactivados</AlertDialogTitle>
@@ -104,10 +80,11 @@ export function ReminderPermissionModal({
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogAction onClick={(e) => markDismiss(e)}>Entendido</AlertDialogAction>
+          <AlertDialogAction asChild>
+            <Button onClick={handleDismiss}>Entendido</Button>
+          </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>
   );
 }
-
