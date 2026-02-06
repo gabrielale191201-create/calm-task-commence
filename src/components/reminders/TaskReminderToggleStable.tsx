@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Bell, BellOff, CheckCircle2, Loader2 } from 'lucide-react';
 import { Capacitor } from '@capacitor/core';
 import { Switch } from '@/components/ui/switch';
@@ -91,6 +92,7 @@ export function TaskReminderToggleStable({
   scheduledTime,
   onScheduleUpdate,
 }: TaskReminderToggleStableProps) {
+  const navigate = useNavigate();
   const { isAuthenticated } = useAuthState();
 
   const {
@@ -341,10 +343,14 @@ export function TaskReminderToggleStable({
       {/* Stable container: never conditionally unmount */}
       <div className="mt-3 pt-3 border-t border-border/30">
         {showLoginPrompt ? (
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <Bell size={14} className="opacity-50" />
+          <button
+            type="button"
+            onClick={() => navigate('/auth')}
+            className="flex items-center gap-2 text-sm text-primary hover:underline"
+          >
+            <Bell size={14} className="opacity-70" />
             <span>Inicia sesión para activar recordatorios</span>
-          </div>
+          </button>
         ) : (
           <>
             <div className="flex items-center justify-between">
