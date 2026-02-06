@@ -116,8 +116,8 @@ Deno.serve(async (req) => {
       }
 
       const payload = JSON.stringify({
-        title: `Recordatorio: ${reminder.task_text}`,
-        body: `Ahora: ${reminder.task_text}`,
+        title: 'Focus On',
+        body: `Te acompaño con esto: ${reminder.task_text}`,
         taskId: reminder.task_id,
         url: '/tareas'
       });

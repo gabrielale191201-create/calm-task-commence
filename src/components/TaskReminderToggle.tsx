@@ -14,8 +14,20 @@ interface TaskReminderToggleProps {
   taskText: string;
   scheduledDate?: string;
   scheduledTime?: string;
-  reminderEnabled?: boolean;
-  onReminderChange?: (enabled: boolean) => void;
+}
+
+function getReminderStorageKey(taskId: string): string {
+  return `focuson_reminder_${taskId}`;
+}
+
+function getDeviceId(): string {
+  const key = 'focuson_device_id';
+  let deviceId = localStorage.getItem(key);
+  if (!deviceId) {
+    deviceId = crypto.randomUUID();
+    localStorage.setItem(key, deviceId);
+  }
+  return deviceId;
 }
 
 type ReminderStatus = 'idle' | 'loading' | 'enabled' | 'error';
@@ -29,15 +41,17 @@ export function TaskReminderToggle({
   taskId, 
   taskText, 
   scheduledDate, 
-  scheduledTime,
-  reminderEnabled = false,
-  onReminderChange
+  scheduledTime
 }: TaskReminderToggleProps) {
   const { isAuthenticated } = useAuthState();
-  const [state, setState] = useState<ReminderState>({ 
-    status: reminderEnabled ? 'enabled' : 'idle' 
-  });
   const isPWAInstalled = usePWAInstalled();
+  
+  // Check localStorage for existing reminder
+  const hasStoredReminder = () => !!localStorage.getItem(getReminderStorageKey(taskId));
+  
+  const [state, setState] = useState<ReminderState>({ 
+    status: hasStoredReminder() ? 'enabled' : 'idle' 
+  });
   
   // Native notifications (Capacitor)
   const { 
@@ -56,10 +70,12 @@ export function TaskReminderToggle({
     subscribe: subscribeWebPush
   } = useWebPushNotifications();
 
-  // Sync state with prop
+  // Re-check stored reminder status on mount
   useEffect(() => {
-    setState({ status: reminderEnabled ? 'enabled' : 'idle' });
-  }, [reminderEnabled]);
+    if (hasStoredReminder()) {
+      setState({ status: 'enabled' });
+    }
+  }, [taskId]);
 
   // Don't show for tasks without complete schedule
   if (!scheduledDate || !scheduledTime) {
@@ -157,38 +173,48 @@ export function TaskReminderToggle({
         if (!success) {
           throw new Error('No se pudo programar la notificación');
         }
+        
+        // Save to localStorage for native
+        localStorage.setItem(getReminderStorageKey(taskId), reminderTime.toISOString());
+        setState({ status: 'enabled' });
+        console.log('[Reminder] Native notification scheduled successfully!');
+        
       } else {
-        // Web: use Web Push
+        // Web: use Web Push via backend
         if (webPushPermission !== 'granted' || !isWebPushSubscribed) {
           const subscribed = await subscribeWebPush();
           if (!subscribed) {
-            // Don't show error, just soft message
+            // Soft message, don't show error
             setState({ 
               status: 'error', 
-              errorMessage: 'Si activas notificaciones, te avisaré a la hora de tus tareas.' 
+              errorMessage: 'Si activas notificaciones en tu navegador, te avisaré a la hora de tus tareas.' 
             });
             return;
           }
         }
+
+        const deviceId = getDeviceId();
+        
+        // Save reminder to backend using the existing save-reminder edge function
+        const { error } = await supabase.functions.invoke('save-reminder', {
+          body: {
+            deviceId,
+            taskId,
+            taskText,
+            runAt: reminderTime.toISOString()
+          }
+        });
+
+        if (error) {
+          console.error('[Reminder] Failed to save reminder:', error);
+          throw new Error('No se pudo guardar el recordatorio');
+        }
+
+        // Save to localStorage for UI state
+        localStorage.setItem(getReminderStorageKey(taskId), reminderTime.toISOString());
+        setState({ status: 'enabled' });
+        console.log('[Reminder] Web push reminder saved successfully!');
       }
-
-      // Update task in database
-      const { error: updateError } = await supabase
-        .from('tasks')
-        .update({ 
-          reminder_enabled: true,
-          reminder_sent_at: null // Reset in case it was sent before
-        })
-        .eq('id', taskId);
-
-      if (updateError) {
-        console.error('[Reminder] Failed to update task:', updateError);
-        throw new Error('No se pudo guardar el recordatorio');
-      }
-
-      setState({ status: 'enabled' });
-      onReminderChange?.(true);
-      console.log('[Reminder] Reminder enabled successfully');
 
     } catch (error: any) {
       console.error('[Reminder] Error:', error);
@@ -206,26 +232,23 @@ export function TaskReminderToggle({
     try {
       if (isNative) {
         await cancelNotificationByTaskId(taskId);
+      } else {
+        // Cancel via backend
+        const deviceId = getDeviceId();
+        await supabase.functions.invoke('delete-reminder', {
+          body: { deviceId, taskId }
+        });
       }
 
-      // Update task in database
-      const { error: updateError } = await supabase
-        .from('tasks')
-        .update({ reminder_enabled: false })
-        .eq('id', taskId);
-
-      if (updateError) {
-        console.error('[Reminder] Failed to update task:', updateError);
-      }
-
+      localStorage.removeItem(getReminderStorageKey(taskId));
       setState({ status: 'idle' });
-      onReminderChange?.(false);
       console.log('[Reminder] Reminder disabled');
 
     } catch (error: any) {
       console.error('[Reminder] Disable error:', error);
+      // Still remove from localStorage
+      localStorage.removeItem(getReminderStorageKey(taskId));
       setState({ status: 'idle' });
-      onReminderChange?.(false);
     }
   };
 

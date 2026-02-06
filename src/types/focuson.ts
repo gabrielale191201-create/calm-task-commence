@@ -21,6 +21,10 @@ export interface Task {
   scheduledDate?: string; // YYYY-MM-DD (opcional)
   scheduledTime?: string; // HH:mm (opcional)
   durationMinutes?: number; // minutos (opcional)
+  
+  // Recordatorio push notification
+  reminderEnabled?: boolean;
+  reminderSentAt?: string; // timestamp ISO cuando se envió
 }
 
 /**
