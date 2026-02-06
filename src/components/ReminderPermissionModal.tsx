@@ -27,37 +27,29 @@ export function ReminderPermissionModal({
   onActivate,
   onDismiss,
 }: ReminderPermissionModalProps) {
+  // Single source of truth for what closed the dialog.
+  // We DO NOT call onActivate/onDismiss directly from button clicks; instead we mark
+  // the reason and let Radix close the dialog, then we run callbacks from onOpenChange.
   const closeReasonRef = useRef<CloseReason>(null);
 
-  const close = (reason: CloseReason) => {
-    closeReasonRef.current = reason;
-    onOpenChange(false);
-  };
-
-  const handleActivateClick = (e: React.MouseEvent) => {
+  const markActivate = (e: React.MouseEvent) => {
+    e.preventDefault();
     e.stopPropagation();
     console.info('REMINDERS_ACTIVATE_CLICK');
-
-    // Mark reason BEFORE closing; otherwise onOpenChange(false) could be treated as dismiss.
-    close('activate');
-
-    // Run activation after close to avoid overlay conflicts.
-    setTimeout(() => {
-      onActivate?.();
-    }, 0);
+    closeReasonRef.current = 'activate';
   };
 
-  const handleDismissClick = (e?: React.SyntheticEvent) => {
+  const markDismiss = (e?: React.SyntheticEvent) => {
+    e?.preventDefault();
     e?.stopPropagation();
     console.info('REMINDERS_DISMISS_CLICK');
+    closeReasonRef.current = 'dismiss';
 
-    // Guard: dismiss must never activate
+    // Guard: dismiss must never activate.
     if (process.env.NODE_ENV === 'development') {
-      // Intentionally left as an explicit guard location.
+      // Intentionally explicit: if in the future someone wires dismiss to activation,
+      // put a breakpoint here.
     }
-
-    close('dismiss');
-    onDismiss?.();
   };
 
   const handleOpenChange = (newOpen: boolean) => {
@@ -65,10 +57,13 @@ export function ReminderPermissionModal({
       const reason = closeReasonRef.current;
       closeReasonRef.current = null;
 
-      // If the dialog closed without an explicit button action, treat as dismiss.
-      if (reason === null) {
-        console.info('REMINDERS_DISMISS_CLICK');
-        onDismiss?.();
+      // Run callbacks after the dialog has actually started closing.
+      // This avoids overlay / DOM interaction edge cases.
+      if (reason === 'activate') {
+        setTimeout(() => onActivate?.(), 0);
+      } else {
+        // Treat backdrop click / ESC (reason=null) as dismiss.
+        setTimeout(() => onDismiss?.(), 0);
       }
     }
 
@@ -86,18 +81,10 @@ export function ReminderPermissionModal({
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter className="flex-row gap-2 sm:gap-2">
-            <AlertDialogCancel
-              className="mt-0 flex-1"
-              onClick={(e) => handleDismissClick(e)}
-              onPointerDown={(e) => e.stopPropagation()}
-            >
+            <AlertDialogCancel className="mt-0 flex-1" onClick={(e) => markDismiss(e)}>
               Ahora no
             </AlertDialogCancel>
-            <AlertDialogAction
-              className="flex-1"
-              onClick={handleActivateClick}
-              onPointerDown={(e) => e.stopPropagation()}
-            >
+            <AlertDialogAction className="flex-1" onClick={markActivate}>
               Activar
             </AlertDialogAction>
           </AlertDialogFooter>
@@ -117,16 +104,7 @@ export function ReminderPermissionModal({
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogAction
-            onClick={(e) => {
-              e.stopPropagation();
-              console.info('REMINDERS_DISMISS_CLICK');
-              close('dismiss');
-              onDismiss?.();
-            }}
-          >
-            Entendido
-          </AlertDialogAction>
+          <AlertDialogAction onClick={(e) => markDismiss(e)}>Entendido</AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>
