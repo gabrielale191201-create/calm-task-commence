@@ -3,8 +3,10 @@ import { Bell, BellOff, Loader2, AlertCircle, CheckCircle2 } from 'lucide-react'
 import { Switch } from '@/components/ui/switch';
 import { Capacitor } from '@capacitor/core';
 import { useLocalNotifications, taskIdToNumericId } from '@/hooks/useLocalNotifications';
+import { useWebPushNotifications } from '@/hooks/useWebPushNotifications';
 import { useAuthState, isGuestMode } from '@/hooks/useAuthState';
 import { usePWAInstalled } from '@/hooks/usePWAInstalled';
+import { supabase } from '@/integrations/supabase/client';
 import { parseDateString } from '@/lib/dateUtils';
 
 interface TaskReminderToggleProps {
@@ -12,10 +14,8 @@ interface TaskReminderToggleProps {
   taskText: string;
   scheduledDate?: string;
   scheduledTime?: string;
-}
-
-function getReminderStorageKey(taskId: string): string {
-  return `focuson_reminder_${taskId}`;
+  reminderEnabled?: boolean;
+  onReminderChange?: (enabled: boolean) => void;
 }
 
 type ReminderStatus = 'idle' | 'loading' | 'enabled' | 'error';
@@ -23,42 +23,51 @@ type ReminderStatus = 'idle' | 'loading' | 'enabled' | 'error';
 interface ReminderState {
   status: ReminderStatus;
   errorMessage?: string;
-  errorDetails?: string;
 }
 
 export function TaskReminderToggle({ 
   taskId, 
   taskText, 
   scheduledDate, 
-  scheduledTime 
+  scheduledTime,
+  reminderEnabled = false,
+  onReminderChange
 }: TaskReminderToggleProps) {
   const { isAuthenticated } = useAuthState();
-  const [state, setState] = useState<ReminderState>({ status: 'idle' });
+  const [state, setState] = useState<ReminderState>({ 
+    status: reminderEnabled ? 'enabled' : 'idle' 
+  });
   const isPWAInstalled = usePWAInstalled();
+  
+  // Native notifications (Capacitor)
   const { 
     isNative, 
-    isSupported, 
-    hasPermission, 
-    requestPermissions, 
+    hasPermission: hasNativePermission, 
+    requestPermissions: requestNativePermissions, 
     scheduleNotification, 
     cancelNotificationByTaskId 
   } = useLocalNotifications();
   
-  // Check if reminder is already set from localStorage
+  // Web Push notifications (PWA)
+  const {
+    isSupported: isWebPushSupported,
+    isSubscribed: isWebPushSubscribed,
+    permission: webPushPermission,
+    subscribe: subscribeWebPush
+  } = useWebPushNotifications();
+
+  // Sync state with prop
   useEffect(() => {
-    const stored = localStorage.getItem(getReminderStorageKey(taskId));
-    if (stored) {
-      setState({ status: 'enabled' });
-    }
-  }, [taskId]);
+    setState({ status: reminderEnabled ? 'enabled' : 'idle' });
+  }, [reminderEnabled]);
 
   // Don't show for tasks without complete schedule
   if (!scheduledDate || !scheduledTime) {
     return null;
   }
 
-  // Guest mode - show login prompt (only needed for cloud sync, not local notifications)
-  if (isGuestMode() && !isNative) {
+  // Guest mode - show login prompt
+  if (isGuestMode()) {
     return (
       <div className="mt-3 pt-3 border-t border-border/30">
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -69,9 +78,8 @@ export function TaskReminderToggle({
     );
   }
 
-  // Native platform: always available
-  // Web platform: needs auth for push
-  if (!isNative && (!isAuthenticated)) {
+  // Not authenticated
+  if (!isAuthenticated) {
     return (
       <div className="mt-3 pt-3 border-t border-border/30">
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -82,30 +90,22 @@ export function TaskReminderToggle({
     );
   }
 
-  // Web platform (not native Capacitor): show install suggestion only if NOT installed as PWA
-  if (!isNative && Capacitor.getPlatform() === 'web' && !isPWAInstalled) {
+  // Web platform - check if notifications are supported
+  const isWeb = !isNative && Capacitor.getPlatform() === 'web';
+  
+  if (isWeb && !isWebPushSupported) {
     return (
       <div className="mt-3 pt-3 border-t border-border/30">
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
           <Bell size={14} className="opacity-50" />
-          <span>Instala la app para recordatorios</span>
+          <span>Tu navegador no soporta notificaciones</span>
         </div>
       </div>
     );
   }
 
-  // PWA installed but not native Capacitor - can't use local notifications
-  // Show informative message about native app requirement
-  if (!isNative && isPWAInstalled) {
-    return (
-      <div className="mt-3 pt-3 border-t border-border/30">
-        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          <Bell size={14} className="opacity-50" />
-          <span>Recordatorios disponibles en la app nativa</span>
-        </div>
-      </div>
-    );
-  }
+  // Show suggestion to install for better experience (but don't block)
+  const showInstallSuggestion = isWeb && !isPWAInstalled;
 
   const calculateReminderTime = (): Date | null => {
     try {
@@ -123,62 +123,78 @@ export function TaskReminderToggle({
   };
 
   const enableReminder = async () => {
-    console.log('[Reminder] Starting enableReminder flow (native local notifications)');
+    console.log('[Reminder] Starting enableReminder flow');
     setState({ status: 'loading' });
 
     try {
-      // Step 1: Request permissions if needed
-      if (!hasPermission) {
-        console.log('[Reminder] Requesting notification permissions...');
-        const granted = await requestPermissions();
-        if (!granted) {
-          throw new Error('PERMISSION_DENIED|Necesitas permitir las notificaciones para recibir recordatorios');
+      const reminderTime = calculateReminderTime();
+      if (!reminderTime) {
+        throw new Error('No se pudo calcular la hora del recordatorio');
+      }
+
+      if (reminderTime <= new Date()) {
+        throw new Error('La hora programada ya pasó');
+      }
+
+      if (isNative) {
+        // Native: use Capacitor Local Notifications
+        if (!hasNativePermission) {
+          const granted = await requestNativePermissions();
+          if (!granted) {
+            throw new Error('Necesitas permitir las notificaciones');
+          }
+        }
+
+        const notificationId = taskIdToNumericId(taskId);
+        const success = await scheduleNotification({
+          id: notificationId,
+          title: 'Focus On',
+          body: `Te acompaño con esto: ${taskText}`,
+          scheduleAt: reminderTime,
+          extra: { taskId }
+        });
+
+        if (!success) {
+          throw new Error('No se pudo programar la notificación');
+        }
+      } else {
+        // Web: use Web Push
+        if (webPushPermission !== 'granted' || !isWebPushSubscribed) {
+          const subscribed = await subscribeWebPush();
+          if (!subscribed) {
+            // Don't show error, just soft message
+            setState({ 
+              status: 'error', 
+              errorMessage: 'Si activas notificaciones, te avisaré a la hora de tus tareas.' 
+            });
+            return;
+          }
         }
       }
 
-      // Step 2: Calculate reminder time
-      const reminderTime = calculateReminderTime();
-      if (!reminderTime) {
-        throw new Error('INVALID_TIME|No se pudo calcular la hora del recordatorio');
+      // Update task in database
+      const { error: updateError } = await supabase
+        .from('tasks')
+        .update({ 
+          reminder_enabled: true,
+          reminder_sent_at: null // Reset in case it was sent before
+        })
+        .eq('id', taskId);
+
+      if (updateError) {
+        console.error('[Reminder] Failed to update task:', updateError);
+        throw new Error('No se pudo guardar el recordatorio');
       }
 
-      // Check if reminder time is in the future
-      if (reminderTime <= new Date()) {
-        throw new Error('TIME_PASSED|La hora programada ya pasó');
-      }
-
-      // Step 3: Schedule local notification
-      const notificationId = taskIdToNumericId(taskId);
-      console.log('[Reminder] Scheduling local notification:', notificationId, 'for:', reminderTime.toISOString());
-      
-      const success = await scheduleNotification({
-        id: notificationId,
-        title: '⏰ Recordatorio',
-        body: taskText,
-        scheduleAt: reminderTime,
-        extra: { taskId }
-      });
-
-      if (!success) {
-        throw new Error('SCHEDULE_FAILED|No se pudo programar la notificación');
-      }
-
-      // Success - save to localStorage
-      localStorage.setItem(getReminderStorageKey(taskId), reminderTime.toISOString());
       setState({ status: 'enabled' });
-      console.log('[Reminder] Local notification scheduled successfully!');
+      onReminderChange?.(true);
+      console.log('[Reminder] Reminder enabled successfully');
 
     } catch (error: any) {
       console.error('[Reminder] Error:', error);
-      const message = error.message || 'Error desconocido';
-      const [code, displayMessage] = message.includes('|') 
-        ? message.split('|') 
-        : ['UNKNOWN', message];
-      
       setState({ 
         status: 'error', 
-        errorMessage: displayMessage,
-        errorDetails: code
+        errorMessage: error.message || 'Error al activar recordatorio'
       });
     }
   };
@@ -188,16 +204,28 @@ export function TaskReminderToggle({
     setState({ status: 'loading' });
 
     try {
-      await cancelNotificationByTaskId(taskId);
-      localStorage.removeItem(getReminderStorageKey(taskId));
+      if (isNative) {
+        await cancelNotificationByTaskId(taskId);
+      }
+
+      // Update task in database
+      const { error: updateError } = await supabase
+        .from('tasks')
+        .update({ reminder_enabled: false })
+        .eq('id', taskId);
+
+      if (updateError) {
+        console.error('[Reminder] Failed to update task:', updateError);
+      }
+
       setState({ status: 'idle' });
+      onReminderChange?.(false);
       console.log('[Reminder] Reminder disabled');
 
     } catch (error: any) {
       console.error('[Reminder] Disable error:', error);
-      // Still remove from localStorage
-      localStorage.removeItem(getReminderStorageKey(taskId));
       setState({ status: 'idle' });
+      onReminderChange?.(false);
     }
   };
 
@@ -245,22 +273,21 @@ export function TaskReminderToggle({
 
       {isEnabled && (
         <p className="text-xs text-muted-foreground mt-1.5 ml-6">
-          Recibirás una notificación a las {scheduledTime}
+          Te avisaré a las {scheduledTime}
+        </p>
+      )}
+
+      {showInstallSuggestion && !isEnabled && (
+        <p className="text-xs text-muted-foreground mt-1.5 ml-6">
+          Instala la app para mejor experiencia
         </p>
       )}
 
       {hasError && state.errorMessage && (
-        <div className="mt-2 p-2 bg-destructive/10 rounded-md">
+        <div className="mt-2 p-2 bg-muted/50 rounded-md">
           <div className="flex items-start gap-2">
-            <AlertCircle size={14} className="text-destructive mt-0.5 flex-shrink-0" />
-            <div>
-              <p className="text-xs text-destructive">{state.errorMessage}</p>
-              {state.errorDetails && (
-                <p className="text-xs text-muted-foreground mt-0.5">
-                  Código: {state.errorDetails}
-                </p>
-              )}
-            </div>
+            <AlertCircle size={14} className="text-muted-foreground mt-0.5 flex-shrink-0" />
+            <p className="text-xs text-muted-foreground">{state.errorMessage}</p>
           </div>
         </div>
       )}

@@ -15,8 +15,14 @@ verify_jwt = false
 [functions.send-push-notifications]
 verify_jwt = false
 
+[functions.send-task-reminders]
+verify_jwt = false
+
 [functions.delete-reminder]
 verify_jwt = false
 
 [functions.test-push]
+verify_jwt = false
+
+[functions.push-config]
 verify_jwt = false

@@ -122,6 +122,8 @@ export type Database = {
           duration_minutes: number | null
           id: string
           is_top_three: boolean
+          reminder_enabled: boolean
+          reminder_sent_at: string | null
           scheduled_date: string | null
           scheduled_time: string | null
           source: string
@@ -136,6 +138,8 @@ export type Database = {
           duration_minutes?: number | null
           id?: string
           is_top_three?: boolean
+          reminder_enabled?: boolean
+          reminder_sent_at?: string | null
           scheduled_date?: string | null
           scheduled_time?: string | null
           source?: string
@@ -150,6 +154,8 @@ export type Database = {
           duration_minutes?: number | null
           id?: string
           is_top_three?: boolean
+          reminder_enabled?: boolean
+          reminder_sent_at?: string | null
           scheduled_date?: string | null
           scheduled_time?: string | null
           source?: string
