@@ -7,6 +7,9 @@ import { PushDiagnostics } from '@/components/reminders/PushDiagnostics';
 import { StartFocusDialog } from '@/components/StartFocusDialog';
 import { toISODate, parseDateString } from '@/lib/dateUtils';
 
+// Only show diagnostics in development mode
+const SHOW_DEBUG_PANEL = import.meta.env.DEV;
+
 interface TasksPageProps {
   tasks: Task[];
   onAddTask: (input: { text: string; scheduledDate?: string; scheduledTime?: string; durationMinutes?: number }) => void;
@@ -301,10 +304,12 @@ export function TasksPage({ tasks, onAddTask, onToggleTask, onDeleteTask, onUpda
         )}
       </section>
 
-      {/* Push Diagnostics Panel */}
-      <section className="mb-8 animate-slide-up stagger-3">
-        <PushDiagnostics />
-      </section>
+      {/* Push Diagnostics Panel - ONLY in development */}
+      {SHOW_DEBUG_PANEL && (
+        <section className="mb-8 animate-slide-up stagger-3">
+          <PushDiagnostics />
+        </section>
+      )}
 
       {/* Completed tasks */}
       {done.length > 0 && (
