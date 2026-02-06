@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import { Bell, BellOff, Loader2, CheckCircle2 } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
 import { Capacitor } from '@capacitor/core';
@@ -8,6 +8,7 @@ import { useAuthState, isGuestMode } from '@/hooks/useAuthState';
 import { supabase } from '@/integrations/supabase/client';
 import { parseDateString } from '@/lib/dateUtils';
 import { ReminderPermissionModal } from './ReminderPermissionModal';
+import { toast } from 'sonner';
 
 interface TaskReminderToggleProps {
   taskId: string;
@@ -168,7 +169,7 @@ export function TaskReminderToggle({
   const isWeb = !isNative && Capacitor.getPlatform() === 'web';
   
   if (isWeb && !isWebPushSupported) {
-    // Don't show anything if not supported - feel native
+    console.log('[Reminder] Web push not supported on this device');
     return null;
   }
 
@@ -193,17 +194,20 @@ export function TaskReminderToggle({
   };
 
   const doEnableReminder = async (reminderTime: Date) => {
-    console.log('[Reminder] Enabling reminder for:', reminderTime.toISOString());
+    console.log('[Reminder] Scheduling reminder for:', reminderTime.toISOString());
     setState({ status: 'loading' });
 
     try {
       if (isNative) {
         // Native: use Capacitor Local Notifications
+        console.log('[Reminder] Using native notifications');
         if (!hasNativePermission) {
           const granted = await requestNativePermissions();
           if (!granted) {
+            console.log('[Reminder] Native permission denied');
+            toast.error('No se pudo activar el recordatorio');
             setState({ status: 'idle' });
-            return;
+            return false;
           }
         }
 
@@ -217,12 +221,15 @@ export function TaskReminderToggle({
         });
 
         if (!success) {
+          console.error('[Reminder] Failed to schedule native notification');
+          toast.error('No pude programar el recordatorio. Reintenta.');
           setState({ status: 'idle' });
-          return;
+          return false;
         }
         
       } else {
         // Web: use Web Push via backend
+        console.log('[Reminder] Using web push notifications');
         const deviceId = getDeviceId();
         
         const { error } = await supabase.functions.invoke('save-reminder', {
@@ -236,8 +243,9 @@ export function TaskReminderToggle({
 
         if (error) {
           console.error('[Reminder] Failed to save reminder:', error);
+          toast.error('No pude programar el recordatorio. Reintenta.');
           setState({ status: 'idle' });
-          return;
+          return false;
         }
       }
 
@@ -247,116 +255,184 @@ export function TaskReminderToggle({
         status: 'enabled',
         scheduledInfo: `${reminderTime.getHours().toString().padStart(2, '0')}:${reminderTime.getMinutes().toString().padStart(2, '0')}`
       });
-      console.log('[Reminder] Reminder enabled successfully!');
+      
+      console.log('[Reminder] ✓ Reminder scheduled successfully');
+      toast.success('Listo. Te avisaré a tiempo.');
+      return true;
 
     } catch (error: any) {
-      console.error('[Reminder] Error:', error);
+      console.error('[Reminder] Error scheduling:', error);
+      toast.error('No pude programar el recordatorio. Reintenta.');
       setState({ status: 'idle' });
+      return false;
     }
   };
 
-  const handlePermissionAndEnable = async () => {
+  const handlePermissionGranted = async () => {
+    console.log('[Reminder] Permission granted, proceeding to schedule');
     setPermissionModal({ open: false, variant: 'request' });
     
     let permissionGranted = false;
     
     if (isNative) {
       permissionGranted = await requestNativePermissions();
+      console.log('[Reminder] Native permission result:', permissionGranted);
     } else {
       // Web: subscribe which also requests permission
       permissionGranted = await subscribeWebPush();
+      console.log('[Reminder] Web push subscription result:', permissionGranted);
     }
     
-    if (permissionGranted) {
-      // Now check if we need to adjust time
-      let targetDate = scheduledDate;
-      let targetTime = scheduledTime;
-      
-      if (!hasValidFutureTime) {
-        const nextValid = getNextValidTime(scheduledDate, scheduledTime);
-        if (nextValid && onScheduleUpdate) {
-          onScheduleUpdate(nextValid.date, nextValid.time);
-          targetDate = nextValid.date;
-          targetTime = nextValid.time;
-        }
-      }
-      
-      const reminderTime = calculateReminderTime(targetDate, targetTime);
-      if (reminderTime) {
-        await doEnableReminder(reminderTime);
-      }
-    }
-  };
-
-  const enableReminder = async () => {
-    console.log('[Reminder] Starting enableReminder flow');
-    
-    // Check current permission status
-    const currentPermission = isNative 
-      ? (hasNativePermission ? 'granted' : 'default')
-      : webPushPermission;
-    
-    // If denied, show denied modal
-    if (currentPermission === 'denied') {
-      setPermissionModal({ open: true, variant: 'denied' });
+    if (!permissionGranted) {
+      console.log('[Reminder] Permission was not granted');
+      toast('Recordatorios desactivados');
       return;
     }
     
-    // If not granted, show request modal
-    if (currentPermission !== 'granted' && !isWebPushSubscribed) {
-      setPermissionModal({ open: true, variant: 'request' });
-      return;
-    }
-    
-    // Permission already granted - check time validity
+    // Now schedule the reminder
     let targetDate = scheduledDate;
     let targetTime = scheduledTime;
     
     if (!hasValidFutureTime) {
       const nextValid = getNextValidTime(scheduledDate, scheduledTime);
-      if (nextValid && onScheduleUpdate) {
-        onScheduleUpdate(nextValid.date, nextValid.time);
+      if (nextValid) {
+        if (onScheduleUpdate) {
+          onScheduleUpdate(nextValid.date, nextValid.time);
+        }
         targetDate = nextValid.date;
         targetTime = nextValid.time;
-      } else if (!nextValid) {
-        // Can't compute a valid time
-        return;
+        console.log('[Reminder] Auto-adjusted time to:', nextValid);
       }
     }
     
     const reminderTime = calculateReminderTime(targetDate, targetTime);
     if (reminderTime) {
       await doEnableReminder(reminderTime);
+    } else {
+      console.error('[Reminder] Could not calculate reminder time');
+      toast.error('Elige una hora futura para poder recordarte');
+    }
+  };
+
+  const enableReminder = async () => {
+    console.log('[Reminder] === ENABLE FLOW STARTED ===');
+    console.log('[Reminder] Task:', taskId, 'Date:', scheduledDate, 'Time:', scheduledTime);
+    
+    // STEP A: Validate date/time
+    if (hasMissingSchedule) {
+      console.log('[Reminder] Missing date or time');
+      toast('Elige una hora futura para poder recordarte');
+      return;
+    }
+    
+    if (!hasValidFutureTime) {
+      console.log('[Reminder] Time is in the past, attempting auto-fix');
+      const nextValid = getNextValidTime(scheduledDate, scheduledTime);
+      
+      if (nextValid && onScheduleUpdate) {
+        console.log('[Reminder] Auto-fixing to:', nextValid);
+        onScheduleUpdate(nextValid.date, nextValid.time);
+        toast('Te lo programo para la próxima hora disponible');
+        
+        // Schedule with the new time
+        const reminderTime = calculateReminderTime(nextValid.date, nextValid.time);
+        if (reminderTime) {
+          // Check permission first before scheduling
+          const currentPermission = isNative 
+            ? (hasNativePermission ? 'granted' : 'default')
+            : webPushPermission;
+          
+          console.log('[Reminder] Current permission:', currentPermission);
+          
+          if (currentPermission === 'denied') {
+            setPermissionModal({ open: true, variant: 'denied' });
+            return;
+          }
+          
+          if (currentPermission !== 'granted' && !isWebPushSubscribed) {
+            setPermissionModal({ open: true, variant: 'request' });
+            return;
+          }
+          
+          await doEnableReminder(reminderTime);
+        }
+        return;
+      } else if (!nextValid) {
+        console.log('[Reminder] Could not compute next valid time');
+        toast('Elige una hora futura para poder recordarte');
+        return;
+      }
+    }
+    
+    // STEP B: Check permissions
+    const currentPermission = isNative 
+      ? (hasNativePermission ? 'granted' : 'default')
+      : webPushPermission;
+    
+    console.log('[Reminder] Permission status:', currentPermission);
+    console.log('[Reminder] isWebPushSubscribed:', isWebPushSubscribed);
+    
+    if (currentPermission === 'denied') {
+      console.log('[Reminder] Permission denied, showing modal');
+      setPermissionModal({ open: true, variant: 'denied' });
+      return;
+    }
+    
+    if (currentPermission !== 'granted' && !isWebPushSubscribed) {
+      console.log('[Reminder] Permission not granted, showing request modal');
+      setPermissionModal({ open: true, variant: 'request' });
+      return;
+    }
+    
+    // STEP C: Permission granted, schedule reminder
+    console.log('[Reminder] Permission granted, scheduling...');
+    const reminderTime = calculateReminderTime();
+    
+    if (reminderTime) {
+      await doEnableReminder(reminderTime);
+    } else {
+      console.error('[Reminder] Failed to calculate reminder time');
+      toast.error('No pude calcular la hora del recordatorio');
     }
   };
 
   const disableReminder = async () => {
-    console.log('[Reminder] Disabling reminder');
+    console.log('[Reminder] === DISABLE FLOW STARTED ===');
     setState({ status: 'loading' });
 
     try {
       if (isNative) {
         await cancelNotificationByTaskId(taskId);
+        console.log('[Reminder] Native notification cancelled');
       } else {
         const deviceId = getDeviceId();
         await supabase.functions.invoke('delete-reminder', {
           body: { deviceId, taskId }
         });
+        console.log('[Reminder] Web reminder deleted');
       }
 
       localStorage.removeItem(getReminderStorageKey(taskId));
       setState({ status: 'idle' });
-      console.log('[Reminder] Reminder disabled');
+      toast('Recordatorio desactivado');
+      console.log('[Reminder] ✓ Reminder disabled successfully');
 
     } catch (error: any) {
       console.error('[Reminder] Disable error:', error);
+      // Still clean up local state
       localStorage.removeItem(getReminderStorageKey(taskId));
       setState({ status: 'idle' });
+      toast('Recordatorio desactivado');
     }
   };
 
   const handleToggle = () => {
-    if (state.status === 'loading') return;
+    console.log('[Reminder] Toggle clicked, current status:', state.status);
+    
+    if (state.status === 'loading') {
+      console.log('[Reminder] Already loading, ignoring click');
+      return;
+    }
     
     if (state.status === 'enabled') {
       disableReminder();
@@ -367,15 +443,9 @@ export function TaskReminderToggle({
 
   const isEnabled = state.status === 'enabled';
   const isLoading = state.status === 'loading';
-  
-  // Determine if switch should be disabled
-  const currentPermission = isNative 
-    ? (hasNativePermission ? 'granted' : 'default')
-    : webPushPermission;
-  const isPermissionDenied = currentPermission === 'denied';
 
-  // Show helper text for missing/past time
-  const showTimeHelper = hasMissingSchedule || (!hasValidFutureTime && !isEnabled);
+  // Show helper text for missing/past time only when not enabled
+  const showTimeHelper = (hasMissingSchedule || !hasValidFutureTime) && !isEnabled;
 
   return (
     <>
@@ -398,10 +468,11 @@ export function TaskReminderToggle({
             )}
           </div>
           
+          {/* Switch is ALWAYS clickable - never disabled based on permissions */}
           <Switch
             checked={isEnabled}
             onCheckedChange={handleToggle}
-            disabled={isLoading || (isPermissionDenied && !isEnabled)}
+            disabled={isLoading}
             aria-label="Activar recordatorio"
           />
         </div>
@@ -412,15 +483,9 @@ export function TaskReminderToggle({
           </p>
         )}
 
-        {showTimeHelper && !isEnabled && (
+        {showTimeHelper && (
           <p className="text-xs text-muted-foreground mt-1.5 ml-6">
             Elige una hora futura para poder recordarte
-          </p>
-        )}
-
-        {isPermissionDenied && !isEnabled && !showTimeHelper && (
-          <p className="text-xs text-muted-foreground mt-1.5 ml-6">
-            Habilita recordatorios en ajustes del dispositivo
           </p>
         )}
       </div>
@@ -429,7 +494,7 @@ export function TaskReminderToggle({
         open={permissionModal.open}
         onOpenChange={(open) => setPermissionModal(prev => ({ ...prev, open }))}
         variant={permissionModal.variant}
-        onActivate={handlePermissionAndEnable}
+        onActivate={handlePermissionGranted}
       />
     </>
   );
