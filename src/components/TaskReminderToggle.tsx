@@ -141,37 +141,8 @@ export function TaskReminderToggle({
   const hasValidFutureTime = isValidFutureTime(scheduledDate, scheduledTime);
   const hasMissingSchedule = !scheduledDate || !scheduledTime;
   
-  // Guest mode - show login prompt
-  if (isGuestMode()) {
-    return (
-      <div className="mt-3 pt-3 border-t border-border/30">
-        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          <Bell size={14} className="opacity-50" />
-          <span>Inicia sesión para activar recordatorios</span>
-        </div>
-      </div>
-    );
-  }
-
-  // Not authenticated
-  if (!isAuthenticated) {
-    return (
-      <div className="mt-3 pt-3 border-t border-border/30">
-        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          <Bell size={14} className="opacity-50" />
-          <span>Inicia sesión para activar recordatorios</span>
-        </div>
-      </div>
-    );
-  }
-
   // Web platform - check if notifications are supported
   const isWeb = !isNative && Capacitor.getPlatform() === 'web';
-  
-  if (isWeb && !isWebPushSupported) {
-    console.log('[Reminder] Web push not supported on this device');
-    return null;
-  }
 
   const calculateReminderTime = (date?: string, time?: string): Date | null => {
     const d = date || scheduledDate;
@@ -269,52 +240,57 @@ export function TaskReminderToggle({
   };
 
   const handlePermissionGranted = async () => {
-    console.log('[Reminder] Permission granted, proceeding to schedule');
+    console.log('[Reminder] Permission granted callback, closing modal first');
+    // Close modal immediately, defer the rest
     setPermissionModal({ open: false, variant: 'request' });
     
-    let permissionGranted = false;
-    
-    if (isNative) {
-      permissionGranted = await requestNativePermissions();
-      console.log('[Reminder] Native permission result:', permissionGranted);
-    } else {
-      // Web: subscribe which also requests permission
-      permissionGranted = await subscribeWebPush();
-      console.log('[Reminder] Web push subscription result:', permissionGranted);
-    }
-    
-    if (!permissionGranted) {
-      console.log('[Reminder] Permission was not granted');
-      toast('Recordatorios desactivados');
-      return;
-    }
-    
-    // Now schedule the reminder
-    let targetDate = scheduledDate;
-    let targetTime = scheduledTime;
-    
-    if (!hasValidFutureTime) {
-      const nextValid = getNextValidTime(scheduledDate, scheduledTime);
-      if (nextValid) {
-        if (onScheduleUpdate) {
-          onScheduleUpdate(nextValid.date, nextValid.time);
-        }
-        targetDate = nextValid.date;
-        targetTime = nextValid.time;
-        console.log('[Reminder] Auto-adjusted time to:', nextValid);
+    // Defer permission request to next tick to avoid DOM conflicts
+    setTimeout(async () => {
+      console.log('[Reminder] Deferred: requesting actual permission');
+      let permissionGranted = false;
+      
+      if (isNative) {
+        permissionGranted = await requestNativePermissions();
+        console.log('[Reminder] Native permission result:', permissionGranted);
+      } else {
+        // Web: subscribe which also requests permission
+        permissionGranted = await subscribeWebPush();
+        console.log('[Reminder] Web push subscription result:', permissionGranted);
       }
-    }
-    
-    const reminderTime = calculateReminderTime(targetDate, targetTime);
-    if (reminderTime) {
-      await doEnableReminder(reminderTime);
-    } else {
-      console.error('[Reminder] Could not calculate reminder time');
-      toast.error('Elige una hora futura para poder recordarte');
-    }
+      
+      if (!permissionGranted) {
+        console.log('[Reminder] Permission was not granted');
+        toast('Recordatorios desactivados');
+        return;
+      }
+      
+      // Now schedule the reminder
+      let targetDate = scheduledDate;
+      let targetTime = scheduledTime;
+      
+      if (!hasValidFutureTime) {
+        const nextValid = getNextValidTime(scheduledDate, scheduledTime);
+        if (nextValid) {
+          if (onScheduleUpdate) {
+            onScheduleUpdate(nextValid.date, nextValid.time);
+          }
+          targetDate = nextValid.date;
+          targetTime = nextValid.time;
+          console.log('[Reminder] Auto-adjusted time to:', nextValid);
+        }
+      }
+      
+      const reminderTime = calculateReminderTime(targetDate, targetTime);
+      if (reminderTime) {
+        await doEnableReminder(reminderTime);
+      } else {
+        console.error('[Reminder] Could not calculate reminder time');
+        toast.error('Elige una hora futura para poder recordarte');
+      }
+    }, 0);
   };
 
-  const enableReminder = async () => {
+  const enableReminder = () => {
     console.log('[Reminder] === ENABLE FLOW STARTED ===');
     console.log('[Reminder] Task:', taskId, 'Date:', scheduledDate, 'Time:', scheduledTime);
     
@@ -334,28 +310,30 @@ export function TaskReminderToggle({
         onScheduleUpdate(nextValid.date, nextValid.time);
         toast('Te lo programo para la próxima hora disponible');
         
-        // Schedule with the new time
-        const reminderTime = calculateReminderTime(nextValid.date, nextValid.time);
-        if (reminderTime) {
-          // Check permission first before scheduling
-          const currentPermission = isNative 
-            ? (hasNativePermission ? 'granted' : 'default')
-            : webPushPermission;
-          
-          console.log('[Reminder] Current permission:', currentPermission);
-          
-          if (currentPermission === 'denied') {
-            setPermissionModal({ open: true, variant: 'denied' });
-            return;
+        // Defer scheduling to next tick
+        setTimeout(async () => {
+          const reminderTime = calculateReminderTime(nextValid.date, nextValid.time);
+          if (reminderTime) {
+            // Check permission first before scheduling
+            const currentPermission = isNative 
+              ? (hasNativePermission ? 'granted' : 'default')
+              : webPushPermission;
+            
+            console.log('[Reminder] Current permission:', currentPermission);
+            
+            if (currentPermission === 'denied') {
+              setPermissionModal({ open: true, variant: 'denied' });
+              return;
+            }
+            
+            if (currentPermission !== 'granted' && !isWebPushSubscribed) {
+              setPermissionModal({ open: true, variant: 'request' });
+              return;
+            }
+            
+            await doEnableReminder(reminderTime);
           }
-          
-          if (currentPermission !== 'granted' && !isWebPushSubscribed) {
-            setPermissionModal({ open: true, variant: 'request' });
-            return;
-          }
-          
-          await doEnableReminder(reminderTime);
-        }
+        }, 0);
         return;
       } else if (!nextValid) {
         console.log('[Reminder] Could not compute next valid time');
@@ -374,13 +352,19 @@ export function TaskReminderToggle({
     
     if (currentPermission === 'denied') {
       console.log('[Reminder] Permission denied, showing modal');
-      setPermissionModal({ open: true, variant: 'denied' });
+      // Defer modal opening to next tick
+      setTimeout(() => {
+        setPermissionModal({ open: true, variant: 'denied' });
+      }, 0);
       return;
     }
     
     if (currentPermission !== 'granted' && !isWebPushSubscribed) {
       console.log('[Reminder] Permission not granted, showing request modal');
-      setPermissionModal({ open: true, variant: 'request' });
+      // Defer modal opening to next tick
+      setTimeout(() => {
+        setPermissionModal({ open: true, variant: 'request' });
+      }, 0);
       return;
     }
     
@@ -389,41 +373,47 @@ export function TaskReminderToggle({
     const reminderTime = calculateReminderTime();
     
     if (reminderTime) {
-      await doEnableReminder(reminderTime);
+      // Defer scheduling to next tick
+      setTimeout(async () => {
+        await doEnableReminder(reminderTime);
+      }, 0);
     } else {
       console.error('[Reminder] Failed to calculate reminder time');
       toast.error('No pude calcular la hora del recordatorio');
     }
   };
 
-  const disableReminder = async () => {
+  const disableReminder = () => {
     console.log('[Reminder] === DISABLE FLOW STARTED ===');
     setState({ status: 'loading' });
 
-    try {
-      if (isNative) {
-        await cancelNotificationByTaskId(taskId);
-        console.log('[Reminder] Native notification cancelled');
-      } else {
-        const deviceId = getDeviceId();
-        await supabase.functions.invoke('delete-reminder', {
-          body: { deviceId, taskId }
-        });
-        console.log('[Reminder] Web reminder deleted');
+    // Defer actual work to next tick
+    setTimeout(async () => {
+      try {
+        if (isNative) {
+          await cancelNotificationByTaskId(taskId);
+          console.log('[Reminder] Native notification cancelled');
+        } else {
+          const deviceId = getDeviceId();
+          await supabase.functions.invoke('delete-reminder', {
+            body: { deviceId, taskId }
+          });
+          console.log('[Reminder] Web reminder deleted');
+        }
+
+        localStorage.removeItem(getReminderStorageKey(taskId));
+        setState({ status: 'idle' });
+        toast('Recordatorio desactivado');
+        console.log('[Reminder] ✓ Reminder disabled successfully');
+
+      } catch (error: any) {
+        console.error('[Reminder] Disable error:', error);
+        // Still clean up local state
+        localStorage.removeItem(getReminderStorageKey(taskId));
+        setState({ status: 'idle' });
+        toast('Recordatorio desactivado');
       }
-
-      localStorage.removeItem(getReminderStorageKey(taskId));
-      setState({ status: 'idle' });
-      toast('Recordatorio desactivado');
-      console.log('[Reminder] ✓ Reminder disabled successfully');
-
-    } catch (error: any) {
-      console.error('[Reminder] Disable error:', error);
-      // Still clean up local state
-      localStorage.removeItem(getReminderStorageKey(taskId));
-      setState({ status: 'idle' });
-      toast('Recordatorio desactivado');
-    }
+    }, 0);
   };
 
   const handleToggle = () => {
@@ -447,49 +437,69 @@ export function TaskReminderToggle({
   // Show helper text for missing/past time only when not enabled
   const showTimeHelper = (hasMissingSchedule || !hasValidFutureTime) && !isEnabled;
 
+  // Guest mode or not authenticated - show login prompt (always mounted for stability)
+  const showLoginPrompt = isGuestMode() || !isAuthenticated;
+  
+  // Web platform without support - hide entirely
+  if (isWeb && !isWebPushSupported) {
+    console.log('[Reminder] Web push not supported on this device');
+    return null;
+  }
+
   return (
     <>
+      {/* Always keep this container mounted for DOM stability */}
       <div className="mt-3 pt-3 border-t border-border/30">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            {isEnabled ? (
-              <Bell size={14} className="text-primary" />
-            ) : (
-              <BellOff size={14} className="text-muted-foreground" />
-            )}
-            <span className="text-sm text-foreground">
-              Recordatorio
-            </span>
-            {isLoading && (
-              <Loader2 size={14} className="animate-spin text-muted-foreground" />
-            )}
-            {isEnabled && (
-              <CheckCircle2 size={14} className="text-primary" />
-            )}
+        {showLoginPrompt ? (
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <Bell size={14} className="opacity-50" />
+            <span>Inicia sesión para activar recordatorios</span>
           </div>
-          
-          {/* Switch is ALWAYS clickable - never disabled based on permissions */}
-          <Switch
-            checked={isEnabled}
-            onCheckedChange={handleToggle}
-            disabled={isLoading}
-            aria-label="Activar recordatorio"
-          />
-        </div>
+        ) : (
+          <>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                {isEnabled ? (
+                  <Bell size={14} className="text-primary" />
+                ) : (
+                  <BellOff size={14} className="text-muted-foreground" />
+                )}
+                <span className="text-sm text-foreground">
+                  Recordatorio
+                </span>
+                {isLoading && (
+                  <Loader2 size={14} className="animate-spin text-muted-foreground" />
+                )}
+                {isEnabled && (
+                  <CheckCircle2 size={14} className="text-primary" />
+                )}
+              </div>
+              
+              {/* Switch is ALWAYS clickable - never disabled based on permissions */}
+              <Switch
+                checked={isEnabled}
+                onCheckedChange={handleToggle}
+                disabled={isLoading}
+                aria-label="Activar recordatorio"
+              />
+            </div>
 
-        {isEnabled && scheduledTime && (
-          <p className="text-xs text-muted-foreground mt-1.5 ml-6">
-            Te avisaré a las {scheduledTime}
-          </p>
-        )}
+            {isEnabled && scheduledTime && (
+              <p className="text-xs text-muted-foreground mt-1.5 ml-6">
+                Te avisaré a las {scheduledTime}
+              </p>
+            )}
 
-        {showTimeHelper && (
-          <p className="text-xs text-muted-foreground mt-1.5 ml-6">
-            Elige una hora futura para poder recordarte
-          </p>
+            {showTimeHelper && (
+              <p className="text-xs text-muted-foreground mt-1.5 ml-6">
+                Elige una hora futura para poder recordarte
+              </p>
+            )}
+          </>
         )}
       </div>
 
+      {/* Modal always mounted but controlled by open state */}
       <ReminderPermissionModal
         open={permissionModal.open}
         onOpenChange={(open) => setPermissionModal(prev => ({ ...prev, open }))}

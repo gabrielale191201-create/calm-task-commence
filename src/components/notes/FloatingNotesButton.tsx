@@ -1,5 +1,5 @@
 import { StickyNote, X, Check, Trash2 } from 'lucide-react';
-import { useState } from 'react';
+import { useState, forwardRef } from 'react';
 import { cn } from '@/lib/utils';
 
 interface FloatingNote {
@@ -15,7 +15,7 @@ interface FloatingNotesButtonProps {
   onWritingModeChange?: (active: boolean) => void;
 }
 
-export function FloatingNotesButton({ notes, onAddNote, onDeleteNote, onWritingModeChange }: FloatingNotesButtonProps) {
+export const FloatingNotesButton = forwardRef<HTMLDivElement, FloatingNotesButtonProps>(function FloatingNotesButton({ notes, onAddNote, onDeleteNote, onWritingModeChange }, ref) {
   const [isOpen, setIsOpen] = useState(false);
   const [newNote, setNewNote] = useState('');
 
@@ -148,4 +148,4 @@ export function FloatingNotesButton({ notes, onAddNote, onDeleteNote, onWritingM
       )}
     </>
   );
-}
+});
