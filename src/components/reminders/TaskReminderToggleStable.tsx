@@ -197,43 +197,40 @@ export function TaskReminderToggleStable({
     }
   };
 
-  const handlePermissionModalActivate = () => {
+  const handlePermissionModalActivate = async () => {
     log('permission modal: ACTIVATE action triggered');
-    
-    // Defer system prompt + subscription to next tick to avoid overlay DOM conflicts
-    setTimeout(async () => {
-      try {
-        log('permission request deferred - starting subscription flow');
-        const ok = isNative ? await requestNativePermissions() : await subscribeWebPush();
-        log('permission/subscription result', ok);
 
-        if (!ok) {
-          // Revert UI
-          setEnabled(false);
-          pendingScheduleRef.current = null;
-          toast('Recordatorios desactivados');
-          return;
-        }
+    try {
+      // IMPORTANT: do NOT defer. Permission prompts require a direct user gesture on mobile browsers.
+      const ok = isNative ? await requestNativePermissions() : await subscribeWebPush();
+      log('permission/subscription result', ok);
 
-        const pendingAt = pendingScheduleRef.current;
-        pendingScheduleRef.current = null;
-        if (!pendingAt) {
-          // Nothing pending, just keep OFF
-          setEnabled(false);
-          return;
-        }
-
-        setStatus('loading');
-        const success = await scheduleEnabled(pendingAt);
-        setStatus('idle');
-        if (!success) setEnabled(false);
-      } catch (err) {
-        console.error('[Reminder] permission flow error', err);
+      if (!ok) {
+        // Revert UI
         setEnabled(false);
         pendingScheduleRef.current = null;
-        toast.error('No pude programarlo. Reintenta.');
+        toast('Recordatorios desactivados');
+        return;
       }
-    }, 0);
+
+      const pendingAt = pendingScheduleRef.current;
+      pendingScheduleRef.current = null;
+      if (!pendingAt) {
+        // Nothing pending, just keep OFF
+        setEnabled(false);
+        return;
+      }
+
+      setStatus('loading');
+      const success = await scheduleEnabled(pendingAt);
+      setStatus('idle');
+      if (!success) setEnabled(false);
+    } catch (err) {
+      console.error('[Reminder] permission flow error', err);
+      setEnabled(false);
+      pendingScheduleRef.current = null;
+      toast.error('No pude programarlo. Reintenta.');
+    }
   };
 
   const handlePermissionModalDismiss = () => {

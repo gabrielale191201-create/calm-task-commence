@@ -48,14 +48,15 @@ export function ReminderPermissionModal({
 
   const handleActivate = () => {
     console.info('REMINDERS_ACTIVATE_CLICK');
+    // IMPORTANT: keep this within the user gesture (no setTimeout) so browser permission prompts can open.
+    onActivate?.();
     onOpenChange(false);
-    setTimeout(() => onActivate?.(), 0);
   };
 
   const handleDismiss = () => {
     console.info('REMINDERS_DISMISS_CLICK');
+    onDismiss?.();
     onOpenChange(false);
-    setTimeout(() => onDismiss?.(), 0);
   };
 
   if (variant === 'request') {
