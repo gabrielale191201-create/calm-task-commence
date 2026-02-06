@@ -1,8 +1,8 @@
 // Service Worker for Focus On PWA
 // Handles caching, offline support, and push notifications
-// Version: 2025-02-05-v2 (force update)
+// Version: 2025-02-06-v1 (task reminders update)
 
-const CACHE_NAME = 'focuson-cache-v2';
+const CACHE_NAME = 'focuson-cache-v3';
 const STATIC_ASSETS = [
   '/',
   '/index.html',
@@ -86,37 +86,40 @@ self.addEventListener('fetch', (event) => {
 self.addEventListener('push', (event) => {
   console.log('[SW] Push event received');
   
-  let data = { title: 'Focus On', body: '¡Es hora de enfocarte!' };
+  let data = { title: 'Focus On', body: 'Te acompaño con esto' };
   
   if (event.data) {
     try {
       data = event.data.json();
+      console.log('[SW] Push payload:', data);
     } catch (e) {
+      console.log('[SW] Push text:', event.data.text());
       data.body = event.data.text();
     }
   }
 
+  // Soft, calm notification options
   const options = {
-    body: data.body || '¡Es hora de enfocarte!',
+    body: data.body || 'Te acompaño con esto',
     icon: '/icon-192x192.png',
     badge: '/icon-192x192.png',
-    vibrate: [200, 100, 200],
-    tag: data.taskId || 'focuson-reminder',
+    vibrate: [100, 50, 100], // Gentler vibration
+    tag: 'focuson-task-reminder',
     renotify: true,
-    requireInteraction: true,
+    requireInteraction: false, // Don't force interaction
     silent: false,
     data: {
-      url: self.location.origin,
+      url: data.url || '/tareas',
       taskId: data.taskId
     },
     actions: [
-      { action: 'open', title: 'Abrir Focus On' },
+      { action: 'open', title: 'Ver' },
       { action: 'dismiss', title: 'Cerrar' }
     ]
   };
 
   event.waitUntil(
-    self.registration.showNotification(data.title || 'Focus On - Recordatorio', options)
+    self.registration.showNotification(data.title || 'Focus On', options)
   );
 });
 
