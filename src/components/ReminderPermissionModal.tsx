@@ -14,17 +14,44 @@ interface ReminderPermissionModalProps {
   onOpenChange: (open: boolean) => void;
   variant: 'request' | 'denied';
   onActivate?: () => void;
+  onDismiss?: () => void;
 }
 
 export function ReminderPermissionModal({
   open,
   onOpenChange,
   variant,
-  onActivate
+  onActivate,
+  onDismiss
 }: ReminderPermissionModalProps) {
+  
+  const handleActivateClick = () => {
+    console.info('[ReminderModal] REMINDERS_ACTIVATE_CLICK');
+    // Close modal first, then trigger activation
+    onOpenChange(false);
+    onActivate?.();
+  };
+
+  const handleDismissClick = () => {
+    console.info('[ReminderModal] REMINDERS_DISMISS_CLICK');
+    // Guard: This should NEVER call onActivate
+    if (process.env.NODE_ENV === 'development') {
+      // Extra safety check in dev
+    }
+    onOpenChange(false);
+    onDismiss?.();
+  };
+
   if (variant === 'request') {
     return (
-      <AlertDialog open={open} onOpenChange={onOpenChange}>
+      <AlertDialog open={open} onOpenChange={(newOpen) => {
+        if (!newOpen) {
+          // Modal closing without explicit action = dismiss
+          console.info('[ReminderModal] REMINDERS_DISMISS_VIA_CLOSE');
+          onDismiss?.();
+        }
+        onOpenChange(newOpen);
+      }}>
         <AlertDialogContent className="max-w-sm">
           <AlertDialogHeader>
             <AlertDialogTitle className="text-lg">
@@ -35,11 +62,20 @@ export function ReminderPermissionModal({
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter className="flex-row gap-2 sm:gap-2">
-            <AlertDialogCancel className="mt-0 flex-1">
+            <AlertDialogCancel 
+              className="mt-0 flex-1"
+              onClick={(e) => {
+                e.preventDefault();
+                handleDismissClick();
+              }}
+            >
               Ahora no
             </AlertDialogCancel>
             <AlertDialogAction 
-              onClick={onActivate}
+              onClick={(e) => {
+                e.preventDefault();
+                handleActivateClick();
+              }}
               className="flex-1"
             >
               Activar
@@ -63,7 +99,11 @@ export function ReminderPermissionModal({
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogAction onClick={() => onOpenChange(false)}>
+          <AlertDialogAction onClick={() => {
+            console.info('[ReminderModal] REMINDERS_DENIED_UNDERSTOOD');
+            onOpenChange(false);
+            onDismiss?.();
+          }}>
             Entendido
           </AlertDialogAction>
         </AlertDialogFooter>

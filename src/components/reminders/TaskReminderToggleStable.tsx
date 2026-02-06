@@ -196,13 +196,12 @@ export function TaskReminderToggleStable({
   };
 
   const handlePermissionModalActivate = () => {
-    log('permission modal: activate clicked');
-    setPermissionModal((p) => ({ ...p, open: false }));
-
+    log('permission modal: ACTIVATE action triggered');
+    
     // Defer system prompt + subscription to next tick to avoid overlay DOM conflicts
     setTimeout(async () => {
       try {
-        log('permission request deferred');
+        log('permission request deferred - starting subscription flow');
         const ok = isNative ? await requestNativePermissions() : await subscribeWebPush();
         log('permission/subscription result', ok);
 
@@ -233,6 +232,14 @@ export function TaskReminderToggleStable({
         toast.error('No pude programarlo. Reintenta.');
       }
     }, 0);
+  };
+
+  const handlePermissionModalDismiss = () => {
+    log('permission modal: DISMISS action triggered - reverting to OFF');
+    // CRITICAL: Revert the optimistic toggle since user declined
+    setEnabled(false);
+    pendingScheduleRef.current = null;
+    // No toast needed - silent dismiss
   };
 
   const handleReminderToggle = (desired: boolean) => {
@@ -379,6 +386,7 @@ export function TaskReminderToggleStable({
         onOpenChange={(open) => setPermissionModal((p) => ({ ...p, open }))}
         variant={permissionModal.variant}
         onActivate={handlePermissionModalActivate}
+        onDismiss={handlePermissionModalDismiss}
       />
     </>
   );
