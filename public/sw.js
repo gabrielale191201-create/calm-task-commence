@@ -1,8 +1,8 @@
 // Service Worker for Focus On PWA
 // Handles caching, offline support, and push notifications
-// Version: 2025-02-06-v1 (task reminders update)
+// Version: 2025-02-06-v2 (push diagnostics update)
 
-const CACHE_NAME = 'focuson-cache-v3';
+const CACHE_NAME = 'focuson-cache-v4';
 const STATIC_ASSETS = [
   '/',
   '/index.html',

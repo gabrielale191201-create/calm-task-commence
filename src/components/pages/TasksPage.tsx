@@ -3,6 +3,7 @@ import { Plus, Edit2, Check, X } from 'lucide-react';
 import { Task } from '@/types/focuson';
 import { TaskItem } from '@/components/TaskItem';
 import { TaskReminderToggleStable } from '@/components/reminders/TaskReminderToggleStable';
+import { PushDiagnostics } from '@/components/reminders/PushDiagnostics';
 import { StartFocusDialog } from '@/components/StartFocusDialog';
 import { toISODate, parseDateString } from '@/lib/dateUtils';
 
@@ -298,6 +299,11 @@ export function TasksPage({ tasks, onAddTask, onToggleTask, onDeleteTask, onUpda
             <p className="text-xs text-muted-foreground">Sin tareas futuras programadas.</p>
           </div>
         )}
+      </section>
+
+      {/* Push Diagnostics Panel */}
+      <section className="mb-8 animate-slide-up stagger-3">
+        <PushDiagnostics />
       </section>
 
       {/* Completed tasks */}
