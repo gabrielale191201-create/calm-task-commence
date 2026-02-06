@@ -1,21 +1,11 @@
-import { Suspense, lazy, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Plus, Edit2, Check, X } from 'lucide-react';
 import { Task } from '@/types/focuson';
 import { TaskItem } from '@/components/TaskItem';
 import { TaskReminderToggleStable } from '@/components/reminders/TaskReminderToggleStable';
+import { PushDiagnostics } from '@/components/reminders/PushDiagnostics';
 import { StartFocusDialog } from '@/components/StartFocusDialog';
 import { toISODate, parseDateString } from '@/lib/dateUtils';
-
-// Diagnostics are hidden by default (even in dev) to avoid exposing technical UI.
-// Enable with ?debugReminders=1 in development.
-const SHOW_DEBUG_PANEL =
-  import.meta.env.DEV &&
-  typeof window !== 'undefined' &&
-  new URLSearchParams(window.location.search).has('debugReminders');
-
-const PushDiagnostics = lazy(() =>
-  import('@/components/reminders/PushDiagnostics').then((m) => ({ default: m.PushDiagnostics }))
-);
 
 interface TasksPageProps {
   tasks: Task[];
@@ -311,14 +301,10 @@ export function TasksPage({ tasks, onAddTask, onToggleTask, onDeleteTask, onUpda
         )}
       </section>
 
-      {/* Push Diagnostics Panel - ONLY in development */}
-      {SHOW_DEBUG_PANEL && (
-        <section className="mb-8 animate-slide-up stagger-3">
-          <Suspense fallback={null}>
-            <PushDiagnostics />
-          </Suspense>
-        </section>
-      )}
+      {/* Push Diagnostics Panel */}
+      <section className="mb-8 animate-slide-up stagger-3">
+        <PushDiagnostics />
+      </section>
 
       {/* Completed tasks */}
       {done.length > 0 && (

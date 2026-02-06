@@ -1,118 +1,73 @@
-import { useEffect, useRef } from 'react';
-import { Button } from '@/components/ui/button';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 
 interface ReminderPermissionModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   variant: 'request' | 'denied';
   onActivate?: () => void;
-  onDismiss?: () => void;
 }
 
-/**
- * Custom modal that does NOT use Radix AlertDialog to avoid
- * event-propagation bugs that block button clicks.
- */
 export function ReminderPermissionModal({
   open,
   onOpenChange,
   variant,
-  onActivate,
-  onDismiss,
+  onActivate
 }: ReminderPermissionModalProps) {
-  const backdropRef = useRef<HTMLDivElement>(null);
-
-  // Close on ESC
-  useEffect(() => {
-    if (!open) return;
-    const handleKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        console.info('REMINDERS_DISMISS_VIA_ESC');
-        onOpenChange(false);
-        onDismiss?.();
-      }
-    };
-    window.addEventListener('keydown', handleKey);
-    return () => window.removeEventListener('keydown', handleKey);
-  }, [open, onOpenChange, onDismiss]);
-
-  if (!open) return null;
-
-  const handleBackdropClick = (e: React.MouseEvent) => {
-    if (e.target === backdropRef.current) {
-      console.info('REMINDERS_DISMISS_VIA_BACKDROP');
-      onOpenChange(false);
-      onDismiss?.();
-    }
-  };
-
-  const handleActivate = () => {
-    console.info('REMINDERS_ACTIVATE_CLICK');
-    // IMPORTANT: keep this within the user gesture (no setTimeout) so browser permission prompts can open.
-    onActivate?.();
-    onOpenChange(false);
-  };
-
-  const handleDismiss = () => {
-    console.info('REMINDERS_DISMISS_CLICK');
-    onDismiss?.();
-    onOpenChange(false);
-  };
-
   if (variant === 'request') {
     return (
-      <div
-        ref={backdropRef}
-        onClick={handleBackdropClick}
-        className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 animate-in fade-in-0"
-      >
-        <div
-          role="alertdialog"
-          aria-modal="true"
-          className="relative z-50 w-full max-w-sm mx-4 rounded-2xl border border-border bg-card p-6 shadow-xl animate-in zoom-in-95"
-        >
-          <h2 className="text-lg font-semibold text-foreground mb-2">Activar recordatorios</h2>
-          <p className="text-sm text-muted-foreground mb-6">
-            Focus On puede avisarte a la hora de tus tareas. Solo recordatorios, sin ruido.
-          </p>
-          <div className="flex gap-3">
-            <Button
-              type="button"
-              variant="outline"
-              className="flex-1"
-              onClick={handleDismiss}
-            >
+      <AlertDialog open={open} onOpenChange={onOpenChange}>
+        <AlertDialogContent className="max-w-sm">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-lg">
+              Activar recordatorios
+            </AlertDialogTitle>
+            <AlertDialogDescription className="text-sm text-muted-foreground">
+              Focus On puede avisarte a la hora de tus tareas. Solo recordatorios, sin ruido.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="flex-row gap-2 sm:gap-2">
+            <AlertDialogCancel className="mt-0 flex-1">
               Ahora no
-            </Button>
-            <Button type="button" className="flex-1" onClick={handleActivate}>
+            </AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={onActivate}
+              className="flex-1"
+            >
               Activar
-            </Button>
-          </div>
-        </div>
-      </div>
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     );
   }
 
   // variant === 'denied'
   return (
-    <div
-      ref={backdropRef}
-      onClick={handleBackdropClick}
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 animate-in fade-in-0"
-    >
-      <div
-        role="alertdialog"
-        aria-modal="true"
-        className="relative z-50 w-full max-w-sm mx-4 rounded-2xl border border-border bg-card p-6 shadow-xl animate-in zoom-in-95"
-      >
-        <h2 className="text-lg font-semibold text-foreground mb-2">Recordatorios desactivados</h2>
-        <p className="text-sm text-muted-foreground mb-6">
-          Para activarlos, habilítalos en ajustes del dispositivo para Focus On.
-        </p>
-        <Button type="button" className="w-full" onClick={handleDismiss}>
-          Entendido
-        </Button>
-      </div>
-    </div>
+    <AlertDialog open={open} onOpenChange={onOpenChange}>
+      <AlertDialogContent className="max-w-sm">
+        <AlertDialogHeader>
+          <AlertDialogTitle className="text-lg">
+            Recordatorios desactivados
+          </AlertDialogTitle>
+          <AlertDialogDescription className="text-sm text-muted-foreground">
+            Para activarlos, habilítalos en ajustes del dispositivo para Focus On.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogAction onClick={() => onOpenChange(false)}>
+            Entendido
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
   );
 }

@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { Bell, BellOff, CheckCircle2, Loader2 } from 'lucide-react';
 import { Capacitor } from '@capacitor/core';
 import { Switch } from '@/components/ui/switch';
@@ -92,7 +91,6 @@ export function TaskReminderToggleStable({
   scheduledTime,
   onScheduleUpdate,
 }: TaskReminderToggleStableProps) {
-  const navigate = useNavigate();
   const { isAuthenticated } = useAuthState();
 
   const {
@@ -197,68 +195,48 @@ export function TaskReminderToggleStable({
     }
   };
 
-  const handlePermissionModalActivate = async () => {
-    log('permission modal: ACTIVATE action triggered');
+  const handlePermissionModalActivate = () => {
+    log('permission modal: activate clicked');
+    setPermissionModal((p) => ({ ...p, open: false }));
 
-    // If auth is missing (or guest), we must route to login (push requires an account)
-    if (isGuestMode() || !isAuthenticated) {
-      setEnabled(false);
-      pendingScheduleRef.current = null;
-      toast('Inicia sesión para activar recordatorios');
-      navigate('/auth');
-      return;
-    }
+    // Defer system prompt + subscription to next tick to avoid overlay DOM conflicts
+    setTimeout(async () => {
+      try {
+        log('permission request deferred');
+        const ok = isNative ? await requestNativePermissions() : await subscribeWebPush();
+        log('permission/subscription result', ok);
 
-    try {
-      // IMPORTANT: do NOT defer. Permission prompts require a direct user gesture on mobile browsers.
-      const ok = isNative ? await requestNativePermissions() : await subscribeWebPush();
-      log('permission/subscription result', ok);
+        if (!ok) {
+          // Revert UI
+          setEnabled(false);
+          pendingScheduleRef.current = null;
+          toast('Recordatorios desactivados');
+          return;
+        }
 
-      if (!ok) {
-        // Revert UI
+        const pendingAt = pendingScheduleRef.current;
+        pendingScheduleRef.current = null;
+        if (!pendingAt) {
+          // Nothing pending, just keep OFF
+          setEnabled(false);
+          return;
+        }
+
+        setStatus('loading');
+        const success = await scheduleEnabled(pendingAt);
+        setStatus('idle');
+        if (!success) setEnabled(false);
+      } catch (err) {
+        console.error('[Reminder] permission flow error', err);
         setEnabled(false);
         pendingScheduleRef.current = null;
-        toast('Recordatorios desactivados');
-        return;
+        toast.error('No pude programarlo. Reintenta.');
       }
-
-      const pendingAt = pendingScheduleRef.current;
-      pendingScheduleRef.current = null;
-      if (!pendingAt) {
-        // Nothing pending, just keep OFF
-        setEnabled(false);
-        return;
-      }
-
-      setStatus('loading');
-      const success = await scheduleEnabled(pendingAt);
-      setStatus('idle');
-      if (!success) setEnabled(false);
-    } catch (err) {
-      console.error('[Reminder] permission flow error', err);
-      setEnabled(false);
-      pendingScheduleRef.current = null;
-      toast.error('No pude programarlo. Reintenta.');
-    }
-  };
-
-  const handlePermissionModalDismiss = () => {
-    log('permission modal: DISMISS action triggered - reverting to OFF');
-    // CRITICAL: Revert the optimistic toggle since user declined
-    setEnabled(false);
-    pendingScheduleRef.current = null;
-    // No toast needed - silent dismiss
+    }, 0);
   };
 
   const handleReminderToggle = (desired: boolean) => {
     log('toggle clicked', { taskId, desired });
-
-    // If user tries to enable reminders without an account, route to login immediately.
-    if (desired && (isGuestMode() || !isAuthenticated)) {
-      toast('Inicia sesión para activar recordatorios');
-      navigate('/auth');
-      return;
-    }
 
     // Always immediate, visible action: flip UI instantly
     setEnabled(desired);
@@ -356,14 +334,10 @@ export function TaskReminderToggleStable({
       {/* Stable container: never conditionally unmount */}
       <div className="mt-3 pt-3 border-t border-border/30">
         {showLoginPrompt ? (
-          <button
-            type="button"
-            onClick={() => navigate('/auth')}
-            className="flex items-center gap-2 text-sm text-primary hover:underline"
-          >
-            <Bell size={14} className="opacity-70" />
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <Bell size={14} className="opacity-50" />
             <span>Inicia sesión para activar recordatorios</span>
-          </button>
+          </div>
         ) : (
           <>
             <div className="flex items-center justify-between">
@@ -405,7 +379,6 @@ export function TaskReminderToggleStable({
         onOpenChange={(open) => setPermissionModal((p) => ({ ...p, open }))}
         variant={permissionModal.variant}
         onActivate={handlePermissionModalActivate}
-        onDismiss={handlePermissionModalDismiss}
       />
     </>
   );
