@@ -1,19 +1,20 @@
-import { useState, useEffect } from 'react';
-import { Bell, BellOff, Loader2, AlertCircle, CheckCircle2 } from 'lucide-react';
+import { useState, useEffect, useCallback } from 'react';
+import { Bell, BellOff, Loader2, CheckCircle2 } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
 import { Capacitor } from '@capacitor/core';
 import { useLocalNotifications, taskIdToNumericId } from '@/hooks/useLocalNotifications';
 import { useWebPushNotifications } from '@/hooks/useWebPushNotifications';
 import { useAuthState, isGuestMode } from '@/hooks/useAuthState';
-import { usePWAInstalled } from '@/hooks/usePWAInstalled';
 import { supabase } from '@/integrations/supabase/client';
 import { parseDateString } from '@/lib/dateUtils';
+import { ReminderPermissionModal } from './ReminderPermissionModal';
 
 interface TaskReminderToggleProps {
   taskId: string;
   taskText: string;
   scheduledDate?: string;
   scheduledTime?: string;
+  onScheduleUpdate?: (newDate: string, newTime: string) => void;
 }
 
 function getReminderStorageKey(taskId: string): string {
@@ -30,28 +31,86 @@ function getDeviceId(): string {
   return deviceId;
 }
 
-type ReminderStatus = 'idle' | 'loading' | 'enabled' | 'error';
+type ReminderStatus = 'idle' | 'loading' | 'enabled';
 
 interface ReminderState {
   status: ReminderStatus;
-  errorMessage?: string;
+  scheduledInfo?: string;
+}
+
+// Calculate next valid reminder time (at least 2 minutes in the future)
+function getNextValidTime(scheduledDate?: string, scheduledTime?: string): { date: string; time: string } | null {
+  const now = new Date();
+  const minFutureMs = 2 * 60 * 1000; // 2 minutes
+  
+  if (!scheduledDate || !scheduledTime) {
+    return null;
+  }
+  
+  try {
+    const scheduled = parseDateString(scheduledDate);
+    if (!scheduled) return null;
+    
+    const [hours, minutes] = scheduledTime.split(':').map(Number);
+    if (isNaN(hours) || isNaN(minutes)) return null;
+    
+    scheduled.setHours(hours, minutes, 0, 0);
+    
+    // If time is in the future, use it as-is
+    if (scheduled.getTime() > now.getTime() + minFutureMs) {
+      return { date: scheduledDate, time: scheduledTime };
+    }
+    
+    // Time has passed - suggest same time tomorrow
+    const tomorrow = new Date(now);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    tomorrow.setHours(hours, minutes, 0, 0);
+    
+    const newDate = tomorrow.toISOString().split('T')[0];
+    return { date: newDate, time: scheduledTime };
+  } catch {
+    return null;
+  }
+}
+
+function isValidFutureTime(scheduledDate?: string, scheduledTime?: string): boolean {
+  if (!scheduledDate || !scheduledTime) return false;
+  
+  try {
+    const scheduled = parseDateString(scheduledDate);
+    if (!scheduled) return false;
+    
+    const [hours, minutes] = scheduledTime.split(':').map(Number);
+    if (isNaN(hours) || isNaN(minutes)) return false;
+    
+    scheduled.setHours(hours, minutes, 0, 0);
+    
+    // Must be at least 1 minute in the future
+    return scheduled.getTime() > Date.now() + 60000;
+  } catch {
+    return false;
+  }
 }
 
 export function TaskReminderToggle({ 
   taskId, 
   taskText, 
   scheduledDate, 
-  scheduledTime
+  scheduledTime,
+  onScheduleUpdate
 }: TaskReminderToggleProps) {
   const { isAuthenticated } = useAuthState();
-  const isPWAInstalled = usePWAInstalled();
   
-  // Check localStorage for existing reminder
   const hasStoredReminder = () => !!localStorage.getItem(getReminderStorageKey(taskId));
   
   const [state, setState] = useState<ReminderState>({ 
     status: hasStoredReminder() ? 'enabled' : 'idle' 
   });
+  
+  const [permissionModal, setPermissionModal] = useState<{
+    open: boolean;
+    variant: 'request' | 'denied';
+  }>({ open: false, variant: 'request' });
   
   // Native notifications (Capacitor)
   const { 
@@ -77,11 +136,10 @@ export function TaskReminderToggle({
     }
   }, [taskId]);
 
-  // Don't show for tasks without complete schedule
-  if (!scheduledDate || !scheduledTime) {
-    return null;
-  }
-
+  // Check if we have valid future datetime
+  const hasValidFutureTime = isValidFutureTime(scheduledDate, scheduledTime);
+  const hasMissingSchedule = !scheduledDate || !scheduledTime;
+  
   // Guest mode - show login prompt
   if (isGuestMode()) {
     return (
@@ -110,54 +168,42 @@ export function TaskReminderToggle({
   const isWeb = !isNative && Capacitor.getPlatform() === 'web';
   
   if (isWeb && !isWebPushSupported) {
-    return (
-      <div className="mt-3 pt-3 border-t border-border/30">
-        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          <Bell size={14} className="opacity-50" />
-          <span>Tu navegador no soporta notificaciones</span>
-        </div>
-      </div>
-    );
+    // Don't show anything if not supported - feel native
+    return null;
   }
 
-  // Show suggestion to install for better experience (but don't block)
-  const showInstallSuggestion = isWeb && !isPWAInstalled;
-
-  const calculateReminderTime = (): Date | null => {
+  const calculateReminderTime = (date?: string, time?: string): Date | null => {
+    const d = date || scheduledDate;
+    const t = time || scheduledTime;
+    
+    if (!d || !t) return null;
+    
     try {
-      const date = parseDateString(scheduledDate);
-      if (!date) return null;
+      const parsed = parseDateString(d);
+      if (!parsed) return null;
       
-      const [hours, minutes] = scheduledTime.split(':').map(Number);
+      const [hours, minutes] = t.split(':').map(Number);
       if (isNaN(hours) || isNaN(minutes)) return null;
       
-      date.setHours(hours, minutes, 0, 0);
-      return date;
+      parsed.setHours(hours, minutes, 0, 0);
+      return parsed;
     } catch {
       return null;
     }
   };
 
-  const enableReminder = async () => {
-    console.log('[Reminder] Starting enableReminder flow');
+  const doEnableReminder = async (reminderTime: Date) => {
+    console.log('[Reminder] Enabling reminder for:', reminderTime.toISOString());
     setState({ status: 'loading' });
 
     try {
-      const reminderTime = calculateReminderTime();
-      if (!reminderTime) {
-        throw new Error('No se pudo calcular la hora del recordatorio');
-      }
-
-      if (reminderTime <= new Date()) {
-        throw new Error('La hora programada ya pasó');
-      }
-
       if (isNative) {
         // Native: use Capacitor Local Notifications
         if (!hasNativePermission) {
           const granted = await requestNativePermissions();
           if (!granted) {
-            throw new Error('Necesitas permitir las notificaciones');
+            setState({ status: 'idle' });
+            return;
           }
         }
 
@@ -171,31 +217,14 @@ export function TaskReminderToggle({
         });
 
         if (!success) {
-          throw new Error('No se pudo programar la notificación');
+          setState({ status: 'idle' });
+          return;
         }
-        
-        // Save to localStorage for native
-        localStorage.setItem(getReminderStorageKey(taskId), reminderTime.toISOString());
-        setState({ status: 'enabled' });
-        console.log('[Reminder] Native notification scheduled successfully!');
         
       } else {
         // Web: use Web Push via backend
-        if (webPushPermission !== 'granted' || !isWebPushSubscribed) {
-          const subscribed = await subscribeWebPush();
-          if (!subscribed) {
-            // Soft message, don't show error
-            setState({ 
-              status: 'error', 
-              errorMessage: 'Si activas notificaciones en tu navegador, te avisaré a la hora de tus tareas.' 
-            });
-            return;
-          }
-        }
-
         const deviceId = getDeviceId();
         
-        // Save reminder to backend using the existing save-reminder edge function
         const { error } = await supabase.functions.invoke('save-reminder', {
           body: {
             deviceId,
@@ -207,21 +236,97 @@ export function TaskReminderToggle({
 
         if (error) {
           console.error('[Reminder] Failed to save reminder:', error);
-          throw new Error('No se pudo guardar el recordatorio');
+          setState({ status: 'idle' });
+          return;
         }
-
-        // Save to localStorage for UI state
-        localStorage.setItem(getReminderStorageKey(taskId), reminderTime.toISOString());
-        setState({ status: 'enabled' });
-        console.log('[Reminder] Web push reminder saved successfully!');
       }
+
+      // Save to localStorage for UI state
+      localStorage.setItem(getReminderStorageKey(taskId), reminderTime.toISOString());
+      setState({ 
+        status: 'enabled',
+        scheduledInfo: `${reminderTime.getHours().toString().padStart(2, '0')}:${reminderTime.getMinutes().toString().padStart(2, '0')}`
+      });
+      console.log('[Reminder] Reminder enabled successfully!');
 
     } catch (error: any) {
       console.error('[Reminder] Error:', error);
-      setState({ 
-        status: 'error', 
-        errorMessage: error.message || 'Error al activar recordatorio'
-      });
+      setState({ status: 'idle' });
+    }
+  };
+
+  const handlePermissionAndEnable = async () => {
+    setPermissionModal({ open: false, variant: 'request' });
+    
+    let permissionGranted = false;
+    
+    if (isNative) {
+      permissionGranted = await requestNativePermissions();
+    } else {
+      // Web: subscribe which also requests permission
+      permissionGranted = await subscribeWebPush();
+    }
+    
+    if (permissionGranted) {
+      // Now check if we need to adjust time
+      let targetDate = scheduledDate;
+      let targetTime = scheduledTime;
+      
+      if (!hasValidFutureTime) {
+        const nextValid = getNextValidTime(scheduledDate, scheduledTime);
+        if (nextValid && onScheduleUpdate) {
+          onScheduleUpdate(nextValid.date, nextValid.time);
+          targetDate = nextValid.date;
+          targetTime = nextValid.time;
+        }
+      }
+      
+      const reminderTime = calculateReminderTime(targetDate, targetTime);
+      if (reminderTime) {
+        await doEnableReminder(reminderTime);
+      }
+    }
+  };
+
+  const enableReminder = async () => {
+    console.log('[Reminder] Starting enableReminder flow');
+    
+    // Check current permission status
+    const currentPermission = isNative 
+      ? (hasNativePermission ? 'granted' : 'default')
+      : webPushPermission;
+    
+    // If denied, show denied modal
+    if (currentPermission === 'denied') {
+      setPermissionModal({ open: true, variant: 'denied' });
+      return;
+    }
+    
+    // If not granted, show request modal
+    if (currentPermission !== 'granted' && !isWebPushSubscribed) {
+      setPermissionModal({ open: true, variant: 'request' });
+      return;
+    }
+    
+    // Permission already granted - check time validity
+    let targetDate = scheduledDate;
+    let targetTime = scheduledTime;
+    
+    if (!hasValidFutureTime) {
+      const nextValid = getNextValidTime(scheduledDate, scheduledTime);
+      if (nextValid && onScheduleUpdate) {
+        onScheduleUpdate(nextValid.date, nextValid.time);
+        targetDate = nextValid.date;
+        targetTime = nextValid.time;
+      } else if (!nextValid) {
+        // Can't compute a valid time
+        return;
+      }
+    }
+    
+    const reminderTime = calculateReminderTime(targetDate, targetTime);
+    if (reminderTime) {
+      await doEnableReminder(reminderTime);
     }
   };
 
@@ -233,7 +338,6 @@ export function TaskReminderToggle({
       if (isNative) {
         await cancelNotificationByTaskId(taskId);
       } else {
-        // Cancel via backend
         const deviceId = getDeviceId();
         await supabase.functions.invoke('delete-reminder', {
           body: { deviceId, taskId }
@@ -246,7 +350,6 @@ export function TaskReminderToggle({
 
     } catch (error: any) {
       console.error('[Reminder] Disable error:', error);
-      // Still remove from localStorage
       localStorage.removeItem(getReminderStorageKey(taskId));
       setState({ status: 'idle' });
     }
@@ -264,56 +367,70 @@ export function TaskReminderToggle({
 
   const isEnabled = state.status === 'enabled';
   const isLoading = state.status === 'loading';
-  const hasError = state.status === 'error';
+  
+  // Determine if switch should be disabled
+  const currentPermission = isNative 
+    ? (hasNativePermission ? 'granted' : 'default')
+    : webPushPermission;
+  const isPermissionDenied = currentPermission === 'denied';
+
+  // Show helper text for missing/past time
+  const showTimeHelper = hasMissingSchedule || (!hasValidFutureTime && !isEnabled);
 
   return (
-    <div className="mt-3 pt-3 border-t border-border/30">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          {isEnabled ? (
-            <Bell size={14} className="text-primary" />
-          ) : (
-            <BellOff size={14} className="text-muted-foreground" />
-          )}
-          <span className="text-sm text-foreground">
-            Recordatorio
-          </span>
-          {isLoading && (
-            <Loader2 size={14} className="animate-spin text-muted-foreground" />
-          )}
-          {isEnabled && (
-            <CheckCircle2 size={14} className="text-primary" />
-          )}
+    <>
+      <div className="mt-3 pt-3 border-t border-border/30">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            {isEnabled ? (
+              <Bell size={14} className="text-primary" />
+            ) : (
+              <BellOff size={14} className="text-muted-foreground" />
+            )}
+            <span className="text-sm text-foreground">
+              Recordatorio
+            </span>
+            {isLoading && (
+              <Loader2 size={14} className="animate-spin text-muted-foreground" />
+            )}
+            {isEnabled && (
+              <CheckCircle2 size={14} className="text-primary" />
+            )}
+          </div>
+          
+          <Switch
+            checked={isEnabled}
+            onCheckedChange={handleToggle}
+            disabled={isLoading || (isPermissionDenied && !isEnabled)}
+            aria-label="Activar recordatorio"
+          />
         </div>
-        
-        <Switch
-          checked={isEnabled}
-          onCheckedChange={handleToggle}
-          disabled={isLoading}
-          aria-label="Activar recordatorio"
-        />
+
+        {isEnabled && scheduledTime && (
+          <p className="text-xs text-muted-foreground mt-1.5 ml-6">
+            Te avisaré a las {scheduledTime}
+          </p>
+        )}
+
+        {showTimeHelper && !isEnabled && (
+          <p className="text-xs text-muted-foreground mt-1.5 ml-6">
+            Elige una hora futura para poder recordarte
+          </p>
+        )}
+
+        {isPermissionDenied && !isEnabled && !showTimeHelper && (
+          <p className="text-xs text-muted-foreground mt-1.5 ml-6">
+            Habilita recordatorios en ajustes del dispositivo
+          </p>
+        )}
       </div>
 
-      {isEnabled && (
-        <p className="text-xs text-muted-foreground mt-1.5 ml-6">
-          Te avisaré a las {scheduledTime}
-        </p>
-      )}
-
-      {showInstallSuggestion && !isEnabled && (
-        <p className="text-xs text-muted-foreground mt-1.5 ml-6">
-          Instala la app para mejor experiencia
-        </p>
-      )}
-
-      {hasError && state.errorMessage && (
-        <div className="mt-2 p-2 bg-muted/50 rounded-md">
-          <div className="flex items-start gap-2">
-            <AlertCircle size={14} className="text-muted-foreground mt-0.5 flex-shrink-0" />
-            <p className="text-xs text-muted-foreground">{state.errorMessage}</p>
-          </div>
-        </div>
-      )}
-    </div>
+      <ReminderPermissionModal
+        open={permissionModal.open}
+        onOpenChange={(open) => setPermissionModal(prev => ({ ...prev, open }))}
+        variant={permissionModal.variant}
+        onActivate={handlePermissionAndEnable}
+      />
+    </>
   );
 }
