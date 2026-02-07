@@ -23,3 +23,9 @@ verify_jwt = false
 
 [functions.push-config]
 verify_jwt = false
+
+[functions.telegram-link]
+verify_jwt = false
+
+[functions.telegram-webhook]
+verify_jwt = false
