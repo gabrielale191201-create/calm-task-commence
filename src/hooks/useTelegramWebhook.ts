@@ -1,6 +1,5 @@
-import { useCallback, useEffect, useState } from 'react';
-import { supabase } from '@/integrations/supabase/client';
-import { useAuthState } from '@/hooks/useAuthState';
+import { useCallback, useMemo } from 'react';
+import { useLocalStorage } from './useLocalStorage';
 
 const N8N_WEBHOOK_URL = 'https://focuson.app.n8n.cloud/webhook/telegram-webhook';
 
@@ -17,35 +16,14 @@ interface TelegramWebhookPayload {
 
 /**
  * Hook para disparar el webhook de n8n cuando una tarea tiene fecha + hora.
- * Obtiene el chat_id del usuario desde user_telegram.
+ * Obtiene el chat_id del usuario desde localStorage (telegram_chat_id).
  */
 export function useTelegramWebhook() {
-  const { user } = useAuthState();
-  const [chatId, setChatId] = useState<string | null>(null);
+  const [isConnected] = useLocalStorage<boolean>('telegram_connected', false);
+  const [chatId] = useLocalStorage<string | null>('telegram_chat_id', null);
 
-  // Fetch chat_id on mount and when user changes
-  useEffect(() => {
-    if (!user?.id) {
-      setChatId(null);
-      return;
-    }
-
-    const fetchChatId = async () => {
-      const { data, error } = await supabase
-        .from('user_telegram')
-        .select('telegram_chat_id')
-        .eq('user_id', user.id)
-        .maybeSingle();
-
-      if (!error && data?.telegram_chat_id) {
-        setChatId(data.telegram_chat_id);
-      } else {
-        setChatId(null);
-      }
-    };
-
-    fetchChatId();
-  }, [user?.id]);
+  // Memoize the connected state
+  const hasTelegramConnected = useMemo(() => isConnected && !!chatId, [isConnected, chatId]);
 
   /**
    * Dispara el webhook a n8n si la tarea tiene fecha + hora y el usuario tiene chat_id.
@@ -121,6 +99,6 @@ export function useTelegramWebhook() {
 
   return {
     triggerWebhook,
-    hasTelegramConnected: !!chatId,
+    hasTelegramConnected,
   };
 }

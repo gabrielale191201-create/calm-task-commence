@@ -3,7 +3,7 @@ import { Plus, Edit2, Check, X } from 'lucide-react';
 import { Task } from '@/types/focuson';
 import { TaskItem } from '@/components/TaskItem';
 import { TaskReminderToggleStable } from '@/components/reminders/TaskReminderToggleStable';
-import { TelegramReminderToggle } from '@/components/telegram/TelegramReminderToggle';
+import { TelegramLocalToggle } from '@/components/telegram/TelegramLocalToggle';
 import { PushDiagnostics } from '@/components/reminders/PushDiagnostics';
 import { StartFocusDialog } from '@/components/StartFocusDialog';
 import { toISODate, parseDateString } from '@/lib/dateUtils';
@@ -306,7 +306,7 @@ export function TasksPage({ tasks, onAddTask, onToggleTask, onDeleteTask, onUpda
       <section className="mb-8 animate-slide-up stagger-3">
         <div className="rounded-2xl border border-border/50 bg-card p-4">
           <h3 className="text-sm font-medium text-foreground mb-2">Recordatorios externos</h3>
-          <TelegramReminderToggle />
+          <TelegramLocalToggle />
         </div>
       </section>
 
