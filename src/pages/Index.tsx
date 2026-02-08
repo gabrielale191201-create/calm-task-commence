@@ -19,6 +19,7 @@ import { useAlarmSound } from '@/hooks/useAlarmSound';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
 import { useAuthState } from '@/hooks/useAuthState';
 import { useGuestMode } from '@/hooks/useGuestMode';
+import { useTelegramWebhook } from '@/hooks/useTelegramWebhook';
 import { TabType, Task, Routine, JournalEntry, FocusSession, UserProfile, QuickNote } from '@/types/focuson';
 import { AppLogo } from '@/components/AppLogo';
 import { toast } from 'sonner';
@@ -38,6 +39,7 @@ interface FloatingNote {
 export default function Index() {
   const { signOut } = useAuthState();
   const { isGuest, exitGuestMode } = useGuestMode();
+  const { triggerWebhook } = useTelegramWebhook();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useLocalStorage<TabType>('focuson-tab', 'hoy');
   const [showHowTo, setShowHowTo] = useState(false);
@@ -155,11 +157,28 @@ export default function Index() {
       durationMinutes: input.durationMinutes,
     };
     setTasks([...tasks, newTask]);
+
+    // Disparar webhook si tiene fecha + hora
+    if (input.scheduledDate && input.scheduledTime) {
+      triggerWebhook(input.text, input.scheduledDate, input.scheduledTime);
+    }
   };
 
   // Update task scheduling
   const updateTask = (id: string, updates: Partial<Pick<Task, 'scheduledDate' | 'scheduledTime' | 'durationMinutes'>>) => {
-    setTasks(tasks.map(t => t.id === id ? { ...t, ...updates } : t));
+    const task = tasks.find(t => t.id === id);
+    if (!task) return;
+
+    const updatedTask = { ...task, ...updates };
+    setTasks(tasks.map(t => t.id === id ? updatedTask : t));
+
+    // Disparar webhook si ahora tiene fecha + hora
+    const finalDate = updates.scheduledDate ?? task.scheduledDate;
+    const finalTime = updates.scheduledTime ?? task.scheduledTime;
+    
+    if (finalDate && finalTime) {
+      triggerWebhook(updatedTask.text, finalDate, finalTime);
+    }
   };
 
   // Add multiple tasks from AI - SIN hora, fecha ni duración
