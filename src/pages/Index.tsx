@@ -160,7 +160,17 @@ export default function Index() {
 
     // Disparar webhook si tiene fecha + hora
     if (input.scheduledDate && input.scheduledTime) {
-      triggerWebhook(input.text, input.scheduledDate, input.scheduledTime);
+      triggerWebhook(newTask.id, input.text, input.scheduledDate, input.scheduledTime).then(result => {
+        if (!result.sent && result.reason === 'no_telegram') {
+          toast('Conecta Telegram para recibir recordatorios', {
+            description: 'Así te avisamos a tiempo por mensaje directo.',
+            action: {
+              label: 'Conectar',
+              onClick: () => setActiveTab('horario'),
+            },
+          });
+        }
+      });
     }
   };
 
@@ -177,7 +187,17 @@ export default function Index() {
     const finalTime = updates.scheduledTime ?? task.scheduledTime;
     
     if (finalDate && finalTime) {
-      triggerWebhook(updatedTask.text, finalDate, finalTime);
+      triggerWebhook(task.id, updatedTask.text, finalDate, finalTime).then(result => {
+        if (!result.sent && result.reason === 'no_telegram') {
+          toast('Conecta Telegram para recibir recordatorios', {
+            description: 'Así te avisamos a tiempo por mensaje directo.',
+            action: {
+              label: 'Conectar',
+              onClick: () => setActiveTab('horario'),
+            },
+          });
+        }
+      });
     }
   };
 
