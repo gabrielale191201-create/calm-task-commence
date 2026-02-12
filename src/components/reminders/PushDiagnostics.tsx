@@ -120,8 +120,8 @@ export function PushDiagnostics() {
           log('SW ready:', !!ready);
           
           // Check push subscription
-          if (registration.pushManager) {
-            const subscription = await registration.pushManager.getSubscription();
+          if ((registration as any).pushManager) {
+            const subscription = await (registration as any).pushManager.getSubscription();
             newState.pushSubscription = subscription;
             log('Push subscription:', subscription ? 'exists' : 'none');
           }
@@ -229,7 +229,7 @@ export function PushDiagnostics() {
 
       // 4. Subscribe to push
       log('Subscribing to push...');
-      const subscription = await registration.pushManager.subscribe({
+      const subscription = await (registration as any).pushManager.subscribe({
         userVisibleOnly: true,
         applicationServerKey: urlBase64ToUint8Array(state.vapidKey),
       });
@@ -302,7 +302,7 @@ export function PushDiagnostics() {
     try {
       const registration = await navigator.serviceWorker.getRegistration();
       if (registration) {
-        const subscription = await registration.pushManager.getSubscription();
+        const subscription = await (registration as any).pushManager.getSubscription();
         if (subscription) {
           await subscription.unsubscribe();
           log('Unsubscribed');
