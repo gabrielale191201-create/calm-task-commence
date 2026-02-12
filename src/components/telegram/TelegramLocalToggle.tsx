@@ -19,12 +19,16 @@ export function TelegramLocalToggle() {
   const [showModal, setShowModal] = useState(false);
 
   const handleToggle = (checked: boolean) => {
+    console.log('[TelegramLocalToggle] handleToggle called, checked:', checked, 'isConnected:', isConnected);
     if (checked && !isConnected) {
       // Iniciar proceso de vinculación
-      const deepLink = startLinking();
-      setShowModal(true);
-      // Abrir Telegram automáticamente
-      window.open(deepLink, '_blank');
+      startLinking();
+      console.log('[TelegramLocalToggle] Setting showModal to true');
+      // Use setTimeout to ensure state updates from startLinking are flushed first
+      setTimeout(() => {
+        setShowModal(true);
+        console.log('[TelegramLocalToggle] showModal set to true');
+      }, 0);
     } else if (!checked && isConnected) {
       // Desconectar
       disconnect();

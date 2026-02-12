@@ -98,7 +98,7 @@ export function useWebPushNotifications() {
     try {
       const registration = await navigator.serviceWorker.getRegistration();
       if (registration) {
-        const subscription = await registration.pushManager.getSubscription();
+        const subscription = await (registration as any).pushManager.getSubscription();
         setIsSubscribed(!!subscription);
         log('Existing subscription check:', subscription ? 'found' : 'none');
       }
@@ -169,13 +169,13 @@ export function useWebPushNotifications() {
       }
 
       // Step 4: Check for existing subscription
-      let subscription = await registration.pushManager.getSubscription();
+      let subscription = await (registration as any).pushManager.getSubscription();
       
       // Step 5: Create new subscription if needed
       if (!subscription) {
         log('Creating new push subscription...');
         try {
-          subscription = await registration.pushManager.subscribe({
+          subscription = await (registration as any).pushManager.subscribe({
             userVisibleOnly: true,
             applicationServerKey: urlBase64ToUint8Array(vapidPublicKey)
           });
@@ -225,7 +225,7 @@ export function useWebPushNotifications() {
     try {
       const registration = await navigator.serviceWorker.getRegistration();
       if (registration) {
-        const subscription = await registration.pushManager.getSubscription();
+        const subscription = await (registration as any).pushManager.getSubscription();
         if (subscription) {
           await subscription.unsubscribe();
           log('Unsubscribed successfully');
