@@ -3,35 +3,20 @@ import { useLocalStorage } from './useLocalStorage';
 
 const N8N_WEBHOOK_URL = 'https://focuson.app.n8n.cloud/webhook/telegram-webhook';
 
-interface TelegramWebhookPayload {
-  task: string;
-  task_id: string;
-  event_id: string; // UUID para deduplicación/idempotencia
-  date: string;
-  time: string;
-  notify_at: string; // ISO 8601 con timezone: YYYY-MM-DDTHH:mm:00-05:00
-  timezone: string;
-  chat_id: string;
-}
-
 /**
- * Hook para disparar el webhook de n8n cuando una tarea tiene fecha + hora.
- * Obtiene el chat_id del usuario desde localStorage (telegram_chat_id).
+ * Hook para enviar webhook a n8n cuando una tarea tiene fecha + hora.
+ * La PWA solo envía el webhook inmediatamente. n8n se encarga de esperar
+ * con su nodo Wait y enviar el mensaje a Telegram a la hora exacta.
  */
 export function useTelegramWebhook() {
   const [isConnected] = useLocalStorage<boolean>('telegram_connected', false);
   const [chatId] = useLocalStorage<string | null>('telegram_chat_id', null);
 
-  // Memoize the connected state
   const hasTelegramConnected = useMemo(() => isConnected && !!chatId, [isConnected, chatId]);
 
   /**
-   * Dispara el webhook a n8n si la tarea tiene fecha + hora y el usuario tiene chat_id.
-   * @param taskId - ID único de la tarea
-   * @param taskText - Nombre de la tarea
-   * @param scheduledDate - Fecha en formato YYYY-MM-DD
-   * @param scheduledTime - Hora en formato HH:mm
-   * @returns { sent: boolean, reason?: string } - Indica si se envió o no y por qué
+   * Envía el webhook a n8n inmediatamente. No espera, no hace timers.
+   * Payload exacto: { chat_id, task, notify_at } con notify_at en formato "YYYY-MM-DD HH:mm"
    */
   const triggerWebhook = useCallback(
     async (
@@ -40,35 +25,23 @@ export function useTelegramWebhook() {
       scheduledDate?: string,
       scheduledTime?: string
     ): Promise<{ sent: boolean; reason?: 'missing_datetime' | 'no_telegram' }> => {
-      // Solo disparar si tiene fecha Y hora
       if (!scheduledDate || !scheduledTime) {
         console.log('[TelegramWebhook] Skipping - missing date or time');
         return { sent: false, reason: 'missing_datetime' };
       }
 
-      // Solo disparar si tenemos chat_id
       if (!chatId) {
         console.log('[TelegramWebhook] Skipping - no chat_id');
         return { sent: false, reason: 'no_telegram' };
       }
 
-      // Generar event_id único para deduplicación/idempotencia
-      const eventId = crypto.randomUUID();
+      // notify_at en formato exacto: "YYYY-MM-DD HH:mm" (NO ISO, NO timezone offset)
+      const notifyAt = `${scheduledDate.trim()} ${scheduledTime.trim()}`;
 
-      // Construir notify_at en ISO 8601 con timezone Peru (-05:00)
-      const TIMEZONE = 'America/Lima';
-      const TIMEZONE_OFFSET = '-05:00';
-      const notifyAt = `${scheduledDate}T${scheduledTime}:00${TIMEZONE_OFFSET}`;
-
-      const payload: TelegramWebhookPayload = {
-        task: taskText,
-        task_id: taskId,
-        event_id: eventId,
-        date: scheduledDate,
-        time: scheduledTime,
+      const payload = {
+        chat_id: String(chatId).trim(),
+        task: String(taskText).trim(),
         notify_at: notifyAt,
-        timezone: TIMEZONE,
-        chat_id: chatId,
       };
 
       console.log('[TelegramWebhook] Sending:', payload);
@@ -82,15 +55,14 @@ export function useTelegramWebhook() {
           body: JSON.stringify(payload),
         });
 
-        if (response.ok) {
-          console.log('[TelegramWebhook] Success - reminder scheduled');
-          return { sent: true };
-        } else {
-          console.error('[TelegramWebhook] Error:', response.status, await response.text());
-          return { sent: false };
+        if (!response.ok) {
+          throw new Error(`Webhook failed: ${response.status}`);
         }
+
+        console.log('[TelegramWebhook] Success - n8n will contact at task time.');
+        return { sent: true };
       } catch (error) {
-        console.error('[TelegramWebhook] Network error:', error);
+        console.error('[TelegramWebhook] Error sending webhook:', error);
         return { sent: false };
       }
     },
