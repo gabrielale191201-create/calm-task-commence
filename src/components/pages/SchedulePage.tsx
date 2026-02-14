@@ -37,7 +37,7 @@ export function SchedulePage({ tasks, quickNotes, onStartFocus, tasksCountByDate
 
   const completedTasks = useMemo(() => {
     return tasks.filter(
-      (t) => t.scheduledDate && t.scheduledTime && t.durationMinutes && t.status === 'done'
+      (t) => t.scheduledDate && t.scheduledTime && t.durationMinutes && t.status === 'completed'
     );
   }, [tasks]);
 

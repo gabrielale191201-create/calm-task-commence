@@ -229,27 +229,35 @@ export default function Index() {
     setFloatingNotes([...floatingNotes, ...newNotes]);
   };
 
-  const toggleTask = (id: string) => {
+  const setTaskStatus = (id: string, newStatus: Task['status']) => {
     const now = new Date().toISOString();
     setTasks(tasks.map(t => {
       if (t.id !== id) return t;
-      const nextDone = t.status !== 'done';
       return {
         ...t,
-        status: nextDone ? 'done' : 'pending',
-        completedAt: nextDone ? now : undefined,
+        status: newStatus,
+        completedAt: newStatus === 'completed' ? now : undefined,
       };
     }));
   };
 
-  // Migration for old tasks
+  const toggleTask = (id: string) => {
+    const task = tasks.find(t => t.id === id);
+    if (!task) return;
+    setTaskStatus(id, task.status === 'completed' ? 'pending' : 'completed');
+  };
+
+  // Migration for old tasks (done → completed)
   useEffect(() => {
-    const needsMigration = tasks.some((t: any) => typeof t.status === 'undefined' || typeof t.source === 'undefined');
+    const needsMigration = tasks.some((t: any) => typeof t.status === 'undefined' || typeof t.source === 'undefined' || t.status === 'done');
     if (!needsMigration) return;
     setTasks(tasks.map((t: any) => {
-      const status: Task['status'] = typeof t.status !== 'undefined'
-        ? t.status
-        : (t.completed ? 'done' : 'pending');
+      let status: Task['status'] = t.status;
+      if (typeof t.status === 'undefined') {
+        status = t.completed ? 'completed' : 'pending';
+      } else if (t.status === 'done') {
+        status = 'completed';
+      }
       const source: Task['source'] = t.source || 'manual';
       return {
         ...t,
@@ -389,17 +397,35 @@ export default function Index() {
     setSessions(prev => [...prev, newSession]);
   }, [setSessions]);
 
-  // Focus start from task
+  // Focus start from task - track which task started it
+  const [focusTaskId, setFocusTaskId] = useState<string | null>(null);
+
   const startFocusFromTopTask = (taskText: string, minutes: number) => {
+    // Find the task by text to track it
+    const task = tasks.find(t => t.text === taskText);
+    if (task) {
+      setFocusTaskId(task.id);
+      // Auto-set to in_progress if pending
+      if (task.status === 'pending') {
+        setTaskStatus(task.id, 'in_progress');
+      }
+    }
     setActiveTab('enfoque');
     timer.startTimer(minutes, taskText);
   };
+
+  const handleMarkFocusTaskCompleted = useCallback(() => {
+    if (focusTaskId) {
+      setTaskStatus(focusTaskId, 'completed');
+      setFocusTaskId(null);
+    }
+  }, [focusTaskId, tasks]);
 
   const todayISO = new Date().toISOString().split('T')[0];
 
   const hasVictoryToday = (() => {
     const didSession = sessions.some((s) => s.date === todayISO && s.status === 'completed');
-    const didTask = tasks.some((t) => t.status === 'done' && (t.completedAt || '').startsWith(todayISO));
+    const didTask = tasks.some((t) => t.status === 'completed' && (t.completedAt || '').startsWith(todayISO));
     const didRoutine = routines.some((r) => r.steps.some((st) => st.completed && (st.completedAt || '').startsWith(todayISO)));
     return didSession || didTask || didRoutine;
   })();
@@ -407,7 +433,7 @@ export default function Index() {
   const calculateStartedStreak = useCallback(() => {
     const dayHasVictory = (dateStr: string) => {
       const didSession = sessions.some((s) => s.date === dateStr && s.status === 'completed');
-      const didTask = tasks.some((t) => t.status === 'done' && (t.completedAt || '').startsWith(dateStr));
+      const didTask = tasks.some((t) => t.status === 'completed' && (t.completedAt || '').startsWith(dateStr));
       const didRoutine = routines.some((r) => r.steps.some((st) => st.completed && (st.completedAt || '').startsWith(dateStr)));
       return didSession || didTask || didRoutine;
     };
@@ -483,6 +509,7 @@ export default function Index() {
             onAcknowledgeCompletion={timer.acknowledgeCompletion}
             onToggleSound={setSoundEnabled}
             onSaveSession={saveSession}
+            onMarkTaskCompleted={focusTaskId ? handleMarkFocusTaskCompleted : undefined}
           />
         );
       case 'tareas':
@@ -492,6 +519,7 @@ export default function Index() {
             onAddTask={(data) => addTask(data, false)}
             onToggleTask={toggleTask}
             onDeleteTask={deleteTask}
+            onSetTaskStatus={setTaskStatus}
             onUpdateTask={updateTask}
             onStartFocus={(taskText, minutes) => startFocusFromTopTask(taskText, minutes)}
             getTasksCountForDate={getTasksCountForDate}

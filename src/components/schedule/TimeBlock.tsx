@@ -14,17 +14,23 @@ const statusStyles: Record<Task['status'], { bg: string; border: string; text: s
     text: 'text-foreground',
     label: 'Pendiente',
   },
-  done: {
+  in_progress: {
+    bg: 'bg-amber-100 dark:bg-amber-900/30',
+    border: 'border-l-amber-500',
+    text: 'text-foreground',
+    label: 'En proceso',
+  },
+  completed: {
     bg: 'bg-green-100 dark:bg-green-900/30',
     border: 'border-l-green-500',
     text: 'text-foreground/70',
-    label: 'Completado',
+    label: 'Completada',
   },
 };
 
 export function TimeBlock({ task, rowSpan, onClick }: TimeBlockProps) {
   const style = statusStyles[task.status];
-  const isCompleted = task.status === 'done';
+  const isCompleted = task.status === 'completed';
 
   return (
     <button
@@ -49,7 +55,9 @@ export function TimeBlock({ task, rowSpan, onClick }: TimeBlockProps) {
         'inline-block mt-1 text-[9px] font-medium px-1.5 py-0.5 rounded-full',
         isCompleted 
           ? 'text-green-700 dark:text-green-300 bg-green-500/15' 
-          : 'text-primary bg-primary/10'
+          : task.status === 'in_progress'
+            ? 'text-amber-700 dark:text-amber-300 bg-amber-500/15'
+            : 'text-primary bg-primary/10'
       )}>
         {style.label}
       </span>
