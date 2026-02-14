@@ -4,9 +4,10 @@ export interface Task {
   /**
    * Estado actual de la tarea.
    * - pending: por hacer
-   * - done: hecha
+   * - in_progress: en proceso
+   * - completed: completada
    */
-  status: 'pending' | 'done';
+  status: 'pending' | 'in_progress' | 'completed';
   /**
    * Origen de la tarea.
    * - manual: creada en la pestaña Tareas

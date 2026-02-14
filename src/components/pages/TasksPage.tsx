@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Plus, Edit2, Check, X } from 'lucide-react';
+import { Plus, Edit2, Check, X, Play } from 'lucide-react';
 import { Task } from '@/types/focuson';
 import { TaskItem } from '@/components/TaskItem';
 import { TaskReminderToggleStable } from '@/components/reminders/TaskReminderToggleStable';
@@ -13,12 +13,13 @@ interface TasksPageProps {
   onAddTask: (input: { text: string; scheduledDate?: string; scheduledTime?: string; durationMinutes?: number }) => void;
   onToggleTask: (id: string) => void;
   onDeleteTask: (id: string) => void;
+  onSetTaskStatus: (id: string, status: Task['status']) => void;
   onUpdateTask?: (id: string, updates: Partial<Pick<Task, 'scheduledDate' | 'scheduledTime' | 'durationMinutes'>>) => void;
   onStartFocus: (taskText: string, minutes: number) => void;
   getTasksCountForDate: (date: string) => number;
 }
 
-export function TasksPage({ tasks, onAddTask, onToggleTask, onDeleteTask, onUpdateTask, onStartFocus, getTasksCountForDate }: TasksPageProps) {
+export function TasksPage({ tasks, onAddTask, onToggleTask, onDeleteTask, onSetTaskStatus, onUpdateTask, onStartFocus, getTasksCountForDate }: TasksPageProps) {
   const [title, setTitle] = useState('');
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
@@ -30,39 +31,39 @@ export function TasksPage({ tasks, onAddTask, onToggleTask, onDeleteTask, onUpda
 
   const handleAddTask = () => {
     if (!title.trim()) return;
-    // Solo crear con el nombre - sin fecha, hora ni duración
     onAddTask({ text: title.trim() });
     setTitle('');
   };
 
-  const pending = tasks.filter((t) => t.status === 'pending');
-  const done = tasks.filter((t) => t.status === 'done');
+  // Tareas activas (pending + in_progress)
+  const activeTasks = tasks.filter((t) => t.status === 'pending' || t.status === 'in_progress');
+  const completedTasks = tasks.filter((t) => t.status === 'completed');
 
-  // Tareas sin programar (sin fecha/hora/duración)
+  // Tareas sin programar
   const unprogrammedTasks = useMemo(() => {
-    return pending.filter((t) => !t.scheduledDate || !t.scheduledTime || !t.durationMinutes);
-  }, [pending]);
+    return activeTasks.filter((t) => !t.scheduledDate || !t.scheduledTime || !t.durationMinutes);
+  }, [activeTasks]);
 
   // Tareas programadas para hoy
   const todayTasks = useMemo(() => {
-    return pending
+    return activeTasks
       .filter((t) => t.scheduledDate === todayISO && t.scheduledTime && t.durationMinutes)
       .sort((a, b) => (a.scheduledTime || '').localeCompare(b.scheduledTime || ''));
-  }, [pending, todayISO]);
+  }, [activeTasks, todayISO]);
 
   // Tareas programadas para el futuro
   const upcomingTasks = useMemo(() => {
-    return pending
+    return activeTasks
       .filter((t) => t.scheduledDate && t.scheduledDate > todayISO && t.scheduledTime && t.durationMinutes)
       .sort((a, b) => {
         if (a.scheduledDate !== b.scheduledDate) return (a.scheduledDate || '').localeCompare(b.scheduledDate || '');
         return (a.scheduledTime || '').localeCompare(b.scheduledTime || '');
       });
-  }, [pending, todayISO]);
+  }, [activeTasks, todayISO]);
 
   const formatChip = (t: Task) => {
     if (!t.scheduledDate || !t.scheduledTime || !t.durationMinutes) {
-      return 'Sin programar';
+      return undefined;
     }
     const d = parseDateString(t.scheduledDate);
     const day = d.toLocaleDateString('es-ES', { weekday: 'short' }).replace('.', '');
@@ -99,6 +100,14 @@ export function TasksPage({ tasks, onAddTask, onToggleTask, onDeleteTask, onUpda
     cancelEditing();
   };
 
+  const handleStartFocus = (task: Task) => {
+    // Si está pending, cambiar a in_progress
+    if (task.status === 'pending') {
+      onSetTaskStatus(task.id, 'in_progress');
+    }
+    setSelectedTask(task);
+  };
+
   const todayCount = getTasksCountForDate(todayISO);
 
   return (
@@ -119,7 +128,7 @@ export function TasksPage({ tasks, onAddTask, onToggleTask, onDeleteTask, onUpda
         </div>
       </div>
       
-      {/* Simple add form - only title */}
+      {/* Simple add form */}
       <div className="rounded-2xl border border-border/50 bg-card p-4 mb-6 animate-slide-up">
         <div className="flex items-end gap-2">
           <div className="flex-1">
@@ -137,7 +146,7 @@ export function TasksPage({ tasks, onAddTask, onToggleTask, onDeleteTask, onUpda
           <button
             onClick={handleAddTask}
             disabled={!title.trim()}
-            className="p-4 rounded-xl bg-primary text-white disabled:opacity-50 disabled:cursor-not-allowed transition-all hover:shadow-focus"
+            className="p-4 rounded-xl bg-primary text-primary-foreground disabled:opacity-50 disabled:cursor-not-allowed transition-all hover:shadow-focus"
             title="Agregar tarea"
           >
             <Plus size={20} />
@@ -204,7 +213,7 @@ export function TasksPage({ tasks, onAddTask, onToggleTask, onDeleteTask, onUpda
                       <button
                         onClick={() => saveEditing(task.id)}
                         disabled={!editDate || !editTime || !editDuration}
-                        className="flex-1 py-2 px-3 rounded-lg bg-primary text-white text-sm disabled:opacity-50 hover:bg-primary/90 transition-colors flex items-center justify-center gap-1"
+                        className="flex-1 py-2 px-3 rounded-lg bg-primary text-primary-foreground text-sm disabled:opacity-50 hover:bg-primary/90 transition-colors flex items-center justify-center gap-1"
                       >
                         <Check size={14} />
                         Guardar
@@ -212,23 +221,32 @@ export function TasksPage({ tasks, onAddTask, onToggleTask, onDeleteTask, onUpda
                     </div>
                   </div>
                 ) : (
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="flex-1">
-                      <TaskItem
-                        task={task}
-                        onToggle={onToggleTask}
-                        onDelete={onDeleteTask}
-                        showFocusButton={false}
-                        meta="Sin programar"
-                      />
+                  <div className="space-y-2">
+                    <TaskItem
+                      task={task}
+                      onToggle={onToggleTask}
+                      onDelete={onDeleteTask}
+                      onSetStatus={onSetTaskStatus}
+                      showFocusButton={false}
+                    />
+                    <div className="flex gap-2 pt-1">
+                      <button
+                        onClick={() => startEditing(task)}
+                        className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg bg-primary/10 text-primary hover:bg-primary/20 transition-colors"
+                        title="Programar tarea"
+                      >
+                        <Edit2 size={13} />
+                        Programar
+                      </button>
+                      <button
+                        onClick={() => handleStartFocus(task)}
+                        className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg bg-primary/10 text-primary hover:bg-primary/20 transition-colors"
+                        title="Iniciar Focus Time"
+                      >
+                        <Play size={13} />
+                        Focus Time
+                      </button>
                     </div>
-                    <button
-                      onClick={() => startEditing(task)}
-                      className="p-2 rounded-lg bg-primary/10 text-primary hover:bg-primary/20 transition-colors"
-                      title="Programar tarea"
-                    >
-                      <Edit2 size={16} />
-                    </button>
                   </div>
                 )}
               </div>
@@ -251,10 +269,19 @@ export function TasksPage({ tasks, onAddTask, onToggleTask, onDeleteTask, onUpda
                   task={task}
                   onToggle={onToggleTask}
                   onDelete={onDeleteTask}
-                  showFocusButton={false}
+                  onSetStatus={onSetTaskStatus}
                   meta={formatChip(task)}
-                  onPress={() => setSelectedTask(task)}
+                  onPress={() => handleStartFocus(task)}
                 />
+                <div className="flex items-center gap-2 mt-2">
+                  <button
+                    onClick={() => handleStartFocus(task)}
+                    className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg bg-primary/10 text-primary hover:bg-primary/20 transition-colors"
+                  >
+                    <Play size={13} />
+                    Focus Time
+                  </button>
+                </div>
                 <TaskReminderToggleStable
                   taskId={task.id}
                   taskText={task.text}
@@ -282,10 +309,19 @@ export function TasksPage({ tasks, onAddTask, onToggleTask, onDeleteTask, onUpda
                   task={task}
                   onToggle={onToggleTask}
                   onDelete={onDeleteTask}
-                  showFocusButton={false}
+                  onSetStatus={onSetTaskStatus}
                   meta={formatChip(task)}
-                  onPress={() => setSelectedTask(task)}
+                  onPress={() => handleStartFocus(task)}
                 />
+                <div className="flex items-center gap-2 mt-2">
+                  <button
+                    onClick={() => handleStartFocus(task)}
+                    className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg bg-primary/10 text-primary hover:bg-primary/20 transition-colors"
+                  >
+                    <Play size={13} />
+                    Focus Time
+                  </button>
+                </div>
                 <TaskReminderToggleStable
                   taskId={task.id}
                   taskText={task.text}
@@ -316,13 +352,13 @@ export function TasksPage({ tasks, onAddTask, onToggleTask, onDeleteTask, onUpda
       </section>
 
       {/* Completed tasks */}
-      {done.length > 0 && (
+      {completedTasks.length > 0 && (
         <details className="mt-8 animate-slide-up stagger-4">
           <summary className="text-sm font-medium text-muted-foreground mb-3 cursor-pointer select-none">
-            Completadas ({done.length})
+            Completadas ({completedTasks.length})
           </summary>
           <div className="space-y-2">
-            {done
+            {completedTasks
               .slice()
               .sort((a, b) => (b.completedAt || '').localeCompare(a.completedAt || ''))
               .map((task) => (
@@ -331,6 +367,7 @@ export function TasksPage({ tasks, onAddTask, onToggleTask, onDeleteTask, onUpda
                   task={task}
                   onToggle={onToggleTask}
                   onDelete={onDeleteTask}
+                  onSetStatus={onSetTaskStatus}
                   showFocusButton={false}
                   meta={formatChip(task)}
                 />

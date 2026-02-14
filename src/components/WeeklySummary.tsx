@@ -21,8 +21,8 @@ export function WeeklySummary({ tasks, sessions }: WeeklySummaryProps) {
     });
 
     const scheduled = weekTasks.length;
-    const completed = weekTasks.filter((t) => t.status === 'done').length;
-    const pending = weekTasks.filter((t) => t.status === 'pending').length;
+    const completed = weekTasks.filter((t) => t.status === 'completed').length;
+    const pending = weekTasks.filter((t) => t.status === 'pending' || t.status === 'in_progress').length;
 
     // Sessions this week
     const weekSessions = sessions.filter(

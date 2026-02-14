@@ -17,6 +17,7 @@ interface FocusPageProps {
   onAcknowledgeCompletion: () => void;
   onToggleSound: (enabled: boolean) => void;
   onSaveSession: (task: string, duration: number) => void;
+  onMarkTaskCompleted?: () => void;
 }
 
 const DURATION_PRESETS = [2, 5, 10, 25];
@@ -35,11 +36,12 @@ export function FocusPage({
   onAcknowledgeCompletion,
   onToggleSound,
   onSaveSession,
+  onMarkTaskCompleted,
 }: FocusPageProps) {
   const [inputTask, setInputTask] = useState('');
   const [inputMinutes, setInputMinutes] = useState(5);
   const [showCompletion, setShowCompletion] = useState(false);
-
+  const [showTaskCompleteQuestion, setShowTaskCompleteQuestion] = useState(false);
   useEffect(() => {
     if (isCompleted && !showCompletion) {
       setShowCompletion(true);
@@ -63,6 +65,17 @@ export function FocusPage({
     onAcknowledgeCompletion();
     onStopTimer();
     setInputTask('');
+    // Show task completion question if callback provided
+    if (onMarkTaskCompleted) {
+      setShowTaskCompleteQuestion(true);
+    }
+  };
+
+  const handleMarkCompleted = (yes: boolean) => {
+    setShowTaskCompleteQuestion(false);
+    if (yes && onMarkTaskCompleted) {
+      onMarkTaskCompleted();
+    }
   };
 
   const handleContinueWithTime = (minutes: number) => {
@@ -70,6 +83,41 @@ export function FocusPage({
     onAcknowledgeCompletion();
     onContinueTimer(minutes);
   };
+
+  // Task completion question
+  if (showTaskCompleteQuestion) {
+    return (
+      <div className="page-enter min-h-[calc(100vh-100px)] flex flex-col items-center justify-center px-6 pb-32">
+        <div className="text-center animate-scale-in max-w-sm">
+          <div className="w-20 h-20 mx-auto mb-6 rounded-full bg-primary/10 flex items-center justify-center">
+            <CheckCircle2 size={40} className="text-primary" />
+          </div>
+          
+          <h2 className="text-xl font-display font-semibold text-foreground mb-2">
+            ¿Marcar como completada?
+          </h2>
+          <p className="text-muted-foreground text-sm mb-8">
+            Tú decides si la tarea está lista.
+          </p>
+          
+          <div className="flex gap-3">
+            <button
+              onClick={() => handleMarkCompleted(false)}
+              className="btn-secondary-focus flex-1"
+            >
+              No, seguir después
+            </button>
+            <button
+              onClick={() => handleMarkCompleted(true)}
+              className="btn-primary-focus flex-1"
+            >
+              Sí, completada
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   // Completion screen
   if (showCompletion) {
