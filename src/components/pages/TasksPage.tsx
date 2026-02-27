@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { Plus, Edit2, Check, X, Play } from 'lucide-react';
 import { Task } from '@/types/focuson';
 import { TaskItem } from '@/components/TaskItem';
-import { TaskReminderToggleStable } from '@/components/reminders/TaskReminderToggleStable';
+
 import { TelegramLocalToggle } from '@/components/telegram/TelegramLocalToggle';
 
 import { StartFocusDialog } from '@/components/StartFocusDialog';
@@ -282,12 +282,6 @@ export function TasksPage({ tasks, onAddTask, onToggleTask, onDeleteTask, onSetT
                     Focus Time
                   </button>
                 </div>
-                <TaskReminderToggleStable
-                  taskId={task.id}
-                  taskText={task.text}
-                  scheduledDate={task.scheduledDate}
-                  scheduledTime={task.scheduledTime}
-                />
               </div>
             ))}
           </div>
@@ -322,12 +316,6 @@ export function TasksPage({ tasks, onAddTask, onToggleTask, onDeleteTask, onSetT
                     Focus Time
                   </button>
                 </div>
-                <TaskReminderToggleStable
-                  taskId={task.id}
-                  taskText={task.text}
-                  scheduledDate={task.scheduledDate}
-                  scheduledTime={task.scheduledTime}
-                />
               </div>
             ))}
           </div>
