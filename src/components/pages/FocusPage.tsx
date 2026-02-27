@@ -39,6 +39,8 @@ export function FocusPage({
   onToggleSound,
   onSaveSession,
   onMarkTaskCompleted,
+  unlockSessionId,
+  onUnlockSessionComplete,
 }: FocusPageProps) {
   const [inputTask, setInputTask] = useState('');
   const [inputMinutes, setInputMinutes] = useState(5);
