@@ -641,11 +641,15 @@ export default function Index() {
       <UnlockMode 
         variant={['hoy', 'progreso', 'diario'].includes(activeTab) ? 'full' : 'compact'} 
         onWritingModeChange={setIsWritingMode}
-        onStartFocusTime={(minutes) => {
+        onStartFocusTime={(minutes, unlockSessionId) => {
+          if (unlockSessionId) setActiveUnlockSessionId(unlockSessionId);
           setActiveTab('enfoque');
           timer.startTimer(minutes, 'Modo Desbloqueo');
         }}
         onCreateTask={(text) => addTask(text)}
+        sessions={unlockSessions}
+        onSaveSession={(session) => setUnlockSessions(prev => [...prev, session])}
+        onUpdateSession={(id, updates) => setUnlockSessions(prev => prev.map(s => s.id === id ? { ...s, ...updates } : s))}
       />
 
       {/* Bottom navigation - hidden during writing mode */}
