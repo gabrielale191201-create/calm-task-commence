@@ -1,13 +1,16 @@
+export interface PrioritizedActivity {
+  text: string;
+  level: 'esencial' | 'importante' | 'secundario';
+  convertedToTask: boolean;
+}
+
 export interface UnlockSession {
   id: string;
   inputText: string;
-  claridad: string;
-  foco: string;
-  ritual: string[];
-  compromiso: string;
-  accion: string;
+  visionInterior: string;
+  actividades: PrioritizedActivity[];
+  consejoDisciplina: string;
   startedFocusTime: boolean;
-  convertedToTask: boolean;
-  completed: boolean; // action was completed
+  completed: boolean;
   createdAt: string; // ISO timestamp
 }
