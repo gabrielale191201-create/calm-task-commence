@@ -21,6 +21,7 @@ import { useAuthState } from '@/hooks/useAuthState';
 import { useGuestMode } from '@/hooks/useGuestMode';
 import { useTelegramWebhook } from '@/hooks/useTelegramWebhook';
 import { TabType, Task, Routine, JournalEntry, FocusSession, UserProfile, QuickNote } from '@/types/focuson';
+import { UnlockSession } from '@/types/unlockSession';
 import { AppLogo } from '@/components/AppLogo';
 import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
