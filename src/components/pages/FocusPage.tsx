@@ -70,6 +70,13 @@ export function FocusPage({
     onAcknowledgeCompletion();
     onStopTimer();
     setInputTask('');
+    // If this was an unlock session, mark completed and show identity message
+    if (unlockSessionId && onUnlockSessionComplete) {
+      onUnlockSessionComplete(unlockSessionId);
+      setUnlockCompleteMessage('Pequeñas acciones repetidas crean claridad.');
+      setTimeout(() => setUnlockCompleteMessage(null), 2500);
+      return; // Skip task question for unlock sessions
+    }
     // Show task completion question if callback provided
     if (onMarkTaskCompleted) {
       setShowTaskCompleteQuestion(true);
