@@ -2,9 +2,7 @@ import { useMemo, useState } from 'react';
 import { Plus, Edit2, Check, X, Play } from 'lucide-react';
 import { Task } from '@/types/focuson';
 import { TaskItem } from '@/components/TaskItem';
-import { TaskReminderToggleStable } from '@/components/reminders/TaskReminderToggleStable';
 import { TelegramLocalToggle } from '@/components/telegram/TelegramLocalToggle';
-import { PushDiagnostics } from '@/components/reminders/PushDiagnostics';
 import { StartFocusDialog } from '@/components/StartFocusDialog';
 import { toISODate, parseDateString } from '@/lib/dateUtils';
 
