@@ -332,10 +332,6 @@ export function TasksPage({ tasks, onAddTask, onToggleTask, onDeleteTask, onSetT
         </div>
       </section>
 
-      {/* Push Diagnostics Panel */}
-      <section className="mb-8 animate-slide-up stagger-4">
-        <PushDiagnostics />
-      </section>
 
       {/* Completed tasks */}
       {completedTasks.length > 0 && (
