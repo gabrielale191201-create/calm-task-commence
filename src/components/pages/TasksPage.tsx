@@ -282,12 +282,6 @@ export function TasksPage({ tasks, onAddTask, onToggleTask, onDeleteTask, onSetT
                     Focus Time
                   </button>
                 </div>
-                <TaskReminderToggleStable
-                  taskId={task.id}
-                  taskText={task.text}
-                  scheduledDate={task.scheduledDate}
-                  scheduledTime={task.scheduledTime}
-                />
               </div>
             ))}
           </div>
