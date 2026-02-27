@@ -2,9 +2,7 @@ import { useMemo, useState } from 'react';
 import { Plus, Edit2, Check, X, Play } from 'lucide-react';
 import { Task } from '@/types/focuson';
 import { TaskItem } from '@/components/TaskItem';
-import { TaskReminderToggleStable } from '@/components/reminders/TaskReminderToggleStable';
 import { TelegramLocalToggle } from '@/components/telegram/TelegramLocalToggle';
-import { PushDiagnostics } from '@/components/reminders/PushDiagnostics';
 import { StartFocusDialog } from '@/components/StartFocusDialog';
 import { toISODate, parseDateString } from '@/lib/dateUtils';
 
@@ -282,12 +280,6 @@ export function TasksPage({ tasks, onAddTask, onToggleTask, onDeleteTask, onSetT
                     Focus Time
                   </button>
                 </div>
-                <TaskReminderToggleStable
-                  taskId={task.id}
-                  taskText={task.text}
-                  scheduledDate={task.scheduledDate}
-                  scheduledTime={task.scheduledTime}
-                />
               </div>
             ))}
           </div>
@@ -322,12 +314,6 @@ export function TasksPage({ tasks, onAddTask, onToggleTask, onDeleteTask, onSetT
                     Focus Time
                   </button>
                 </div>
-                <TaskReminderToggleStable
-                  taskId={task.id}
-                  taskText={task.text}
-                  scheduledDate={task.scheduledDate}
-                  scheduledTime={task.scheduledTime}
-                />
               </div>
             ))}
           </div>
@@ -346,10 +332,6 @@ export function TasksPage({ tasks, onAddTask, onToggleTask, onDeleteTask, onSetT
         </div>
       </section>
 
-      {/* Push Diagnostics Panel */}
-      <section className="mb-8 animate-slide-up stagger-4">
-        <PushDiagnostics />
-      </section>
 
       {/* Completed tasks */}
       {completedTasks.length > 0 && (
