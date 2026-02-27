@@ -96,6 +96,20 @@ export function FocusPage({
     onContinueTimer(minutes);
   };
 
+  // Unlock identity message
+  if (unlockCompleteMessage) {
+    return (
+      <div className="page-enter min-h-[calc(100vh-100px)] flex flex-col items-center justify-center px-6 pb-32">
+        <div className="text-center animate-scale-in max-w-sm">
+          <div className="w-20 h-20 mx-auto mb-6 rounded-full bg-primary/10 flex items-center justify-center">
+            <Zap size={36} className="text-primary" />
+          </div>
+          <p className="text-lg font-display font-semibold text-foreground">{unlockCompleteMessage}</p>
+        </div>
+      </div>
+    );
+  }
+
   // Task completion question
   if (showTaskCompleteQuestion) {
     return (
