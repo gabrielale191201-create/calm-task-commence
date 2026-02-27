@@ -46,6 +46,7 @@ export function FocusPage({
   const [inputMinutes, setInputMinutes] = useState(5);
   const [showCompletion, setShowCompletion] = useState(false);
   const [showTaskCompleteQuestion, setShowTaskCompleteQuestion] = useState(false);
+  const [unlockCompleteMessage, setUnlockCompleteMessage] = useState<string | null>(null);
   useEffect(() => {
     if (isCompleted && !showCompletion) {
       setShowCompletion(true);
