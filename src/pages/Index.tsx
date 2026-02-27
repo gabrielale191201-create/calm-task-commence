@@ -21,6 +21,7 @@ import { useAuthState } from '@/hooks/useAuthState';
 import { useGuestMode } from '@/hooks/useGuestMode';
 import { useTelegramWebhook } from '@/hooks/useTelegramWebhook';
 import { TabType, Task, Routine, JournalEntry, FocusSession, UserProfile, QuickNote } from '@/types/focuson';
+import { UnlockSession } from '@/types/unlockSession';
 import { AppLogo } from '@/components/AppLogo';
 import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
@@ -72,6 +73,8 @@ export default function Index() {
   const [sessions, setSessions] = useLocalStorage<FocusSession[]>('focuson-sessions', []);
   const [quickNotes, setQuickNotes] = useLocalStorage<QuickNote[]>('focuson-quicknotes', []);
   const [floatingNotes, setFloatingNotes] = useLocalStorage<FloatingNote[]>('focuson-floatingnotes', []);
+  const [unlockSessions, setUnlockSessions] = useLocalStorage<UnlockSession[]>('focuson-unlock-sessions', []);
+  const [activeUnlockSessionId, setActiveUnlockSessionId] = useState<string | null>(null);
   const [lastActiveDate, setLastActiveDate] = useLocalStorage<string>('focuson-last-active', '');
 
   const timer = useTimer();
@@ -510,6 +513,11 @@ export default function Index() {
             onToggleSound={setSoundEnabled}
             onSaveSession={saveSession}
             onMarkTaskCompleted={focusTaskId ? handleMarkFocusTaskCompleted : undefined}
+            unlockSessionId={activeUnlockSessionId}
+            onUnlockSessionComplete={(id) => {
+              setUnlockSessions(prev => prev.map(s => s.id === id ? { ...s, completed: true } : s));
+              setActiveUnlockSessionId(null);
+            }}
           />
         );
       case 'tareas':
@@ -638,11 +646,15 @@ export default function Index() {
       <UnlockMode 
         variant={['hoy', 'progreso', 'diario'].includes(activeTab) ? 'full' : 'compact'} 
         onWritingModeChange={setIsWritingMode}
-        onStartFocusTime={(minutes) => {
+        onStartFocusTime={(minutes, unlockSessionId) => {
+          if (unlockSessionId) setActiveUnlockSessionId(unlockSessionId);
           setActiveTab('enfoque');
           timer.startTimer(minutes, 'Modo Desbloqueo');
         }}
         onCreateTask={(text) => addTask(text)}
+        sessions={unlockSessions}
+        onSaveSession={(session) => setUnlockSessions(prev => [...prev, session])}
+        onUpdateSession={(id, updates) => setUnlockSessions(prev => prev.map(s => s.id === id ? { ...s, ...updates } : s))}
       />
 
       {/* Bottom navigation - hidden during writing mode */}

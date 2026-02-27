@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Play, X, CheckCircle2, Volume2, VolumeX } from 'lucide-react';
+import { Play, X, CheckCircle2, Volume2, VolumeX, Zap } from 'lucide-react';
 import { CircularTimer } from '@/components/CircularTimer';
 import { cn } from '@/lib/utils';
 
@@ -18,6 +18,8 @@ interface FocusPageProps {
   onToggleSound: (enabled: boolean) => void;
   onSaveSession: (task: string, duration: number) => void;
   onMarkTaskCompleted?: () => void;
+  unlockSessionId?: string | null;
+  onUnlockSessionComplete?: (id: string) => void;
 }
 
 const DURATION_PRESETS = [2, 5, 10, 25];
@@ -37,11 +39,14 @@ export function FocusPage({
   onToggleSound,
   onSaveSession,
   onMarkTaskCompleted,
+  unlockSessionId,
+  onUnlockSessionComplete,
 }: FocusPageProps) {
   const [inputTask, setInputTask] = useState('');
   const [inputMinutes, setInputMinutes] = useState(5);
   const [showCompletion, setShowCompletion] = useState(false);
   const [showTaskCompleteQuestion, setShowTaskCompleteQuestion] = useState(false);
+  const [unlockCompleteMessage, setUnlockCompleteMessage] = useState<string | null>(null);
   useEffect(() => {
     if (isCompleted && !showCompletion) {
       setShowCompletion(true);
@@ -65,6 +70,13 @@ export function FocusPage({
     onAcknowledgeCompletion();
     onStopTimer();
     setInputTask('');
+    // If this was an unlock session, mark completed and show identity message
+    if (unlockSessionId && onUnlockSessionComplete) {
+      onUnlockSessionComplete(unlockSessionId);
+      setUnlockCompleteMessage('Pequeñas acciones repetidas crean claridad.');
+      setTimeout(() => setUnlockCompleteMessage(null), 2500);
+      return; // Skip task question for unlock sessions
+    }
     // Show task completion question if callback provided
     if (onMarkTaskCompleted) {
       setShowTaskCompleteQuestion(true);
@@ -83,6 +95,20 @@ export function FocusPage({
     onAcknowledgeCompletion();
     onContinueTimer(minutes);
   };
+
+  // Unlock identity message
+  if (unlockCompleteMessage) {
+    return (
+      <div className="page-enter min-h-[calc(100vh-100px)] flex flex-col items-center justify-center px-6 pb-32">
+        <div className="text-center animate-scale-in max-w-sm">
+          <div className="w-20 h-20 mx-auto mb-6 rounded-full bg-primary/10 flex items-center justify-center">
+            <Zap size={36} className="text-primary" />
+          </div>
+          <p className="text-lg font-display font-semibold text-foreground">{unlockCompleteMessage}</p>
+        </div>
+      </div>
+    );
+  }
 
   // Task completion question
   if (showTaskCompleteQuestion) {
