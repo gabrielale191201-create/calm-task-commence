@@ -513,6 +513,11 @@ export default function Index() {
             onToggleSound={setSoundEnabled}
             onSaveSession={saveSession}
             onMarkTaskCompleted={focusTaskId ? handleMarkFocusTaskCompleted : undefined}
+            unlockSessionId={activeUnlockSessionId}
+            onUnlockSessionComplete={(id) => {
+              setUnlockSessions(prev => prev.map(s => s.id === id ? { ...s, completed: true } : s));
+              setActiveUnlockSessionId(null);
+            }}
           />
         );
       case 'tareas':

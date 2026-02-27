@@ -18,6 +18,8 @@ interface FocusPageProps {
   onToggleSound: (enabled: boolean) => void;
   onSaveSession: (task: string, duration: number) => void;
   onMarkTaskCompleted?: () => void;
+  unlockSessionId?: string | null;
+  onUnlockSessionComplete?: (id: string) => void;
 }
 
 const DURATION_PRESETS = [2, 5, 10, 25];
