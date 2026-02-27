@@ -12,7 +12,7 @@ import { HowToUsePage } from '@/components/pages/HowToUsePage';
 import { OnboardingBanner } from '@/components/OnboardingBanner';
 import { ProductTagline } from '@/components/ProductTagline';
 import { FloatingNotesButton } from '@/components/notes/FloatingNotesButton';
-import { EmotionalChatButton } from '@/components/ai/EmotionalChatButton';
+import { UnlockMode } from '@/components/ai/UnlockMode';
 import { GuestModeBanner } from '@/components/GuestModeBanner';
 import { useTimer } from '@/hooks/useTimer';
 import { useAlarmSound } from '@/hooks/useAlarmSound';
