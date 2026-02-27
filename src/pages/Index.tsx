@@ -73,6 +73,8 @@ export default function Index() {
   const [sessions, setSessions] = useLocalStorage<FocusSession[]>('focuson-sessions', []);
   const [quickNotes, setQuickNotes] = useLocalStorage<QuickNote[]>('focuson-quicknotes', []);
   const [floatingNotes, setFloatingNotes] = useLocalStorage<FloatingNote[]>('focuson-floatingnotes', []);
+  const [unlockSessions, setUnlockSessions] = useLocalStorage<UnlockSession[]>('focuson-unlock-sessions', []);
+  const [activeUnlockSessionId, setActiveUnlockSessionId] = useState<string | null>(null);
   const [lastActiveDate, setLastActiveDate] = useLocalStorage<string>('focuson-last-active', '');
 
   const timer = useTimer();
