@@ -12,7 +12,7 @@ import { HowToUsePage } from '@/components/pages/HowToUsePage';
 import { OnboardingBanner } from '@/components/OnboardingBanner';
 import { ProductTagline } from '@/components/ProductTagline';
 import { FloatingNotesButton } from '@/components/notes/FloatingNotesButton';
-import { EmotionalChatButton } from '@/components/ai/EmotionalChatButton';
+import { UnlockMode } from '@/components/ai/UnlockMode';
 import { GuestModeBanner } from '@/components/GuestModeBanner';
 import { useTimer } from '@/hooks/useTimer';
 import { useAlarmSound } from '@/hooks/useAlarmSound';
@@ -634,10 +634,15 @@ export default function Index() {
       {/* Guest mode banner - discrete reminder about local storage */}
       <GuestModeBanner />
 
-      {/* Emotional Chat Button - full on Home/Progress/Journal, compact on Focus/Schedule/Tasks */}
-      <EmotionalChatButton 
+      {/* Modo Desbloqueo - full on Home/Progress/Journal, compact on Focus/Schedule/Tasks */}
+      <UnlockMode 
         variant={['hoy', 'progreso', 'diario'].includes(activeTab) ? 'full' : 'compact'} 
         onWritingModeChange={setIsWritingMode}
+        onStartFocusTime={(minutes) => {
+          setActiveTab('enfoque');
+          timer.startTimer(minutes, 'Modo Desbloqueo');
+        }}
+        onCreateTask={(text) => addTask(text)}
       />
 
       {/* Bottom navigation - hidden during writing mode */}
