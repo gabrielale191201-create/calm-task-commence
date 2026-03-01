@@ -1,11 +1,12 @@
 import { useMemo, useState } from 'react';
-import { Plus, Edit2, Check, X, Play } from 'lucide-react';
+import { Plus, Edit2, Check, X, Play, RotateCcw } from 'lucide-react';
 import { Task } from '@/types/focuson';
 import { TaskItem } from '@/components/TaskItem';
 
 import { TelegramLocalToggle } from '@/components/telegram/TelegramLocalToggle';
 
 import { StartFocusDialog } from '@/components/StartFocusDialog';
+import { ReuseTaskDialog } from '@/components/tasks/ReuseTaskDialog';
 import { toISODate, parseDateString } from '@/lib/dateUtils';
 
 interface TasksPageProps {
