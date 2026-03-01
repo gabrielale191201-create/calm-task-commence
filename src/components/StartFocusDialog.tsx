@@ -78,6 +78,15 @@ export function StartFocusDialog({ open, onOpenChange, title, suggestedMinutes =
                 </button>
               ))}
             </div>
+
+            <p className="text-xs text-muted-foreground text-center mt-3">
+              Elige el tiempo que sientas posible hoy.
+            </p>
+            {minutes > 180 && (
+              <p className="text-xs text-muted-foreground/70 text-center mt-1">
+                Si es mucho, puedes detenerlo cuando quieras.
+              </p>
+            )}
           </div>
 
           <div className="mt-4 flex gap-2">
