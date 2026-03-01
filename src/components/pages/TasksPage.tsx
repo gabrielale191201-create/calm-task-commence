@@ -383,6 +383,15 @@ export function TasksPage({ tasks, onAddTask, onToggleTask, onDeleteTask, onSetT
           setSelectedTask(null);
         }}
       />
+
+      {reuseTask && onReuseTask && (
+        <ReuseTaskDialog
+          open={!!reuseTask}
+          onOpenChange={(o) => !o && setReuseTask(null)}
+          task={reuseTask}
+          onReuse={onReuseTask}
+        />
+      )}
     </div>
   );
 }
