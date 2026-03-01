@@ -5,6 +5,30 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
+// Prompt injection detection patterns
+const INJECTION_PATTERNS = [
+  /ignore\s+(all\s+)?previous\s+(instructions|rules|prompts)/i,
+  /disregard\s+(all\s+)?(previous|above|prior)/i,
+  /repeat\s+(everything|all|your)\s+(above|instructions|system\s*prompt)/i,
+  /show\s+(me\s+)?(your|the)\s+(system\s*)?prompt/i,
+  /what\s+(are|is)\s+your\s+(instructions|system\s*prompt|rules)/i,
+  /you\s+are\s+now\s+a/i,
+  /act\s+as\s+(if\s+you\s+are|a\s+different)/i,
+  /pretend\s+(to\s+be|you\s+are)/i,
+  /new\s+instructions?:/i,
+  /system\s*:\s*/i,
+  /\[SYSTEM\]/i,
+  /<<\s*SYS\s*>>/i,
+];
+
+function containsInjection(text: string): boolean {
+  return INJECTION_PATTERNS.some(pattern => pattern.test(text));
+}
+
+function sanitizeInput(text: string): string {
+  return text.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F]/g, '').trim();
+}
+
 const systemPrompt = `Eres el módulo MODO DESBLOQUEO de la app Focus On.
 
 Tu función es recibir un texto caótico del usuario y responder con una ÚNICA respuesta estructurada.
@@ -42,18 +66,28 @@ serve(async (req) => {
   }
 
   try {
-    const { message } = await req.json();
+    const { message: rawMessage } = await req.json();
 
-    if (!message || typeof message !== 'string' || !message.trim()) {
+    if (!rawMessage || typeof rawMessage !== 'string' || !rawMessage.trim()) {
       return new Response(
         JSON.stringify({ error: "No se recibió texto." }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
+    const message = sanitizeInput(rawMessage);
+
     if (message.length > 3000) {
       return new Response(
         JSON.stringify({ error: "Texto demasiado largo. Máximo 3000 caracteres." }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    if (containsInjection(message)) {
+      console.log("Prompt injection attempt detected");
+      return new Response(
+        JSON.stringify({ error: "Tu texto contiene patrones no permitidos. Intenta reformularlo." }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
