@@ -9,6 +9,8 @@ interface AIResponse {
 
 interface OrganizationAssistantProps {
   onSendToTasks: (tasks: string[], priorityIndices?: number[]) => void;
+  /** Current count of today priorities (isTopThree) across all tasks */
+  currentTodayCount?: number;
 }
 
 export function OrganizationAssistant({
