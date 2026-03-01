@@ -121,7 +121,7 @@ export function OrganizationAssistant({
             ) : (
               <>
                 <Sparkles size={18} />
-                Ordenar en tareas
+                Organizar actividades
               </>
             )}
           </button>
