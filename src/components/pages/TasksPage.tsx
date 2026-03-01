@@ -93,7 +93,7 @@ export function TasksPage({ tasks, onAddTask, onToggleTask, onDeleteTask, onSetT
       if (editTime) updates.scheduledTime = editTime;
       if (editDuration) {
         const dur = parseInt(editDuration, 10);
-        if (dur > 0 && dur <= 180) updates.durationMinutes = dur;
+        if (dur > 0) updates.durationMinutes = dur;
       }
       onUpdateTask(taskId, updates);
     }
