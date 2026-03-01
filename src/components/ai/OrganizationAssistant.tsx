@@ -20,7 +20,10 @@ export function OrganizationAssistant({
   const [error, setError] = useState<string | null>(null);
 
   const processWithAI = async () => {
-    if (!input.trim()) return;
+    if (!input.trim()) {
+      toast('Escribe al menos una actividad para comenzar.');
+      return;
+    }
     
     setIsProcessing(true);
     setError(null);
