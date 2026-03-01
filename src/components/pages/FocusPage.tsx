@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { Play, X, CheckCircle2, Volume2, VolumeX, Zap } from 'lucide-react';
 import { CircularTimer } from '@/components/CircularTimer';
 import { cn } from '@/lib/utils';
@@ -47,6 +47,26 @@ export function FocusPage({
   const [showCompletion, setShowCompletion] = useState(false);
   const [showTaskCompleteQuestion, setShowTaskCompleteQuestion] = useState(false);
   const [unlockCompleteMessage, setUnlockCompleteMessage] = useState<string | null>(null);
+  const [showStretchHint, setShowStretchHint] = useState(false);
+  const stretchShownRef = useRef(false);
+
+  // Stretch reminder after 90 continuous minutes
+  useEffect(() => {
+    if (!isRunning || duration <= 0) {
+      stretchShownRef.current = false;
+      setShowStretchHint(false);
+      return;
+    }
+    const elapsed = duration - timeLeft;
+    if (elapsed >= 90 * 60 && !stretchShownRef.current) {
+      stretchShownRef.current = true;
+      setShowStretchHint(true);
+      // Auto-dismiss after 8 seconds
+      const t = setTimeout(() => setShowStretchHint(false), 8000);
+      return () => clearTimeout(t);
+    }
+  }, [isRunning, timeLeft, duration]);
+
   useEffect(() => {
     if (isCompleted && !showCompletion) {
       setShowCompletion(true);
@@ -63,6 +83,9 @@ export function FocusPage({
   const handleContinue = () => {
     setShowCompletion(false);
     onAcknowledgeCompletion();
+    // Restart with same duration
+    const mins = Math.max(1, Math.round(duration / 60));
+    onContinueTimer(mins);
   };
 
   const handleFinish = () => {
@@ -155,10 +178,10 @@ export function FocusPage({
           </div>
           
           <h2 className="text-2xl font-display font-semibold text-foreground mb-2">
-            Buen avance
+            Terminaste este bloque
           </h2>
           <p className="text-muted-foreground mb-8">
-            Puedes cerrar aquí o seguir un poco más.
+            ¿Quieres seguir o descansar?
           </p>
           
           <p className="text-lg font-medium text-foreground mb-8">
@@ -166,23 +189,18 @@ export function FocusPage({
           </p>
           
           <div className="space-y-3">
-            <div className="flex flex-wrap gap-2 justify-center mb-4">
-              {DURATION_PRESETS.map((mins) => (
-                <button
-                  key={mins}
-                  onClick={() => handleContinueWithTime(mins)}
-                  className="duration-preset"
-                >
-                  +{mins} min
-                </button>
-              ))}
-            </div>
+            <button
+              onClick={handleContinue}
+              className="btn-primary-focus w-full"
+            >
+              Seguir con esta tarea
+            </button>
             
             <button
               onClick={handleFinish}
               className="btn-secondary-focus w-full"
             >
-              Cerrar Focus Time
+              Volver a tareas
             </button>
           </div>
         </div>
@@ -209,13 +227,21 @@ export function FocusPage({
               progress={progress}
             />
           </div>
+
+          {showStretchHint && (
+            <div className="mb-4 px-4 py-3 rounded-2xl bg-muted/40 animate-fade-in">
+              <p className="text-sm text-muted-foreground text-center">
+                ¿Quieres estirarte 2 minutos? 🌿
+              </p>
+            </div>
+          )}
           
           <div className="space-y-3">
             <button
               onClick={handleFinish}
               className="btn-secondary-focus w-full"
             >
-              Cerrar Focus Time
+              Finalizar
             </button>
           </div>
           
@@ -298,6 +324,15 @@ export function FocusPage({
                 </button>
               ))}
             </div>
+
+            <p className="text-xs text-muted-foreground text-center mt-3">
+              Elige el tiempo que sientas posible hoy.
+            </p>
+            {inputMinutes > 180 && (
+              <p className="text-xs text-muted-foreground/70 text-center mt-1">
+                Si es mucho, puedes detenerlo cuando quieras.
+              </p>
+            )}
           </div>
           
           {/* Start button */}

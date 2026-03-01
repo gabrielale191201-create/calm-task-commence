@@ -15,7 +15,7 @@ const PRESETS = [2, 5, 10, 25];
 export function StartFocusDialog({ open, onOpenChange, title, suggestedMinutes = 5, onStart }: StartFocusDialogProps) {
   const initial = useMemo(() => {
     const v = Number.isFinite(suggestedMinutes) ? suggestedMinutes : 5;
-    return Math.max(1, Math.min(180, Math.round(v)));
+    return Math.max(1, Math.round(v));
   }, [suggestedMinutes]);
 
   const [minutes, setMinutes] = useState(initial);
@@ -25,7 +25,7 @@ export function StartFocusDialog({ open, onOpenChange, title, suggestedMinutes =
   }, [open, initial]);
 
   const start = () => {
-    const mins = Math.max(1, Math.min(180, minutes || 1));
+    const mins = Math.max(1, minutes || 1);
     onStart(mins);
     onOpenChange(false);
   };
@@ -55,13 +55,12 @@ export function StartFocusDialog({ open, onOpenChange, title, suggestedMinutes =
               <input
                 type="number"
                 value={minutes}
-                onChange={(e) => setMinutes(Math.max(1, Math.min(180, parseInt(e.target.value) || 1)))}
+                onChange={(e) => setMinutes(Math.max(1, parseInt(e.target.value) || 1))}
                 className="w-20 text-center text-3xl font-display font-semibold text-foreground bg-transparent outline-none"
                 min={1}
-                max={180}
               />
               <button
-                onClick={() => setMinutes((m) => Math.min(180, m + 1))}
+                onClick={() => setMinutes((m) => m + 1)}
                 className="w-10 h-10 rounded-full bg-muted text-foreground hover:bg-accent transition-colors text-xl font-medium"
               >
                 +
@@ -79,6 +78,15 @@ export function StartFocusDialog({ open, onOpenChange, title, suggestedMinutes =
                 </button>
               ))}
             </div>
+
+            <p className="text-xs text-muted-foreground text-center mt-3">
+              Elige el tiempo que sientas posible hoy.
+            </p>
+            {minutes > 180 && (
+              <p className="text-xs text-muted-foreground/70 text-center mt-1">
+                Si es mucho, puedes detenerlo cuando quieras.
+              </p>
+            )}
           </div>
 
           <div className="mt-4 flex gap-2">
