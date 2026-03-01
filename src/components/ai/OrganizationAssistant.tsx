@@ -75,6 +75,11 @@ export function OrganizationAssistant({
       if (next.has(index)) {
         next.delete(index);
       } else {
+        const totalIfAdded = currentTodayCount + next.size + 1;
+        if (totalIfAdded > 5) {
+          toast('Para mantener claridad, hoy el máximo es 5.');
+          return prev;
+        }
         if (next.size >= 3) {
           toast('Elige solo 3 para mantener claridad.');
           return prev;
