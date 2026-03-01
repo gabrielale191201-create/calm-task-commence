@@ -16,11 +16,12 @@ interface TasksPageProps {
   onDeleteTask: (id: string) => void;
   onSetTaskStatus: (id: string, status: Task['status']) => void;
   onUpdateTask?: (id: string, updates: Partial<Pick<Task, 'scheduledDate' | 'scheduledTime' | 'durationMinutes'>>) => void;
+  onReuseTask?: (id: string, updates: Partial<Pick<Task, 'scheduledDate' | 'scheduledTime' | 'durationMinutes'>>) => void;
   onStartFocus: (taskText: string, minutes: number) => void;
   getTasksCountForDate: (date: string) => number;
 }
 
-export function TasksPage({ tasks, onAddTask, onToggleTask, onDeleteTask, onSetTaskStatus, onUpdateTask, onStartFocus, getTasksCountForDate }: TasksPageProps) {
+export function TasksPage({ tasks, onAddTask, onToggleTask, onDeleteTask, onSetTaskStatus, onUpdateTask, onReuseTask, onStartFocus, getTasksCountForDate }: TasksPageProps) {
   const [title, setTitle] = useState('');
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
