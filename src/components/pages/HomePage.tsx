@@ -23,6 +23,7 @@ export function HomePage({
   startedStreak,
   hasVictoryToday,
   onSendToTasks,
+  currentTodayPriorityCount,
 }: HomePageProps) {
   const today = new Date();
   const dayNames = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
