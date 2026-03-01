@@ -175,10 +175,10 @@ export function FocusPage({
           </div>
           
           <h2 className="text-2xl font-display font-semibold text-foreground mb-2">
-            Buen avance
+            Terminaste este bloque
           </h2>
           <p className="text-muted-foreground mb-8">
-            Puedes cerrar aquí o seguir un poco más.
+            ¿Quieres seguir o descansar?
           </p>
           
           <p className="text-lg font-medium text-foreground mb-8">
@@ -186,23 +186,18 @@ export function FocusPage({
           </p>
           
           <div className="space-y-3">
-            <div className="flex flex-wrap gap-2 justify-center mb-4">
-              {DURATION_PRESETS.map((mins) => (
-                <button
-                  key={mins}
-                  onClick={() => handleContinueWithTime(mins)}
-                  className="duration-preset"
-                >
-                  +{mins} min
-                </button>
-              ))}
-            </div>
+            <button
+              onClick={handleContinue}
+              className="btn-primary-focus w-full"
+            >
+              Seguir con esta tarea
+            </button>
             
             <button
               onClick={handleFinish}
               className="btn-secondary-focus w-full"
             >
-              Cerrar Focus Time
+              Volver a tareas
             </button>
           </div>
         </div>
