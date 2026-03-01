@@ -577,6 +577,7 @@ export default function Index() {
             hasVictoryToday={hasVictoryToday}
             onStartFocusFromTopTask={startFocusFromTopTask}
             onSendToTasks={addMultipleTasks}
+            currentTodayPriorityCount={tasks.filter(t => t.isTopThree && t.status !== 'completed').length}
           />
         );
       case 'enfoque':
