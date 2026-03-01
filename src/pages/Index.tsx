@@ -550,6 +550,7 @@ export default function Index() {
             onDeleteTask={deleteTask}
             onSetTaskStatus={setTaskStatus}
             onUpdateTask={updateTask}
+            onReuseTask={reuseTask}
             onStartFocus={(taskText, minutes) => startFocusFromTopTask(taskText, minutes)}
             getTasksCountForDate={getTasksCountForDate}
           />
