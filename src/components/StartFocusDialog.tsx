@@ -15,7 +15,7 @@ const PRESETS = [2, 5, 10, 25];
 export function StartFocusDialog({ open, onOpenChange, title, suggestedMinutes = 5, onStart }: StartFocusDialogProps) {
   const initial = useMemo(() => {
     const v = Number.isFinite(suggestedMinutes) ? suggestedMinutes : 5;
-    return Math.max(1, Math.min(180, Math.round(v)));
+    return Math.max(1, Math.round(v));
   }, [suggestedMinutes]);
 
   const [minutes, setMinutes] = useState(initial);
