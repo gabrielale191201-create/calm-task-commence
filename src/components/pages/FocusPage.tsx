@@ -47,6 +47,26 @@ export function FocusPage({
   const [showCompletion, setShowCompletion] = useState(false);
   const [showTaskCompleteQuestion, setShowTaskCompleteQuestion] = useState(false);
   const [unlockCompleteMessage, setUnlockCompleteMessage] = useState<string | null>(null);
+  const [showStretchHint, setShowStretchHint] = useState(false);
+  const stretchShownRef = useRef(false);
+
+  // Stretch reminder after 90 continuous minutes
+  useEffect(() => {
+    if (!isRunning || duration <= 0) {
+      stretchShownRef.current = false;
+      setShowStretchHint(false);
+      return;
+    }
+    const elapsed = duration - timeLeft;
+    if (elapsed >= 90 * 60 && !stretchShownRef.current) {
+      stretchShownRef.current = true;
+      setShowStretchHint(true);
+      // Auto-dismiss after 8 seconds
+      const t = setTimeout(() => setShowStretchHint(false), 8000);
+      return () => clearTimeout(t);
+    }
+  }, [isRunning, timeLeft, duration]);
+
   useEffect(() => {
     if (isCompleted && !showCompletion) {
       setShowCompletion(true);
