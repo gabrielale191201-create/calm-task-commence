@@ -1,11 +1,12 @@
 import { useMemo, useState } from 'react';
-import { Plus, Edit2, Check, X, Play } from 'lucide-react';
+import { Plus, Edit2, Check, X, Play, RotateCcw } from 'lucide-react';
 import { Task } from '@/types/focuson';
 import { TaskItem } from '@/components/TaskItem';
 
 import { TelegramLocalToggle } from '@/components/telegram/TelegramLocalToggle';
 
 import { StartFocusDialog } from '@/components/StartFocusDialog';
+import { ReuseTaskDialog } from '@/components/tasks/ReuseTaskDialog';
 import { toISODate, parseDateString } from '@/lib/dateUtils';
 
 interface TasksPageProps {
@@ -15,13 +16,15 @@ interface TasksPageProps {
   onDeleteTask: (id: string) => void;
   onSetTaskStatus: (id: string, status: Task['status']) => void;
   onUpdateTask?: (id: string, updates: Partial<Pick<Task, 'scheduledDate' | 'scheduledTime' | 'durationMinutes'>>) => void;
+  onReuseTask?: (id: string, updates: Partial<Pick<Task, 'scheduledDate' | 'scheduledTime' | 'durationMinutes'>>) => void;
   onStartFocus: (taskText: string, minutes: number) => void;
   getTasksCountForDate: (date: string) => number;
 }
 
-export function TasksPage({ tasks, onAddTask, onToggleTask, onDeleteTask, onSetTaskStatus, onUpdateTask, onStartFocus, getTasksCountForDate }: TasksPageProps) {
+export function TasksPage({ tasks, onAddTask, onToggleTask, onDeleteTask, onSetTaskStatus, onUpdateTask, onReuseTask, onStartFocus, getTasksCountForDate }: TasksPageProps) {
   const [title, setTitle] = useState('');
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
+  const [reuseTask, setReuseTask] = useState<Task | null>(null);
   const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
   const [editDate, setEditDate] = useState('');
   const [editTime, setEditTime] = useState('');
@@ -93,7 +96,7 @@ export function TasksPage({ tasks, onAddTask, onToggleTask, onDeleteTask, onSetT
       if (editTime) updates.scheduledTime = editTime;
       if (editDuration) {
         const dur = parseInt(editDuration, 10);
-        if (dur > 0 && dur <= 180) updates.durationMinutes = dur;
+        if (dur > 0) updates.durationMinutes = dur;
       }
       onUpdateTask(taskId, updates);
     }
@@ -197,7 +200,6 @@ export function TasksPage({ tasks, onAddTask, onToggleTask, onDeleteTask, onSetT
                           onChange={(e) => setEditDuration(e.target.value)}
                           placeholder="25"
                           min={1}
-                          max={180}
                           className="mt-1 w-full px-3 py-2 rounded-lg bg-card border border-border/50 text-foreground text-sm"
                         />
                       </div>
@@ -346,15 +348,25 @@ export function TasksPage({ tasks, onAddTask, onToggleTask, onDeleteTask, onSetT
               .slice()
               .sort((a, b) => (b.completedAt || '').localeCompare(a.completedAt || ''))
               .map((task) => (
-                <TaskItem
-                  key={task.id}
-                  task={task}
-                  onToggle={onToggleTask}
-                  onDelete={onDeleteTask}
-                  onSetStatus={onSetTaskStatus}
-                  showFocusButton={false}
-                  meta={formatChip(task)}
-                />
+                <div key={task.id} className="space-y-1">
+                  <TaskItem
+                    task={task}
+                    onToggle={onToggleTask}
+                    onDelete={onDeleteTask}
+                    onSetStatus={onSetTaskStatus}
+                    showFocusButton={false}
+                    meta={formatChip(task)}
+                  />
+                  {onReuseTask && (
+                    <button
+                      onClick={() => setReuseTask(task)}
+                      className="flex items-center gap-1.5 text-xs px-3 py-1.5 ml-4 rounded-lg bg-primary/10 text-primary hover:bg-primary/20 transition-colors"
+                    >
+                      <RotateCcw size={13} />
+                      Reutilizar
+                    </button>
+                  )}
+                </div>
               ))}
           </div>
         </details>
@@ -371,6 +383,15 @@ export function TasksPage({ tasks, onAddTask, onToggleTask, onDeleteTask, onSetT
           setSelectedTask(null);
         }}
       />
+
+      {reuseTask && onReuseTask && (
+        <ReuseTaskDialog
+          open={!!reuseTask}
+          onOpenChange={(o) => !o && setReuseTask(null)}
+          task={reuseTask}
+          onReuse={onReuseTask}
+        />
+      )}
     </div>
   );
 }
