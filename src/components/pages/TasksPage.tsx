@@ -39,8 +39,12 @@ export function TasksPage({ tasks, onAddTask, onToggleTask, onDeleteTask, onSetT
   };
 
   // Tareas activas (pending + in_progress)
-  const activeTasks = tasks.filter((t) => t.status === 'pending' || t.status === 'in_progress');
+  const allActiveTasks = tasks.filter((t) => t.status === 'pending' || t.status === 'in_progress');
   const completedTasks = tasks.filter((t) => t.status === 'completed');
+
+  // Tareas marcadas como "Hoy" (isTopThree)
+  const todayPriorityTasks = allActiveTasks.filter((t) => t.isTopThree);
+  const activeTasks = allActiveTasks.filter((t) => !t.isTopThree);
 
   // Tareas sin programar
   const unprogrammedTasks = useMemo(() => {

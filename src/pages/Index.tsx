@@ -226,14 +226,15 @@ export default function Index() {
   };
 
   // Add multiple tasks from AI - SIN hora, fecha ni duración
-  const addMultipleTasks = (taskTexts: string[]) => {
-    const newTasks = taskTexts.map((text) => ({
+  const addMultipleTasks = (taskTexts: string[], priorityIndices?: number[]) => {
+    const prioritySet = new Set(priorityIndices || []);
+    const newTasks = taskTexts.map((text, index) => ({
       id: generateId(),
       text,
       status: 'pending' as const,
       source: 'manual' as const,
       createdAt: new Date().toISOString(),
-      isTopThree: false,
+      isTopThree: prioritySet.has(index),
       // NO asignar fecha, hora ni duración - el usuario decide
       scheduledDate: undefined,
       scheduledTime: undefined,
