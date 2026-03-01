@@ -224,13 +224,21 @@ export function FocusPage({
               progress={progress}
             />
           </div>
+
+          {showStretchHint && (
+            <div className="mb-4 px-4 py-3 rounded-2xl bg-muted/40 animate-fade-in">
+              <p className="text-sm text-muted-foreground text-center">
+                ¿Quieres estirarte 2 minutos? 🌿
+              </p>
+            </div>
+          )}
           
           <div className="space-y-3">
             <button
               onClick={handleFinish}
               className="btn-secondary-focus w-full"
             >
-              Cerrar Focus Time
+              Finalizar
             </button>
           </div>
           
