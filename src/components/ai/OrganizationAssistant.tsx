@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Sparkles, Send, Loader2, AlertCircle, RefreshCw } from 'lucide-react';
+import { Sparkles, Send, Loader2, AlertCircle, RefreshCw, Check } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
@@ -8,7 +8,7 @@ interface AIResponse {
 }
 
 interface OrganizationAssistantProps {
-  onSendToTasks: (tasks: string[]) => void;
+  onSendToTasks: (tasks: string[], priorityIndices?: number[]) => void;
 }
 
 export function OrganizationAssistant({
@@ -18,6 +18,7 @@ export function OrganizationAssistant({
   const [isProcessing, setIsProcessing] = useState(false);
   const [response, setResponse] = useState<AIResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [selectedPriorities, setSelectedPriorities] = useState<Set<number>>(new Set());
 
   const processWithAI = async () => {
     if (!input.trim()) {
@@ -41,7 +42,6 @@ export function OrganizationAssistant({
       }
 
       if (data?.error) {
-        // Handle specific error types
         if (data.error === 'rate_limited') {
           setError('Has hecho muchas solicitudes. Espera un momento.');
         } else {
@@ -56,6 +56,7 @@ export function OrganizationAssistant({
       };
 
       setResponse(organized);
+      setSelectedPriorities(new Set());
       setError(null);
     } catch (err) {
       console.error('Failed to process with AI:', err);
@@ -65,9 +66,26 @@ export function OrganizationAssistant({
     }
   };
 
+  const togglePriority = (index: number) => {
+    setSelectedPriorities(prev => {
+      const next = new Set(prev);
+      if (next.has(index)) {
+        next.delete(index);
+      } else {
+        if (next.size >= 3) {
+          toast('Elige solo 3 para mantener claridad.');
+          return prev;
+        }
+        next.add(index);
+      }
+      return next;
+    });
+  };
+
   const handleSendToTasks = () => {
     if (response?.tasks && response.tasks.length > 0) {
-      onSendToTasks(response.tasks);
+      const priorityIndices = Array.from(selectedPriorities);
+      onSendToTasks(response.tasks, priorityIndices.length > 0 ? priorityIndices : undefined);
       toast.success(`${response.tasks.length} tareas enviadas`);
       handleReset();
     }
@@ -77,6 +95,7 @@ export function OrganizationAssistant({
     setResponse(null);
     setInput('');
     setError(null);
+    setSelectedPriorities(new Set());
   };
 
   return (
@@ -91,7 +110,6 @@ export function OrganizationAssistant({
             disabled={isProcessing}
           />
 
-          {/* Error display with retry */}
           {error && (
             <div className="mt-3 p-3 rounded-xl bg-destructive/10 border border-destructive/30 flex items-start gap-2">
               <AlertCircle size={18} className="text-destructive shrink-0 mt-0.5" />
@@ -132,19 +150,45 @@ export function OrganizationAssistant({
         </>
       ) : (
         <div className="space-y-5 animate-fade-in">
-          {/* Lista de tareas */}
           {response.tasks.length > 0 && (
             <div className="p-4 rounded-xl bg-muted/50 border border-border/50">
-              <p className="text-xs font-medium text-muted-foreground mb-3">
-                Aquí están organizadas. ¿Cuáles importan hoy?
+              <p className="text-sm font-medium text-foreground mb-1">
+                ¿Cuáles son más importantes hoy?
+              </p>
+              <p className="text-xs text-muted-foreground mb-4">
+                Elige hasta 3. Lo demás puede esperar.
               </p>
               <ul className="space-y-2 mb-4">
-                {response.tasks.map((task, i) => (
-                  <li key={i} className="text-sm text-foreground flex items-start gap-2">
-                    <span className="text-primary mt-0.5">•</span>
-                    <span>{task}</span>
-                  </li>
-                ))}
+                {response.tasks.map((task, i) => {
+                  const isSelected = selectedPriorities.has(i);
+                  return (
+                    <li
+                      key={i}
+                      onClick={() => togglePriority(i)}
+                      className={`text-sm text-foreground flex items-center gap-3 p-2.5 rounded-xl cursor-pointer transition-all duration-200 ${
+                        isSelected
+                          ? 'bg-primary/10 border border-primary/30'
+                          : 'hover:bg-muted/30 border border-transparent'
+                      }`}
+                    >
+                      <div
+                        className={`w-5 h-5 rounded-md border-2 flex items-center justify-center shrink-0 transition-all duration-200 ${
+                          isSelected
+                            ? 'bg-primary border-primary'
+                            : 'border-border/60'
+                        }`}
+                      >
+                        {isSelected && <Check size={12} className="text-primary-foreground" />}
+                      </div>
+                      <span className="flex-1">{task}</span>
+                      {isSelected && (
+                        <span className="text-[10px] font-medium text-primary bg-primary/10 px-2 py-0.5 rounded-full">
+                          Hoy
+                        </span>
+                      )}
+                    </li>
+                  );
+                })}
               </ul>
               <button
                 onClick={handleSendToTasks}
@@ -164,7 +208,6 @@ export function OrganizationAssistant({
             </div>
           )}
 
-          {/* Reset */}
           <button
             onClick={handleReset}
             className="w-full py-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
