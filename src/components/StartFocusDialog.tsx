@@ -55,10 +55,9 @@ export function StartFocusDialog({ open, onOpenChange, title, suggestedMinutes =
               <input
                 type="number"
                 value={minutes}
-                onChange={(e) => setMinutes(Math.max(1, Math.min(180, parseInt(e.target.value) || 1)))}
+                onChange={(e) => setMinutes(Math.max(1, parseInt(e.target.value) || 1))}
                 className="w-20 text-center text-3xl font-display font-semibold text-foreground bg-transparent outline-none"
                 min={1}
-                max={180}
               />
               <button
                 onClick={() => setMinutes((m) => Math.min(180, m + 1))}
