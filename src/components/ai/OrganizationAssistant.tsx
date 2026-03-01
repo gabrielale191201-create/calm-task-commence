@@ -124,7 +124,7 @@ export function OrganizationAssistant({
           </button>
 
           <p className="text-xs text-muted-foreground text-center mt-3">
-            La IA solo organiza. Tú decides horarios y tiempo después.
+            Tú decides horarios y tiempo después.
           </p>
         </>
       ) : (
