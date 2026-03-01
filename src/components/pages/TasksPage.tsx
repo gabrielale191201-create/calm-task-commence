@@ -24,6 +24,7 @@ interface TasksPageProps {
 export function TasksPage({ tasks, onAddTask, onToggleTask, onDeleteTask, onSetTaskStatus, onUpdateTask, onReuseTask, onStartFocus, getTasksCountForDate }: TasksPageProps) {
   const [title, setTitle] = useState('');
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
+  const [reuseTask, setReuseTask] = useState<Task | null>(null);
   const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
   const [editDate, setEditDate] = useState('');
   const [editTime, setEditTime] = useState('');
