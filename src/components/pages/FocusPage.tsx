@@ -83,6 +83,9 @@ export function FocusPage({
   const handleContinue = () => {
     setShowCompletion(false);
     onAcknowledgeCompletion();
+    // Restart with same duration
+    const mins = Math.max(1, Math.round(duration / 60));
+    onContinueTimer(mins);
   };
 
   const handleFinish = () => {
