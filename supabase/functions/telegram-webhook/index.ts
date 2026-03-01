@@ -11,6 +11,17 @@ Deno.serve(async (req) => {
   }
 
   try {
+    // Verify shared secret
+    const webhookSecret = Deno.env.get('TELEGRAM_WEBHOOK_SECRET');
+    const providedSecret = req.headers.get('x-webhook-secret');
+    if (!webhookSecret || providedSecret !== webhookSecret) {
+      console.log('[telegram-webhook] Unauthorized: invalid or missing webhook secret');
+      return new Response(
+        JSON.stringify({ error: 'Unauthorized' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     const body = await req.json();
     const { code, chat_id } = body;
 
