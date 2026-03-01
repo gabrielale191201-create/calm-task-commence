@@ -15,6 +15,7 @@ interface OrganizationAssistantProps {
 
 export function OrganizationAssistant({
   onSendToTasks,
+  currentTodayCount = 0,
 }: OrganizationAssistantProps) {
   const [input, setInput] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
