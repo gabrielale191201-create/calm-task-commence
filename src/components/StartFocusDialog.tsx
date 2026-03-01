@@ -25,7 +25,7 @@ export function StartFocusDialog({ open, onOpenChange, title, suggestedMinutes =
   }, [open, initial]);
 
   const start = () => {
-    const mins = Math.max(1, Math.min(180, minutes || 1));
+    const mins = Math.max(1, minutes || 1);
     onStart(mins);
     onOpenChange(false);
   };
