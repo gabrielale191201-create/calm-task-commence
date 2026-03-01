@@ -13,7 +13,8 @@ interface HomePageProps {
   startedStreak: number;
   hasVictoryToday: boolean;
   onStartFocusFromTopTask: (taskText: string, minutes: number) => void;
-  onSendToTasks: (tasks: string[]) => void;
+  onSendToTasks: (tasks: string[], priorityIndices?: number[]) => void;
+  currentTodayPriorityCount?: number;
 }
 
 export function HomePage({
