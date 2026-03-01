@@ -197,7 +197,6 @@ export function TasksPage({ tasks, onAddTask, onToggleTask, onDeleteTask, onSetT
                           onChange={(e) => setEditDuration(e.target.value)}
                           placeholder="25"
                           min={1}
-                          max={180}
                           className="mt-1 w-full px-3 py-2 rounded-lg bg-card border border-border/50 text-foreground text-sm"
                         />
                       </div>
