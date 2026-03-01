@@ -228,18 +228,24 @@ export default function Index() {
   // Add multiple tasks from AI - SIN hora, fecha ni duración
   const addMultipleTasks = (taskTexts: string[], priorityIndices?: number[]) => {
     const prioritySet = new Set(priorityIndices || []);
-    const newTasks = taskTexts.map((text, index) => ({
-      id: generateId(),
-      text,
-      status: 'pending' as const,
-      source: 'manual' as const,
-      createdAt: new Date().toISOString(),
-      isTopThree: prioritySet.has(index),
-      // NO asignar fecha, hora ni duración - el usuario decide
-      scheduledDate: undefined,
-      scheduledTime: undefined,
-      durationMinutes: undefined,
-    }));
+    const todayDate = new Date().toISOString().split('T')[0];
+    const newTasks = taskTexts.map((text, index) => {
+      const isPriority = prioritySet.has(index);
+      return {
+        id: generateId(),
+        text,
+        status: 'pending' as const,
+        source: 'manual' as const,
+        createdAt: new Date().toISOString(),
+        isTopThree: isPriority,
+        isExceptionToday: false,
+        dateAutoAssigned: isPriority ? true : undefined,
+        // Auto-assign date for priorities, none for others
+        scheduledDate: isPriority ? todayDate : undefined,
+        scheduledTime: undefined,
+        durationMinutes: undefined,
+      };
+    });
     setTasks([...tasks, ...newTasks]);
     setActiveTab('tareas');
   };
