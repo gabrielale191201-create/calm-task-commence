@@ -83,7 +83,7 @@ export function OrganizationAssistant({
           <textarea
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            placeholder="Ej: trabajo, estudio, estoy cansado, no sé por dónde empezar, tengo muchas cosas"
+            placeholder="Ejemplo: estudiar para el parcial, enviar informe, llamar al cliente, organizar apuntes…"
             className="w-full min-h-[120px] px-4 py-3 rounded-xl bg-muted/50 border border-border/50 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 resize-none"
             disabled={isProcessing}
           />
