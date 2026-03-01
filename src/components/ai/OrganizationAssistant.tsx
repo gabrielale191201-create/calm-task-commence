@@ -133,7 +133,7 @@ export function OrganizationAssistant({
           {response.tasks.length > 0 && (
             <div className="p-4 rounded-xl bg-muted/50 border border-border/50">
               <p className="text-xs font-medium text-muted-foreground mb-3">
-                Tareas identificadas:
+                Aquí están organizadas. ¿Cuáles importan hoy?
               </p>
               <ul className="space-y-2 mb-4">
                 {response.tasks.map((task, i) => (
