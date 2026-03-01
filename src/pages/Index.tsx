@@ -606,7 +606,7 @@ export default function Index() {
       case 'tareas':
         return (
           <TasksPage
-            tasks={regularTasks}
+            tasks={tasks}
             onAddTask={(data) => addTask(data, false)}
             onToggleTask={toggleTask}
             onDeleteTask={deleteTask}
@@ -615,6 +615,7 @@ export default function Index() {
             onReuseTask={reuseTask}
             onStartFocus={(taskText, minutes) => startFocusFromTopTask(taskText, minutes)}
             getTasksCountForDate={getTasksCountForDate}
+            onTogglePriority={togglePriority}
           />
         );
       case 'horario':
