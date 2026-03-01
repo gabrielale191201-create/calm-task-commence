@@ -13,7 +13,8 @@ interface HomePageProps {
   startedStreak: number;
   hasVictoryToday: boolean;
   onStartFocusFromTopTask: (taskText: string, minutes: number) => void;
-  onSendToTasks: (tasks: string[]) => void;
+  onSendToTasks: (tasks: string[], priorityIndices?: number[]) => void;
+  currentTodayPriorityCount?: number;
 }
 
 export function HomePage({
@@ -22,6 +23,7 @@ export function HomePage({
   startedStreak,
   hasVictoryToday,
   onSendToTasks,
+  currentTodayPriorityCount,
 }: HomePageProps) {
   const today = new Date();
   const dayNames = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
@@ -65,6 +67,7 @@ export function HomePage({
       {/* AI Organization Assistant */}
       <OrganizationAssistant
         onSendToTasks={onSendToTasks}
+        currentTodayCount={currentTodayPriorityCount}
       />
 
       {/* Quick access button */}

@@ -228,18 +228,24 @@ export default function Index() {
   // Add multiple tasks from AI - SIN hora, fecha ni duración
   const addMultipleTasks = (taskTexts: string[], priorityIndices?: number[]) => {
     const prioritySet = new Set(priorityIndices || []);
-    const newTasks = taskTexts.map((text, index) => ({
-      id: generateId(),
-      text,
-      status: 'pending' as const,
-      source: 'manual' as const,
-      createdAt: new Date().toISOString(),
-      isTopThree: prioritySet.has(index),
-      // NO asignar fecha, hora ni duración - el usuario decide
-      scheduledDate: undefined,
-      scheduledTime: undefined,
-      durationMinutes: undefined,
-    }));
+    const todayDate = new Date().toISOString().split('T')[0];
+    const newTasks = taskTexts.map((text, index) => {
+      const isPriority = prioritySet.has(index);
+      return {
+        id: generateId(),
+        text,
+        status: 'pending' as const,
+        source: 'manual' as const,
+        createdAt: new Date().toISOString(),
+        isTopThree: isPriority,
+        isExceptionToday: false,
+        dateAutoAssigned: isPriority ? true : undefined,
+        // Auto-assign date for priorities, none for others
+        scheduledDate: isPriority ? todayDate : undefined,
+        scheduledTime: undefined,
+        durationMinutes: undefined,
+      };
+    });
     setTasks([...tasks, ...newTasks]);
     setActiveTab('tareas');
   };
@@ -298,7 +304,62 @@ export default function Index() {
   };
 
   const removeFromTopThree = (id: string) => {
-    setTasks(tasks.map(t => t.id === id ? { ...t, isTopThree: false } : t));
+    setTasks(tasks.map(t => {
+      if (t.id !== id) return t;
+      const updated: Task = { ...t, isTopThree: false, isExceptionToday: false };
+      // If date was auto-assigned, remove it
+      if (t.dateAutoAssigned) {
+        updated.scheduledDate = undefined;
+        updated.dateAutoAssigned = undefined;
+      }
+      return updated;
+    }));
+  };
+
+  // Toggle priority (isTopThree) with 3+2 exception logic
+  const togglePriority = (id: string, forceException?: boolean) => {
+    const task = tasks.find(t => t.id === id);
+    if (!task) return;
+
+    const todayDate = new Date().toISOString().split('T')[0];
+
+    // If already priority, remove it
+    if (task.isTopThree) {
+      removeFromTopThree(id);
+      return;
+    }
+
+    // Count current priorities for today
+    const currentPriorities = tasks.filter(t => t.isTopThree && t.status !== 'completed');
+    const normalCount = currentPriorities.filter(t => !t.isExceptionToday).length;
+    const exceptionCount = currentPriorities.filter(t => t.isExceptionToday).length;
+
+    if (normalCount < 3) {
+      // Normal priority slot available
+      setTasks(tasks.map(t => t.id === id ? {
+        ...t,
+        isTopThree: true,
+        isExceptionToday: false,
+        scheduledDate: t.scheduledDate || todayDate,
+        dateAutoAssigned: !t.scheduledDate ? true : t.dateAutoAssigned,
+      } : t));
+    } else if (forceException && exceptionCount < 2) {
+      // Exception approved
+      setTasks(tasks.map(t => t.id === id ? {
+        ...t,
+        isTopThree: true,
+        isExceptionToday: true,
+        scheduledDate: t.scheduledDate || todayDate,
+        dateAutoAssigned: !t.scheduledDate ? true : t.dateAutoAssigned,
+      } : t));
+    } else if (normalCount >= 3 && !forceException) {
+      // Need to show confirmation - return special value
+      return 'needs_confirmation';
+    } else if (exceptionCount >= 2) {
+      toast('Para mantener claridad, hoy el máximo es 5.');
+      return 'max_reached';
+    }
+    return 'ok';
   };
 
   // Routine handlers (kept for data, but section is hidden)
@@ -516,6 +577,7 @@ export default function Index() {
             hasVictoryToday={hasVictoryToday}
             onStartFocusFromTopTask={startFocusFromTopTask}
             onSendToTasks={addMultipleTasks}
+            currentTodayPriorityCount={tasks.filter(t => t.isTopThree && t.status !== 'completed').length}
           />
         );
       case 'enfoque':
@@ -545,7 +607,7 @@ export default function Index() {
       case 'tareas':
         return (
           <TasksPage
-            tasks={regularTasks}
+            tasks={tasks}
             onAddTask={(data) => addTask(data, false)}
             onToggleTask={toggleTask}
             onDeleteTask={deleteTask}
@@ -554,6 +616,7 @@ export default function Index() {
             onReuseTask={reuseTask}
             onStartFocus={(taskText, minutes) => startFocusFromTopTask(taskText, minutes)}
             getTasksCountForDate={getTasksCountForDate}
+            onTogglePriority={togglePriority}
           />
         );
       case 'horario':

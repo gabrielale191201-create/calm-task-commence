@@ -121,6 +121,7 @@ export type Database = {
           created_at: string
           duration_minutes: number | null
           id: string
+          is_exception_today: boolean
           is_top_three: boolean
           reminder_enabled: boolean
           reminder_sent_at: string | null
@@ -137,6 +138,7 @@ export type Database = {
           created_at?: string
           duration_minutes?: number | null
           id?: string
+          is_exception_today?: boolean
           is_top_three?: boolean
           reminder_enabled?: boolean
           reminder_sent_at?: string | null
@@ -153,6 +155,7 @@ export type Database = {
           created_at?: string
           duration_minutes?: number | null
           id?: string
+          is_exception_today?: boolean
           is_top_three?: boolean
           reminder_enabled?: boolean
           reminder_sent_at?: string | null

@@ -9,10 +9,13 @@ interface AIResponse {
 
 interface OrganizationAssistantProps {
   onSendToTasks: (tasks: string[], priorityIndices?: number[]) => void;
+  /** Current count of today priorities (isTopThree) across all tasks */
+  currentTodayCount?: number;
 }
 
 export function OrganizationAssistant({
   onSendToTasks,
+  currentTodayCount = 0,
 }: OrganizationAssistantProps) {
   const [input, setInput] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
@@ -72,6 +75,11 @@ export function OrganizationAssistant({
       if (next.has(index)) {
         next.delete(index);
       } else {
+        const totalIfAdded = currentTodayCount + next.size + 1;
+        if (totalIfAdded > 5) {
+          toast('Para mantener claridad, hoy el máximo es 5.');
+          return prev;
+        }
         if (next.size >= 3) {
           toast('Elige solo 3 para mantener claridad.');
           return prev;

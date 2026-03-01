@@ -17,6 +17,9 @@ export interface Task {
   completedAt?: string;
   createdAt: string;
   isTopThree: boolean;
+  isExceptionToday?: boolean;
+  /** true si la fecha fue asignada automáticamente al marcar como prioridad */
+  dateAutoAssigned?: boolean;
 
   // Programación OPCIONAL - el usuario decide manualmente
   scheduledDate?: string; // YYYY-MM-DD (opcional)
