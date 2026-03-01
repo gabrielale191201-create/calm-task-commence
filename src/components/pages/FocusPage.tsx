@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { Play, X, CheckCircle2, Volume2, VolumeX, Zap } from 'lucide-react';
 import { CircularTimer } from '@/components/CircularTimer';
 import { cn } from '@/lib/utils';
