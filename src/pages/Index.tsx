@@ -204,6 +204,27 @@ export default function Index() {
     }
   };
 
+  // Reuse a completed task — set back to pending with optional new schedule
+  const reuseTask = (id: string, updates: Partial<Pick<Task, 'scheduledDate' | 'scheduledTime' | 'durationMinutes'>>) => {
+    const task = tasks.find(t => t.id === id);
+    if (!task) return;
+
+    const reusedTask: Task = {
+      ...task,
+      status: 'pending',
+      completedAt: task.completedAt, // keep as last_completed_at
+      ...updates,
+    };
+    setTasks(tasks.map(t => t.id === id ? reusedTask : t));
+
+    // Trigger webhook if now has date + time
+    const finalDate = updates.scheduledDate ?? task.scheduledDate;
+    const finalTime = updates.scheduledTime ?? task.scheduledTime;
+    if (finalDate && finalTime) {
+      triggerWebhook(task.id, reusedTask.text, finalDate, finalTime);
+    }
+  };
+
   // Add multiple tasks from AI - SIN hora, fecha ni duración
   const addMultipleTasks = (taskTexts: string[]) => {
     const newTasks = taskTexts.map((text) => ({
