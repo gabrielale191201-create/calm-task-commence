@@ -164,6 +164,53 @@ export function TasksPage({ tasks, onAddTask, onToggleTask, onDeleteTask, onSetT
         </p>
       </div>
 
+      {/* Prioridades de hoy */}
+      {todayPriorityTasks.length > 0 && (
+        <section className="mb-8 animate-slide-up">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-sm font-medium text-primary">Hoy</h3>
+            <span className="text-xs text-muted-foreground">{todayPriorityTasks.length} tareas</span>
+          </div>
+          <div className="space-y-3">
+            {todayPriorityTasks.map((task) => (
+              <div key={task.id} className="rounded-2xl border border-primary/20 bg-primary/5 p-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="text-[10px] font-medium text-primary bg-primary/10 px-2 py-0.5 rounded-full">
+                    Hoy
+                  </span>
+                </div>
+                <TaskItem
+                  task={task}
+                  onToggle={onToggleTask}
+                  onDelete={onDeleteTask}
+                  onSetStatus={onSetTaskStatus}
+                  meta={formatChip(task)}
+                  onPress={() => handleStartFocus(task)}
+                />
+                <div className="flex items-center gap-2 mt-2">
+                  {!task.scheduledDate && (
+                    <button
+                      onClick={() => startEditing(task)}
+                      className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg bg-primary/10 text-primary hover:bg-primary/20 transition-colors"
+                    >
+                      <Edit2 size={13} />
+                      Programar
+                    </button>
+                  )}
+                  <button
+                    onClick={() => handleStartFocus(task)}
+                    className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg bg-primary/10 text-primary hover:bg-primary/20 transition-colors"
+                  >
+                    <Play size={13} />
+                    Focus Time
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
       {/* Sin programar */}
       {unprogrammedTasks.length > 0 && (
         <section className="mb-8 animate-slide-up">
