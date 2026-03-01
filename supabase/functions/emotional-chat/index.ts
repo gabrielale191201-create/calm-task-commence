@@ -10,6 +10,31 @@ const corsHeaders = {
 const MAX_MESSAGE_LENGTH = 2000;
 const MAX_MESSAGES_COUNT = 50;
 
+// Prompt injection detection patterns
+const INJECTION_PATTERNS = [
+  /ignore\s+(all\s+)?previous\s+(instructions|rules|prompts)/i,
+  /disregard\s+(all\s+)?(previous|above|prior)/i,
+  /repeat\s+(everything|all|your)\s+(above|instructions|system\s*prompt)/i,
+  /show\s+(me\s+)?(your|the)\s+(system\s*)?prompt/i,
+  /what\s+(are|is)\s+your\s+(instructions|system\s*prompt|rules)/i,
+  /you\s+are\s+now\s+a/i,
+  /act\s+as\s+(if\s+you\s+are|a\s+different)/i,
+  /pretend\s+(to\s+be|you\s+are)/i,
+  /new\s+instructions?:/i,
+  /system\s*:\s*/i,
+  /\[SYSTEM\]/i,
+  /<<\s*SYS\s*>>/i,
+];
+
+function containsInjection(text: string): boolean {
+  return INJECTION_PATTERNS.some(pattern => pattern.test(text));
+}
+
+function sanitizeInput(text: string): string {
+  // Remove excessive control characters and null bytes
+  return text.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F]/g, '').trim();
+}
+
 // Rate limiting: 20 requests per 5 minutes per user
 const rateLimitMap = new Map<string, number[]>();
 const RATE_LIMIT_WINDOW = 5 * 60 * 1000;
