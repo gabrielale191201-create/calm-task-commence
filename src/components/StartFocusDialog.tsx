@@ -60,7 +60,7 @@ export function StartFocusDialog({ open, onOpenChange, title, suggestedMinutes =
                 min={1}
               />
               <button
-                onClick={() => setMinutes((m) => Math.min(180, m + 1))}
+                onClick={() => setMinutes((m) => m + 1)}
                 className="w-10 h-10 rounded-full bg-muted text-foreground hover:bg-accent transition-colors text-xl font-medium"
               >
                 +
