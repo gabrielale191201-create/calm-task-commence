@@ -142,18 +142,28 @@ serve(async (req) => {
   }
 
   try {
-    const { input } = await req.json();
+    const { input: rawInput } = await req.json();
     
-    if (!input || typeof input !== 'string' || input.trim().length === 0) {
+    if (!rawInput || typeof rawInput !== 'string' || rawInput.trim().length === 0) {
       return new Response(
         JSON.stringify({ error: "Se requiere texto para organizar." }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
+    const input = sanitizeInput(rawInput);
+
     if (input.length > MAX_INPUT_LENGTH) {
       return new Response(
         JSON.stringify({ error: `Entrada demasiado larga. Máximo ${MAX_INPUT_LENGTH} caracteres.` }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    if (containsInjection(input)) {
+      console.log("Prompt injection attempt detected from:", identifier.slice(0, 15));
+      return new Response(
+        JSON.stringify({ error: "Tu texto contiene patrones no permitidos. Intenta reformularlo." }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }

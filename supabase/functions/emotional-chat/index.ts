@@ -251,9 +251,17 @@ serve(async (req) => {
           { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
+      msg.content = sanitizeInput(msg.content);
       if (msg.content.length > MAX_MESSAGE_LENGTH) {
         return new Response(
           JSON.stringify({ error: `Mensaje demasiado largo. Máximo ${MAX_MESSAGE_LENGTH} caracteres.` }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+      if (msg.role === 'user' && containsInjection(msg.content)) {
+        console.log("Prompt injection attempt detected from:", userId.slice(0, 8));
+        return new Response(
+          JSON.stringify({ error: "Tu mensaje contiene patrones no permitidos. Intenta reformularlo." }),
           { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }

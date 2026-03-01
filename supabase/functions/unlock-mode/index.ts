@@ -66,18 +66,28 @@ serve(async (req) => {
   }
 
   try {
-    const { message } = await req.json();
+    const { message: rawMessage } = await req.json();
 
-    if (!message || typeof message !== 'string' || !message.trim()) {
+    if (!rawMessage || typeof rawMessage !== 'string' || !rawMessage.trim()) {
       return new Response(
         JSON.stringify({ error: "No se recibió texto." }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
+    const message = sanitizeInput(rawMessage);
+
     if (message.length > 3000) {
       return new Response(
         JSON.stringify({ error: "Texto demasiado largo. Máximo 3000 caracteres." }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    if (containsInjection(message)) {
+      console.log("Prompt injection attempt detected");
+      return new Response(
+        JSON.stringify({ error: "Tu texto contiene patrones no permitidos. Intenta reformularlo." }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
