@@ -55,10 +55,10 @@ export function HomePage({
       {/* Main motivation */}
       <div className="text-center py-8 mb-6 animate-slide-up">
         <p className="text-2xl font-display font-semibold text-foreground leading-relaxed mb-2">
-          Escribe lo que tienes en la cabeza.
+          Escribe las actividades que tienes en mente.
         </p>
         <p className="text-muted-foreground text-sm">
-          Focus On lo convierte en tareas claras para que empieces.
+          Yo las organizo por ti.
         </p>
       </div>
 

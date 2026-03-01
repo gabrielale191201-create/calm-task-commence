@@ -20,7 +20,10 @@ export function OrganizationAssistant({
   const [error, setError] = useState<string | null>(null);
 
   const processWithAI = async () => {
-    if (!input.trim()) return;
+    if (!input.trim()) {
+      toast('Escribe al menos una actividad para comenzar.');
+      return;
+    }
     
     setIsProcessing(true);
     setError(null);
@@ -83,7 +86,7 @@ export function OrganizationAssistant({
           <textarea
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            placeholder="Ej: trabajo, estudio, estoy cansado, no sé por dónde empezar, tengo muchas cosas"
+            placeholder="Ejemplo: estudiar para el parcial, enviar informe, llamar al cliente, organizar apuntes…"
             className="w-full min-h-[120px] px-4 py-3 rounded-xl bg-muted/50 border border-border/50 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 resize-none"
             disabled={isProcessing}
           />
@@ -118,13 +121,13 @@ export function OrganizationAssistant({
             ) : (
               <>
                 <Sparkles size={18} />
-                Ordenar en tareas
+                Organizar actividades
               </>
             )}
           </button>
 
           <p className="text-xs text-muted-foreground text-center mt-3">
-            La IA solo organiza. Tú decides horarios y tiempo después.
+            Tú decides horarios y tiempo después.
           </p>
         </>
       ) : (
@@ -133,7 +136,7 @@ export function OrganizationAssistant({
           {response.tasks.length > 0 && (
             <div className="p-4 rounded-xl bg-muted/50 border border-border/50">
               <p className="text-xs font-medium text-muted-foreground mb-3">
-                Tareas identificadas:
+                Aquí están organizadas. ¿Cuáles importan hoy?
               </p>
               <ul className="space-y-2 mb-4">
                 {response.tasks.map((task, i) => (
