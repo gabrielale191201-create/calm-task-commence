@@ -67,6 +67,7 @@ export function HomePage({
       {/* AI Organization Assistant */}
       <OrganizationAssistant
         onSendToTasks={onSendToTasks}
+        currentTodayCount={currentTodayPriorityCount}
       />
 
       {/* Quick access button */}
