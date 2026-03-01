@@ -348,15 +348,25 @@ export function TasksPage({ tasks, onAddTask, onToggleTask, onDeleteTask, onSetT
               .slice()
               .sort((a, b) => (b.completedAt || '').localeCompare(a.completedAt || ''))
               .map((task) => (
-                <TaskItem
-                  key={task.id}
-                  task={task}
-                  onToggle={onToggleTask}
-                  onDelete={onDeleteTask}
-                  onSetStatus={onSetTaskStatus}
-                  showFocusButton={false}
-                  meta={formatChip(task)}
-                />
+                <div key={task.id} className="space-y-1">
+                  <TaskItem
+                    task={task}
+                    onToggle={onToggleTask}
+                    onDelete={onDeleteTask}
+                    onSetStatus={onSetTaskStatus}
+                    showFocusButton={false}
+                    meta={formatChip(task)}
+                  />
+                  {onReuseTask && (
+                    <button
+                      onClick={() => setReuseTask(task)}
+                      className="flex items-center gap-1.5 text-xs px-3 py-1.5 ml-4 rounded-lg bg-primary/10 text-primary hover:bg-primary/20 transition-colors"
+                    >
+                      <RotateCcw size={13} />
+                      Reutilizar
+                    </button>
+                  )}
+                </div>
               ))}
           </div>
         </details>
