@@ -1,5 +1,5 @@
 import { forwardRef } from 'react';
-import { Home, Target, CalendarClock, CheckSquare, BookOpen, BarChart3 } from 'lucide-react';
+import { Home, Target, CalendarClock, CheckSquare, BookOpen, BarChart3, Crown } from 'lucide-react';
 import { TabType } from '@/types/focuson';
 import { cn } from '@/lib/utils';
 import { FocusOnLogo } from '@/components/FocusOnLogo';
@@ -17,6 +17,7 @@ const navItems: { id: TabType; label: string; icon: React.ElementType }[] = [
   { id: 'tareas', label: 'Tareas', icon: CheckSquare },
   { id: 'diario', label: 'Diario', icon: BookOpen },
   { id: 'progreso', label: 'Progreso', icon: BarChart3 },
+  { id: 'coach', label: 'Coach', icon: Crown },
 ];
 
 export const BottomNav = forwardRef<HTMLDivElement, BottomNavProps>(

@@ -652,6 +652,8 @@ export default function Index() {
             streak={calculateStreak()}
           />
         );
+      case 'coach':
+        return <CoachPage />;
       default:
         return null;
     }
