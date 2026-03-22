@@ -37,6 +37,19 @@ const LEVEL_COLORS: Record<PrioritizedActivity['level'], string> = {
   secundario: 'bg-muted/50 text-muted-foreground border-border/50',
 };
 
+// Energy tags assigned based on activity level and text length heuristics
+const ENERGY_TAGS: { emoji: string; label: string; color: string }[] = [
+  { emoji: '🧠', label: 'Alta Carga', color: 'bg-red-500/10 text-red-600 border-red-200' },
+  { emoji: '⚡', label: 'Victoria Rápida', color: 'bg-amber-500/10 text-amber-600 border-amber-200' },
+  { emoji: '🔋', label: 'Baja Energía', color: 'bg-sky-500/10 text-sky-600 border-sky-200' },
+];
+
+function getEnergyTag(activity: PrioritizedActivity, index: number) {
+  if (activity.level === 'esencial') return ENERGY_TAGS[0]; // Alta Carga
+  if (activity.text.length < 30 || activity.level === 'secundario') return ENERGY_TAGS[1]; // Victoria Rápida
+  return ENERGY_TAGS[2]; // Baja Energía
+}
+
 export const UnlockMode = forwardRef<HTMLDivElement, UnlockModeProps>(
   function UnlockMode({ variant = 'full', onWritingModeChange, onStartFocusTime, onCreateTask, sessions, onSaveSession, onUpdateSession }, ref) {
     const [isOpen, setIsOpen] = useState(false);
