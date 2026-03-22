@@ -102,4 +102,4 @@ export interface UserProfile {
   name: string;
 }
 
-export type TabType = 'hoy' | 'enfoque' | 'horario' | 'tareas' | 'rutinas' | 'diario' | 'progreso';
+export type TabType = 'hoy' | 'enfoque' | 'horario' | 'tareas' | 'rutinas' | 'diario' | 'progreso' | 'coach';

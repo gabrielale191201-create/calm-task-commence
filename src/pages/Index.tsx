@@ -8,6 +8,7 @@ import { TasksPage } from '@/components/pages/TasksPage';
 import { JournalPage } from '@/components/pages/JournalPage';
 import { ProgressPage } from '@/components/pages/ProgressPage';
 import { SchedulePage } from '@/components/pages/SchedulePage';
+import { CoachPage } from '@/components/pages/CoachPage';
 import { HowToUsePage } from '@/components/pages/HowToUsePage';
 import { OnboardingBanner } from '@/components/OnboardingBanner';
 import { ProductTagline } from '@/components/ProductTagline';
@@ -651,6 +652,8 @@ export default function Index() {
             streak={calculateStreak()}
           />
         );
+      case 'coach':
+        return <CoachPage />;
       default:
         return null;
     }
