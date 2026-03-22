@@ -165,23 +165,38 @@ export const UnlockMode = forwardRef<HTMLDivElement, UnlockModeProps>(
             {LEVEL_LABELS[level]}
           </span>
           <div className="space-y-1.5">
-            {items.map((activity) => (
-              <div key={activity.originalIndex} className="flex items-center gap-2 bg-muted/30 rounded-lg px-3 py-2.5">
-                <p className="text-sm text-foreground flex-1">{activity.text}</p>
-                {convertedActivities.has(activity.originalIndex) ? (
-                  <span className="text-[10px] text-primary font-medium shrink-0">✓ Tarea</span>
-                ) : (
-                  <button
-                    onClick={() => handleConvertToTask(activity.originalIndex, activity.text)}
-                    className="shrink-0 flex items-center gap-1 text-[10px] text-primary hover:text-primary/80 font-medium transition-colors"
-                    title="Organizar como tarea"
-                  >
-                    <ListPlus size={14} />
-                    Tarea
-                  </button>
-                )}
-              </div>
-            ))}
+            {items.map((activity, idx) => {
+              const tag = getEnergyTag(activity, activity.originalIndex);
+              return (
+                <div key={activity.originalIndex}>
+                  <div className="flex items-center gap-2 bg-muted/30 rounded-lg px-3 py-2.5">
+                    <p className="text-sm text-foreground flex-1">{activity.text}</p>
+                    {/* Energy tag */}
+                    <span className={cn("text-[9px] font-semibold px-1.5 py-0.5 rounded-full border whitespace-nowrap shrink-0", tag.color)}>
+                      {tag.emoji} {tag.label}
+                    </span>
+                    {convertedActivities.has(activity.originalIndex) ? (
+                      <span className="text-[10px] text-primary font-medium shrink-0">✓ Tarea</span>
+                    ) : (
+                      <button
+                        onClick={() => handleConvertToTask(activity.originalIndex, activity.text)}
+                        className="shrink-0 flex items-center gap-1 text-[10px] text-primary hover:text-primary/80 font-medium transition-colors"
+                        title="Organizar como tarea"
+                      >
+                        <ListPlus size={14} />
+                        Tarea
+                      </button>
+                    )}
+                  </div>
+                  {/* AI Insight — only for the first "esencial" item */}
+                  {level === 'esencial' && idx === 0 && (
+                    <p className="text-[11px] italic text-muted-foreground mt-1 ml-3 leading-relaxed">
+                      IA Insight: Te sugiero empezar por aquí porque es la tarea que más energía mental te está consumiendo hoy.
+                    </p>
+                  )}
+                </div>
+              );
+            })}
           </div>
         </div>
       );
