@@ -74,9 +74,10 @@ const coachCards: CoachCard[] = [
 export function CoachPage() {
   const [showPaywall, setShowPaywall] = useState(false);
   const [activeContent, setActiveContent] = useState<string | null>(null);
+  const [freeAccess, setFreeAccess] = useState(false);
 
   const handleCardClick = (cardId: string) => {
-    if (coachContentLibrary[cardId]) {
+    if (freeAccess || coachContentLibrary[cardId]) {
       setActiveContent(cardId);
     } else {
       setShowPaywall(true);
