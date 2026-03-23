@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Check, Trash2 } from 'lucide-react';
 import { Task } from '@/types/focuson';
 import { cn } from '@/lib/utils';
@@ -17,27 +18,46 @@ interface TaskItemProps {
 
 export function TaskItem({ task, onToggle, onDelete, onSetStatus, onStartFocus, showFocusButton = false, showStatusChip = true, meta, onPress }: TaskItemProps) {
   const isCompleted = task.status === 'completed';
+  const [justCompleted, setJustCompleted] = useState(false);
+
+  const handleToggle = (id: string) => {
+    if (task.status !== 'completed') {
+      setJustCompleted(true);
+      setTimeout(() => setJustCompleted(false), 800);
+    }
+    onToggle(id);
+  };
 
   return (
     <div
       className={cn(
-        "flex items-center gap-3 p-4 rounded-xl bg-card border border-border/50 transition-all duration-300",
+        "relative flex items-center gap-3 p-5 rounded-xl border transition-all duration-300",
+        "bg-card/60 backdrop-blur-sm border-border/30",
         isCompleted && "opacity-60",
-        onPress && "cursor-pointer hover:bg-muted/20"
+        justCompleted && "task-complete-glow",
+        onPress && "cursor-pointer hover:bg-accent/20"
       )}
       onClick={onPress}
       role={onPress ? 'button' : undefined}
       tabIndex={onPress ? 0 : undefined}
       onKeyDown={onPress ? (e) => e.key === 'Enter' && onPress() : undefined}
     >
+      {/* Completion burst */}
+      {justCompleted && (
+        <div className="absolute inset-0 pointer-events-none overflow-hidden rounded-xl">
+          <div className="task-complete-burst" />
+        </div>
+      )}
+
       <button
-        onClick={(e) => { e.stopPropagation(); onToggle(task.id); }}
+        onClick={(e) => { e.stopPropagation(); handleToggle(task.id); }}
         className={cn(
-          "task-checkbox flex-shrink-0",
-          isCompleted && "checked"
+          "task-checkbox flex-shrink-0 transition-all duration-300",
+          isCompleted && "checked",
+          justCompleted && "scale-125"
         )}
       >
-        {isCompleted && <Check size={14} className="text-white" />}
+        {(isCompleted || justCompleted) && <Check size={14} className="text-primary-foreground" />}
       </button>
       
       <div className="flex-1 min-w-0 overflow-hidden">

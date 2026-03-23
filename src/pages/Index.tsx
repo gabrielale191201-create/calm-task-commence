@@ -660,9 +660,9 @@ export default function Index() {
   };
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen">
       {/* Header with help button */}
-      <header className="fixed top-0 left-0 right-0 z-30 bg-background/80 backdrop-blur-lg border-b border-border/50">
+      <header className="fixed top-0 left-0 right-0 z-30 backdrop-blur-xl border-b border-border/50" style={{ background: 'hsl(260 25% 8% / 0.8)' }}>
         <div className="flex items-center justify-between px-6 py-3">
           {/* Logo - fixed size, calm positioning */}
           <div className="flex items-center gap-2">
