@@ -128,7 +128,7 @@ export function CoachPage() {
             >
               {/* Lock or Read icon */}
               <div className="absolute top-3 right-3">
-                {hasContent ? (
+                {(freeAccess || hasContent) ? (
                   <BookOpen size={14} className="text-primary/60" />
                 ) : (
                   <Lock size={14} className="text-muted-foreground/50" />
