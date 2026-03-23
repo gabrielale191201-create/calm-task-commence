@@ -129,9 +129,9 @@
     filter: drop-shadow(0 0 20px hsl(152 55% 45% / 0.2));
   }
 
-  /* Smooth page transitions */
+  /* Smooth page transitions — fast (under 200ms) */
   .page-enter {
-    animation: pageEnter 0.4s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+    animation: pageEnter 0.18s cubic-bezier(0.4, 0, 0.2, 1) forwards;
   }
 
   /* Bottom nav styles */
@@ -195,8 +195,46 @@
   /* Streak badge */
   .streak-badge {
     @apply inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium;
-    background: linear-gradient(135deg, hsl(152 55% 45% / 0.15), hsl(152 55% 45% / 0.1));
-    color: hsl(152 55% 35%);
+    background: linear-gradient(135deg, hsl(152 55% 50% / 0.15), hsl(152 55% 50% / 0.1));
+    color: hsl(152 55% 50%);
+  }
+
+  /* Task completion celebration */
+  .task-complete-glow {
+    animation: taskGlow 0.8s ease-out;
+  }
+
+  @keyframes taskGlow {
+    0% {
+      box-shadow: 0 0 0 0 hsl(152 55% 50% / 0.6);
+      border-color: hsl(152 55% 50%);
+    }
+    50% {
+      box-shadow: 0 0 20px 4px hsl(152 55% 50% / 0.3);
+      border-color: hsl(152 55% 50%);
+    }
+    100% {
+      box-shadow: none;
+      border-color: hsl(260 15% 18% / 0.3);
+    }
+  }
+
+  .task-complete-burst {
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(circle at center, hsl(152 55% 50% / 0.2) 0%, transparent 70%);
+    animation: burstFade 0.6s ease-out forwards;
+  }
+
+  @keyframes burstFade {
+    0% {
+      opacity: 1;
+      transform: scale(0.8);
+    }
+    100% {
+      opacity: 0;
+      transform: scale(1.2);
+    }
   }
 }
 
