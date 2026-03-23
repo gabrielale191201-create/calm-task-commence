@@ -5,8 +5,58 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700&display=swap');
 
 @layer base {
-  :root {
-    /* Premium dark amethyst/indigo palette */
+  /* Light mode */
+  :root.light {
+    --background: 0 0% 97%;
+    --foreground: 240 10% 15%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 240 10% 15%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 240 10% 15%;
+
+    --primary: 152 55% 42%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 240 5% 92%;
+    --secondary-foreground: 240 10% 30%;
+
+    --muted: 240 5% 94%;
+    --muted-foreground: 240 5% 45%;
+
+    --accent: 240 5% 90%;
+    --accent-foreground: 152 55% 35%;
+
+    --destructive: 0 65% 55%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 240 5% 87%;
+    --input: 240 5% 87%;
+    --ring: 152 55% 42%;
+
+    --radius: 1rem;
+
+    --focus-green: 152 55% 42%;
+    --focus-green-light: 152 30% 92%;
+    --focus-green-dark: 152 55% 35%;
+    --focus-sage: 240 5% 92%;
+    --focus-cream: 240 5% 96%;
+    --focus-text: 240 10% 15%;
+    --focus-text-muted: 240 5% 45%;
+
+    --timer-ring: 152 55% 42%;
+    --timer-track: 240 5% 90%;
+    --timer-glow: 152 55% 42%;
+
+    --success: 152 55% 42%;
+    --success-light: 152 30% 92%;
+
+    --gradient-bg: linear-gradient(180deg, hsl(0 0% 97%) 0%, hsl(240 5% 95%) 100%);
+  }
+
+  /* Dark mode (default) */
+  :root, :root.dark {
     --background: 260 25% 8%;
     --foreground: 240 10% 92%;
 
@@ -16,11 +66,9 @@
     --popover: 260 20% 12%;
     --popover-foreground: 240 10% 92%;
 
-    /* Main green brand color */
     --primary: 152 55% 50%;
     --primary-foreground: 260 25% 8%;
 
-    /* Soft muted secondary */
     --secondary: 260 15% 16%;
     --secondary-foreground: 240 10% 80%;
 
@@ -39,7 +87,6 @@
 
     --radius: 1rem;
 
-    /* Custom focus app colors */
     --focus-green: 152 55% 50%;
     --focus-green-light: 152 40% 18%;
     --focus-green-dark: 152 55% 40%;
@@ -47,17 +94,14 @@
     --focus-cream: 260 10% 14%;
     --focus-text: 240 10% 90%;
     --focus-text-muted: 240 8% 50%;
-    
-    /* Timer ring */
+
     --timer-ring: 152 55% 50%;
     --timer-track: 260 15% 18%;
     --timer-glow: 152 55% 50%;
 
-    /* Success states */
     --success: 152 55% 50%;
     --success-light: 152 40% 16%;
 
-    /* Premium gradient */
     --gradient-bg: radial-gradient(ellipse at 50% 40%, hsl(270 30% 14%) 0%, hsl(250 25% 8%) 60%, hsl(240 20% 5%) 100%);
   }
 }
@@ -83,9 +127,9 @@
   /* Focus card styles — glassmorphism */
   .focus-card {
     @apply rounded-2xl p-6 border border-border/30;
-    background: hsl(260 20% 12% / 0.6);
+    background: hsl(var(--card) / 0.6);
     backdrop-filter: blur(16px);
-    box-shadow: 0 4px 30px hsl(260 30% 5% / 0.4);
+    box-shadow: 0 4px 30px hsl(var(--background) / 0.4);
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   }
 
@@ -137,7 +181,7 @@
   /* Bottom nav styles */
   .bottom-nav {
     @apply fixed bottom-0 left-0 right-0 backdrop-blur-xl border-t border-border/50;
-    background: hsl(260 25% 8% / 0.9);
+    background: hsl(var(--background) / 0.9);
     padding-bottom: env(safe-area-inset-bottom);
   }
 

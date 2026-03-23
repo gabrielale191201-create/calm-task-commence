@@ -1,6 +1,8 @@
-import { Flame, Clock, Target } from 'lucide-react';
+import { Flame, Clock, Target, Sun, Moon } from 'lucide-react';
 import { FocusSession, Task } from '@/types/focuson';
 import { WeeklySummary } from '@/components/WeeklySummary';
+import { DayClosingJournal } from '@/components/DayClosingJournal';
+import { useTheme } from '@/hooks/useTheme';
 
 interface ProgressPageProps {
   sessions: FocusSession[];
@@ -9,6 +11,7 @@ interface ProgressPageProps {
 }
 
 export function ProgressPage({ sessions, tasks, streak }: ProgressPageProps) {
+  const { theme, toggleTheme } = useTheme();
   const today = new Date().toISOString().split('T')[0];
   
   const todaySessions = sessions.filter(s => s.date === today);
@@ -41,9 +44,22 @@ export function ProgressPage({ sessions, tasks, streak }: ProgressPageProps) {
 
   return (
     <div className="page-enter px-6 pt-8 pb-32">
-      <h1 className="text-2xl font-display font-semibold text-foreground mb-2 animate-fade-in">
-        Progreso
-      </h1>
+      <div className="flex items-center justify-between mb-2 animate-fade-in">
+        <h1 className="text-2xl font-display font-semibold text-foreground">
+          Progreso
+        </h1>
+        <button
+          onClick={toggleTheme}
+          className="p-2.5 rounded-xl bg-muted/50 hover:bg-muted transition-all duration-300"
+          title={theme === 'dark' ? 'Modo claro' : 'Modo oscuro'}
+        >
+          {theme === 'dark' ? (
+            <Sun size={20} className="text-amber-400 transition-transform duration-300" />
+          ) : (
+            <Moon size={20} className="text-indigo-500 transition-transform duration-300" />
+          )}
+        </button>
+      </div>
       <p className="text-muted-foreground text-sm mb-6 animate-fade-in">
         {todayCompletedSessions.length > 0 
           ? "Cuando empieces, aquí se verá."
@@ -150,6 +166,11 @@ export function ProgressPage({ sessions, tasks, streak }: ProgressPageProps) {
           </div>
         </div>
       )}
+
+      {/* Day Closing Journal */}
+      <div className="mt-8 animate-slide-up stagger-4">
+        <DayClosingJournal />
+      </div>
 
       {sessions.length === 0 && tasks.length === 0 && (
         <div className="text-center py-12 animate-fade-in">
