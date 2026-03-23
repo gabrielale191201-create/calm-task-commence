@@ -6,56 +6,59 @@
 
 @layer base {
   :root {
-    /* Light, calming green-based palette */
-    --background: 120 20% 98%;
-    --foreground: 150 10% 15%;
+    /* Premium dark amethyst/indigo palette */
+    --background: 260 25% 8%;
+    --foreground: 240 10% 92%;
 
-    --card: 0 0% 100%;
-    --card-foreground: 150 10% 15%;
+    --card: 260 20% 12%;
+    --card-foreground: 240 10% 92%;
 
-    --popover: 0 0% 100%;
-    --popover-foreground: 150 10% 15%;
+    --popover: 260 20% 12%;
+    --popover-foreground: 240 10% 92%;
 
     /* Main green brand color */
-    --primary: 152 55% 45%;
-    --primary-foreground: 0 0% 100%;
+    --primary: 152 55% 50%;
+    --primary-foreground: 260 25% 8%;
 
-    /* Soft green secondary */
-    --secondary: 145 30% 94%;
-    --secondary-foreground: 150 25% 30%;
+    /* Soft muted secondary */
+    --secondary: 260 15% 16%;
+    --secondary-foreground: 240 10% 80%;
 
-    --muted: 140 15% 95%;
-    --muted-foreground: 150 10% 45%;
+    --muted: 260 15% 14%;
+    --muted-foreground: 240 10% 55%;
 
-    --accent: 152 45% 90%;
-    --accent-foreground: 152 55% 30%;
+    --accent: 260 20% 18%;
+    --accent-foreground: 152 55% 60%;
 
     --destructive: 0 65% 55%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 145 20% 90%;
-    --input: 145 20% 90%;
-    --ring: 152 55% 45%;
+    --border: 260 15% 18%;
+    --input: 260 15% 18%;
+    --ring: 152 55% 50%;
 
     --radius: 1rem;
 
     /* Custom focus app colors */
-    --focus-green: 152 55% 45%;
-    --focus-green-light: 145 40% 92%;
-    --focus-green-dark: 152 55% 35%;
-    --focus-sage: 140 20% 85%;
-    --focus-cream: 40 30% 97%;
-    --focus-text: 150 10% 20%;
-    --focus-text-muted: 150 8% 55%;
+    --focus-green: 152 55% 50%;
+    --focus-green-light: 152 40% 18%;
+    --focus-green-dark: 152 55% 40%;
+    --focus-sage: 260 15% 20%;
+    --focus-cream: 260 10% 14%;
+    --focus-text: 240 10% 90%;
+    --focus-text-muted: 240 8% 50%;
     
     /* Timer ring */
-    --timer-ring: 152 55% 45%;
-    --timer-track: 145 20% 92%;
-    --timer-glow: 152 55% 45%;
+    --timer-ring: 152 55% 50%;
+    --timer-track: 260 15% 18%;
+    --timer-glow: 152 55% 50%;
 
     /* Success states */
-    --success: 152 55% 45%;
-    --success-light: 145 40% 94%;
+    --success: 152 55% 50%;
+    --success-light: 152 40% 16%;
+
+    /* Premium gradient */
+    --gradient-bg: radial-gradient(ellipse at 50% 40%, hsl(270 30% 14%) 0%, hsl(250 25% 8%) 60%, hsl(240 20% 5%) 100%);
   }
 }
 
@@ -65,8 +68,10 @@
   }
 
   body {
-    @apply bg-background text-foreground font-sans antialiased;
+    @apply text-foreground font-sans antialiased;
     font-family: 'Inter', system-ui, sans-serif;
+    background: var(--gradient-bg);
+    min-height: 100vh;
   }
 
   h1, h2, h3, h4, h5, h6 {
@@ -75,33 +80,38 @@
 }
 
 @layer components {
-  /* Focus card styles */
+  /* Focus card styles — glassmorphism */
   .focus-card {
-    @apply bg-card rounded-2xl p-6 shadow-sm border border-border/50;
+    @apply rounded-2xl p-6 border border-border/30;
+    background: hsl(260 20% 12% / 0.6);
+    backdrop-filter: blur(16px);
+    box-shadow: 0 4px 30px hsl(260 30% 5% / 0.4);
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   }
 
   .focus-card:hover {
-    @apply shadow-md;
+    box-shadow: 0 8px 40px hsl(260 30% 5% / 0.5);
     transform: translateY(-2px);
   }
 
   /* Primary button with gradient */
   .btn-primary-focus {
     @apply px-8 py-4 rounded-2xl font-semibold text-lg;
-    background: linear-gradient(135deg, hsl(152 55% 45%), hsl(152 55% 40%));
-    color: white;
-    box-shadow: 0 4px 20px hsl(152 55% 45% / 0.3);
+    background: linear-gradient(135deg, hsl(152 55% 50%), hsl(165 50% 40%), hsl(152 55% 45%));
+    background-size: 200% 200%;
+    color: hsl(260 25% 8%);
+    box-shadow: 0 4px 20px hsl(152 55% 50% / 0.3), 0 0 40px hsl(152 55% 50% / 0.1);
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   }
 
   .btn-primary-focus:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 6px 25px hsl(152 55% 45% / 0.4);
+    transform: translateY(-3px);
+    box-shadow: 0 8px 30px hsl(152 55% 50% / 0.4), 0 0 60px hsl(152 55% 50% / 0.15);
+    background-position: 100% 0;
   }
 
   .btn-primary-focus:active {
-    transform: translateY(0);
+    transform: translateY(-1px);
   }
 
   /* Secondary button */
@@ -119,19 +129,20 @@
     filter: drop-shadow(0 0 20px hsl(152 55% 45% / 0.2));
   }
 
-  /* Smooth page transitions */
+  /* Smooth page transitions — fast (under 200ms) */
   .page-enter {
-    animation: pageEnter 0.4s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+    animation: pageEnter 0.18s cubic-bezier(0.4, 0, 0.2, 1) forwards;
   }
 
   /* Bottom nav styles */
   .bottom-nav {
-    @apply fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-xl border-t border-border/50;
+    @apply fixed bottom-0 left-0 right-0 backdrop-blur-xl border-t border-border/50;
+    background: hsl(260 25% 8% / 0.9);
     padding-bottom: env(safe-area-inset-bottom);
   }
 
   .nav-item {
-    @apply flex flex-col items-center justify-center py-2 px-3 rounded-xl transition-all duration-300;
+    @apply flex flex-col items-center justify-center py-2 px-3 rounded-xl transition-all duration-150;
   }
 
   .nav-item.active {
@@ -140,7 +151,7 @@
 
   .nav-item.active svg,
   .nav-item.active span {
-    color: hsl(152 55% 35%);
+    color: hsl(152 55% 50%);
   }
 
   /* Task checkbox */
@@ -164,7 +175,8 @@
   }
 
   .focus-input:focus {
-    @apply outline-none border-primary/30 bg-white shadow-sm;
+    @apply outline-none border-primary/30 shadow-sm;
+    background: hsl(260 20% 14%);
   }
 
   /* Duration preset button */
@@ -183,8 +195,46 @@
   /* Streak badge */
   .streak-badge {
     @apply inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium;
-    background: linear-gradient(135deg, hsl(152 55% 45% / 0.15), hsl(152 55% 45% / 0.1));
-    color: hsl(152 55% 35%);
+    background: linear-gradient(135deg, hsl(152 55% 50% / 0.15), hsl(152 55% 50% / 0.1));
+    color: hsl(152 55% 50%);
+  }
+
+  /* Task completion celebration */
+  .task-complete-glow {
+    animation: taskGlow 0.8s ease-out;
+  }
+
+  @keyframes taskGlow {
+    0% {
+      box-shadow: 0 0 0 0 hsl(152 55% 50% / 0.6);
+      border-color: hsl(152 55% 50%);
+    }
+    50% {
+      box-shadow: 0 0 20px 4px hsl(152 55% 50% / 0.3);
+      border-color: hsl(152 55% 50%);
+    }
+    100% {
+      box-shadow: none;
+      border-color: hsl(260 15% 18% / 0.3);
+    }
+  }
+
+  .task-complete-burst {
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(circle at center, hsl(152 55% 50% / 0.2) 0%, transparent 70%);
+    animation: burstFade 0.6s ease-out forwards;
+  }
+
+  @keyframes burstFade {
+    0% {
+      opacity: 1;
+      transform: scale(0.8);
+    }
+    100% {
+      opacity: 0;
+      transform: scale(1.2);
+    }
   }
 }
 
