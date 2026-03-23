@@ -1,7 +1,8 @@
 import { useState } from 'react';
-import { Lock, Brain, Flame, Timer, Shield, Sparkles, Trophy, Target } from 'lucide-react';
+import { Lock, Brain, Flame, Timer, Shield, Sparkles, Trophy, Target, BookOpen } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { PremiumPaywall } from '@/components/PremiumPaywall';
+import { CoachContentReader, coachContentLibrary } from '@/components/CoachContentReader';
 
 interface CoachCard {
   id: string;
@@ -22,7 +23,7 @@ const coachCards: CoachCard[] = [
   {
     id: '2',
     title: 'Reseteo de 5 Minutos',
-    subtitle: 'Ejercicio guiado',
+    subtitle: 'Ejercicio guiado · 5 min',
     icon: Timer,
     gradient: 'from-blue-500/20 to-cyan-500/10',
   },
@@ -72,6 +73,15 @@ const coachCards: CoachCard[] = [
 
 export function CoachPage() {
   const [showPaywall, setShowPaywall] = useState(false);
+  const [activeContent, setActiveContent] = useState<string | null>(null);
+
+  const handleCardClick = (cardId: string) => {
+    if (coachContentLibrary[cardId]) {
+      setActiveContent(cardId);
+    } else {
+      setShowPaywall(true);
+    }
+  };
 
   return (
     <div className="px-4 pb-32 pt-4">
@@ -93,19 +103,24 @@ export function CoachPage() {
       <div className="grid grid-cols-2 gap-3">
         {coachCards.map((card) => {
           const Icon = card.icon;
+          const hasContent = !!coachContentLibrary[card.id];
           return (
             <button
               key={card.id}
-              onClick={() => setShowPaywall(true)}
+              onClick={() => handleCardClick(card.id)}
               className={cn(
                 "relative flex flex-col items-start p-4 rounded-2xl border border-border/30 text-left transition-all duration-300 hover:scale-[1.02] hover:shadow-md",
                 "bg-gradient-to-br",
                 card.gradient
               )}
             >
-              {/* Lock icon */}
+              {/* Lock or Read icon */}
               <div className="absolute top-3 right-3">
-                <Lock size={14} className="text-muted-foreground/50" />
+                {hasContent ? (
+                  <BookOpen size={14} className="text-primary/60" />
+                ) : (
+                  <Lock size={14} className="text-muted-foreground/50" />
+                )}
               </div>
 
               <div className="w-10 h-10 rounded-xl bg-background/60 backdrop-blur-sm flex items-center justify-center mb-3">
@@ -123,7 +138,14 @@ export function CoachPage() {
         })}
       </div>
 
-      {/* Paywall */}
+      {/* Content Reader */}
+      <CoachContentReader
+        open={!!activeContent}
+        onClose={() => setActiveContent(null)}
+        content={activeContent ? coachContentLibrary[activeContent] : null}
+      />
+
+      {/* Paywall for locked cards */}
       <PremiumPaywall open={showPaywall} onClose={() => setShowPaywall(false)} />
     </div>
   );
