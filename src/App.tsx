@@ -8,6 +8,7 @@ import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { LoadingScreen } from "@/components/LoadingScreen";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
+import Onboarding from "./pages/Onboarding";
 import AuthCallback from "./pages/AuthCallback";
 import NotFound from "./pages/NotFound";
 
@@ -16,18 +17,30 @@ const queryClient = new QueryClient();
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { authStatus, isLoading, isAuthenticated, isGuest } = useAuthState();
 
-  // Show loading screen while determining auth status
   if (isLoading) {
     return <LoadingScreen message="Preparando tu espacio..." />;
   }
 
-  // Allow access if authenticated OR in guest mode
   if (isAuthenticated || isGuest) {
     return <>{children}</>;
   }
 
-  // Unauthenticated = redirect to auth
   return <Navigate to="/auth" replace />;
+}
+
+function OnboardingGuard({ children }: { children: React.ReactNode }) {
+  // Check if onboarding is completed
+  let onboardingDone = false;
+  try {
+    const stored = localStorage.getItem('focuson-onboarding-done');
+    if (stored) onboardingDone = JSON.parse(stored) === true;
+  } catch {}
+
+  if (!onboardingDone) {
+    return <Navigate to="/onboarding" replace />;
+  }
+
+  return <>{children}</>;
 }
 
 function AppRoutes() {
@@ -35,9 +48,16 @@ function AppRoutes() {
     <Routes>
       <Route path="/auth" element={<Auth />} />
       <Route path="/auth/callback" element={<AuthCallback />} />
+      <Route path="/onboarding" element={
+        <ProtectedRoute>
+          <Onboarding />
+        </ProtectedRoute>
+      } />
       <Route path="/" element={
         <ProtectedRoute>
-          <Index />
+          <OnboardingGuard>
+            <Index />
+          </OnboardingGuard>
         </ProtectedRoute>
       } />
       {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
