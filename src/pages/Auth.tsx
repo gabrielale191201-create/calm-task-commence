@@ -278,6 +278,9 @@ export default function Auth() {
                   <Button type="submit" className="w-full" variant="secondary" disabled={isSubmitting}>
                     {isSubmitting ? 'Creando cuenta...' : 'Crear Cuenta'}
                   </Button>
+                  <p className="text-xs text-muted-foreground text-center mt-3">
+                    Al registrarte, recibirás un correo de verificación.
+                  </p>
                 </form>
               </TabsContent>
             </Tabs>

@@ -31,12 +31,23 @@ export function HomePage({
   
   const greeting = today.getHours() < 12 ? 'Buenos días' : today.getHours() < 19 ? 'Buenas tardes' : 'Buenas noches';
   const dateString = `${dayNames[today.getDay()]}, ${today.getDate()} de ${monthNames[today.getMonth()]}`;
+
+  // Read onboarding name from localStorage
+  let displayName = profile.name;
+  try {
+    const stored = localStorage.getItem('focuson-user-name');
+    if (stored) {
+      const parsed = JSON.parse(stored);
+      if (parsed && typeof parsed === 'string') displayName = parsed;
+    }
+  } catch {}
+
   return (
     <div className="page-enter px-6 pt-8 pb-32">
       {/* Greeting */}
       <div className="mb-6 animate-fade-in">
         <h1 className="text-2xl font-display font-semibold text-foreground mb-1">
-          {greeting}, {profile.name || 'amigo'}
+          {greeting}, {displayName || 'Mente Implacable'}
         </h1>
         <p className="text-muted-foreground">{dateString}</p>
       </div>
