@@ -74,9 +74,10 @@ const coachCards: CoachCard[] = [
 export function CoachPage() {
   const [showPaywall, setShowPaywall] = useState(false);
   const [activeContent, setActiveContent] = useState<string | null>(null);
+  const [freeAccess, setFreeAccess] = useState(false);
 
   const handleCardClick = (cardId: string) => {
-    if (coachContentLibrary[cardId]) {
+    if (freeAccess || coachContentLibrary[cardId]) {
       setActiveContent(cardId);
     } else {
       setShowPaywall(true);
@@ -97,6 +98,17 @@ export function CoachPage() {
         <p className="text-sm text-muted-foreground max-w-xs mx-auto leading-relaxed">
           Entrena tu mente con contenido de alto rendimiento diseñado para personas que ejecutan.
         </p>
+        <button
+          onClick={() => setFreeAccess(!freeAccess)}
+          className={cn(
+            "mt-3 px-4 py-2 rounded-full text-xs font-semibold transition-all duration-300",
+            freeAccess
+              ? "bg-primary text-primary-foreground"
+              : "bg-muted text-muted-foreground hover:bg-muted/80"
+          )}
+        >
+          {freeAccess ? '✓ Acceso activado' : 'Acceder sin pagar'}
+        </button>
       </div>
 
       {/* Cards grid */}
@@ -116,7 +128,7 @@ export function CoachPage() {
             >
               {/* Lock or Read icon */}
               <div className="absolute top-3 right-3">
-                {hasContent ? (
+                {(freeAccess || hasContent) ? (
                   <BookOpen size={14} className="text-primary/60" />
                 ) : (
                   <Lock size={14} className="text-muted-foreground/50" />
