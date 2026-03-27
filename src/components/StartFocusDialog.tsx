@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { trackUserEvent } from '@/lib/trackEvent';
 import { cn } from '@/lib/utils';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 
