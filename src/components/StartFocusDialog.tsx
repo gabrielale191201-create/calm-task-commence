@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { trackUserEvent } from '@/lib/trackEvent';
 import { cn } from '@/lib/utils';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 
@@ -26,6 +27,7 @@ export function StartFocusDialog({ open, onOpenChange, title, suggestedMinutes =
 
   const start = () => {
     const mins = Math.max(1, minutes || 1);
+    trackUserEvent('inicio_focus_time', { minutes: mins, task_title: title });
     onStart(mins);
     onOpenChange(false);
   };
