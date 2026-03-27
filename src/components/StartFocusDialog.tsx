@@ -27,6 +27,7 @@ export function StartFocusDialog({ open, onOpenChange, title, suggestedMinutes =
 
   const start = () => {
     const mins = Math.max(1, minutes || 1);
+    trackUserEvent('inicio_focus_time', { minutes: mins, task_title: title });
     onStart(mins);
     onOpenChange(false);
   };
