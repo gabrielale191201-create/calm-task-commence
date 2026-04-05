@@ -424,8 +424,11 @@ export function TasksPage({ tasks, onAddTask, onToggleTask, onDeleteTask, onSetT
       {/* Telegram Reminders Section */}
       <section className="mb-8 animate-slide-up stagger-3">
         <div className="rounded-2xl border border-border/50 bg-card p-4">
-          <h3 className="text-sm font-medium text-foreground mb-2">Recordatorios externos</h3>
-          <TelegramLocalToggle />
+          <h3 className="text-sm font-medium text-foreground mb-3">Recordatorios</h3>
+          <RemindersChecklist />
+          <div className="mt-3 pt-3 border-t border-border/30">
+            <TelegramLocalToggle />
+          </div>
         </div>
       </section>
 
