@@ -3,6 +3,7 @@ import { Plus, Edit2, Check, X, Play, RotateCcw, Star } from 'lucide-react';
 import { Task } from '@/types/focuson';
 import { TaskItem } from '@/components/TaskItem';
 import { TelegramLocalToggle } from '@/components/telegram/TelegramLocalToggle';
+import { RemindersChecklist } from '@/components/RemindersChecklist';
 import { StartFocusDialog } from '@/components/StartFocusDialog';
 import { ReuseTaskDialog } from '@/components/tasks/ReuseTaskDialog';
 import { toISODate, parseDateString } from '@/lib/dateUtils';
