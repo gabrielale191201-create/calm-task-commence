@@ -3,6 +3,7 @@ import { Plus, Edit2, Check, X, Play, RotateCcw, Star } from 'lucide-react';
 import { Task } from '@/types/focuson';
 import { TaskItem } from '@/components/TaskItem';
 import { TelegramLocalToggle } from '@/components/telegram/TelegramLocalToggle';
+import { RemindersChecklist } from '@/components/RemindersChecklist';
 import { StartFocusDialog } from '@/components/StartFocusDialog';
 import { ReuseTaskDialog } from '@/components/tasks/ReuseTaskDialog';
 import { toISODate, parseDateString } from '@/lib/dateUtils';
@@ -423,8 +424,11 @@ export function TasksPage({ tasks, onAddTask, onToggleTask, onDeleteTask, onSetT
       {/* Telegram Reminders Section */}
       <section className="mb-8 animate-slide-up stagger-3">
         <div className="rounded-2xl border border-border/50 bg-card p-4">
-          <h3 className="text-sm font-medium text-foreground mb-2">Recordatorios externos</h3>
-          <TelegramLocalToggle />
+          <h3 className="text-sm font-medium text-foreground mb-3">Recordatorios</h3>
+          <RemindersChecklist />
+          <div className="mt-3 pt-3 border-t border-border/30">
+            <TelegramLocalToggle />
+          </div>
         </div>
       </section>
 

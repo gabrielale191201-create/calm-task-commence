@@ -79,6 +79,7 @@ export type Database = {
           created_at: string
           device_id: string
           id: string
+          is_completed: boolean
           run_at: string
           sent: boolean
           task_id: string
@@ -89,6 +90,7 @@ export type Database = {
           created_at?: string
           device_id: string
           id?: string
+          is_completed?: boolean
           run_at: string
           sent?: boolean
           task_id: string
@@ -99,6 +101,7 @@ export type Database = {
           created_at?: string
           device_id?: string
           id?: string
+          is_completed?: boolean
           run_at?: string
           sent?: boolean
           task_id?: string
