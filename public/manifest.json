@@ -1,8 +1,10 @@
 {
   "name": "Focus On",
   "short_name": "Focus On",
+  "id": "focusonlife.app",
   "description": "Tu compañero para días difíciles. Enfócate, organiza y avanza con calma.",
-  "start_url": "/",
+  "start_url": ".",
+  "scope": "/",
   "display": "standalone",
   "background_color": "#f7faf8",
   "theme_color": "#4aba82",
@@ -21,9 +23,9 @@
       "purpose": "any maskable"
     }
   ],
+  "screenshots": [],
   "categories": ["productivity", "lifestyle"],
   "lang": "es",
   "dir": "ltr",
-  "scope": "/",
   "prefer_related_applications": false
 }
