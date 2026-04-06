@@ -54,23 +54,26 @@ export function DailyAgendita({ notes, date, onAddNote, onToggleNote, onDeleteNo
         </button>
       </div>
 
-      {/* Notes list */}
+      {/* Pending notes */}
       {pendingNotes.length > 0 && (
         <div className="space-y-1.5 mb-2">
           {pendingNotes.map((note) => (
             <div
               key={note.id}
-              className="flex items-center gap-2 p-2 rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors group"
+              className="flex items-center gap-2 p-2 rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors group cursor-pointer"
+              onClick={() => onToggleNote(note.id)}
             >
+              {/* Circular check - empty */}
               <button
-                onClick={() => onToggleNote(note.id)}
-                className="w-4 h-4 rounded border border-amber-500/50 flex items-center justify-center hover:bg-amber-500/20 transition-colors"
-              >
-                {note.done && <Check size={10} className="text-amber-600" />}
-              </button>
-              <span className="flex-1 text-sm text-foreground">{note.text}</span>
+                onClick={(e) => { e.stopPropagation(); onToggleNote(note.id); }}
+                className="w-5 h-5 rounded-full border-2 border-muted-foreground/30 hover:border-green-400 flex-shrink-0 flex items-center justify-center transition-colors duration-300"
+                aria-label="Marcar como completada"
+              />
+              <span className="flex-1 text-sm text-foreground transition-all duration-300 ease-in-out">
+                {note.text}
+              </span>
               <button
-                onClick={() => onDeleteNote(note.id)}
+                onClick={(e) => { e.stopPropagation(); onDeleteNote(note.id); }}
                 className="p-1 text-muted-foreground hover:text-destructive opacity-0 group-hover:opacity-100 transition-all"
               >
                 <Trash2 size={12} />
@@ -80,22 +83,28 @@ export function DailyAgendita({ notes, date, onAddNote, onToggleNote, onDeleteNo
         </div>
       )}
 
+      {/* Done notes */}
       {doneNotes.length > 0 && (
         <div className="space-y-1">
           {doneNotes.map((note) => (
             <div
               key={note.id}
-              className="flex items-center gap-2 p-2 rounded-lg opacity-60 group"
+              className="flex items-center gap-2 p-2 rounded-lg opacity-60 group cursor-pointer"
+              onClick={() => onToggleNote(note.id)}
             >
+              {/* Circular check - filled */}
               <button
-                onClick={() => onToggleNote(note.id)}
-                className="w-4 h-4 rounded border border-amber-500 bg-amber-500/30 flex items-center justify-center"
+                onClick={(e) => { e.stopPropagation(); onToggleNote(note.id); }}
+                className="w-5 h-5 rounded-full bg-green-500 border-2 border-green-500 flex-shrink-0 flex items-center justify-center transition-colors duration-300"
+                aria-label="Desmarcar"
               >
-                <Check size={10} className="text-amber-600" />
+                <Check size={12} className="text-white" strokeWidth={3} />
               </button>
-              <span className="flex-1 text-sm text-muted-foreground line-through">{note.text}</span>
+              <span className="flex-1 text-sm text-muted-foreground line-through italic transition-all duration-300 ease-in-out">
+                {note.text}
+              </span>
               <button
-                onClick={() => onDeleteNote(note.id)}
+                onClick={(e) => { e.stopPropagation(); onDeleteNote(note.id); }}
                 className="p-1 text-muted-foreground hover:text-destructive opacity-0 group-hover:opacity-100 transition-all"
               >
                 <Trash2 size={12} />
