@@ -500,6 +500,7 @@ export default function Index() {
       date: new Date().toISOString().split('T')[0],
     };
     setSessions(prev => [...prev, newSession]);
+    trackUserEvent('focus_completed', { task, duration_seconds: duration });
   }, [setSessions]);
 
   // Focus start from task - track which task started it
