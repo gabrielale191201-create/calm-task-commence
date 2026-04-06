@@ -576,7 +576,7 @@ export default function Index() {
       case 'hoy':
         return (
           <HomePage
-            profile={profile}
+            displayName={profile.name}
             topThreeTasks={topThreeTasks}
             onGoToFocus={() => setActiveTab('enfoque')}
             onToggleTask={toggleTask}
