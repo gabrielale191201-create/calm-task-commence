@@ -110,7 +110,7 @@ export function useSupabaseData() {
     isTopThree = false
   ) => {
     const text = typeof input === 'string' ? input : input.text;
-    const opts = typeof input === 'string' ? {} : input;
+    const opts = typeof input === 'string' ? {} as Partial<{ scheduledDate?: string; scheduledTime?: string; durationMinutes?: number; source?: Task['source'] }> : input;
     const newTask: Task = {
       id: generateId(), text, status: 'pending', source: opts.source || 'manual',
       createdAt: new Date().toISOString(), isTopThree: typeof input === 'string' ? true : isTopThree,
