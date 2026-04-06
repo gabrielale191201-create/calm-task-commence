@@ -14,6 +14,159 @@ export type Database = {
   }
   public: {
     Tables: {
+      app_sessions: {
+        Row: {
+          created_at: string
+          duration_seconds: number | null
+          ended_at: string | null
+          id: string
+          started_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          duration_seconds?: number | null
+          ended_at?: string | null
+          id?: string
+          started_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          duration_seconds?: number | null
+          ended_at?: string | null
+          id?: string
+          started_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      floating_notes: {
+        Row: {
+          created_at: string
+          done: boolean
+          id: string
+          text: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          done?: boolean
+          id?: string
+          text: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          done?: boolean
+          id?: string
+          text?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      focus_sessions: {
+        Row: {
+          completed_at: string
+          created_at: string
+          date: string
+          focused_duration: number
+          id: string
+          linked_activity_id: string | null
+          planned_duration: number
+          status: string
+          task: string
+          user_id: string
+        }
+        Insert: {
+          completed_at?: string
+          created_at?: string
+          date: string
+          focused_duration: number
+          id?: string
+          linked_activity_id?: string | null
+          planned_duration: number
+          status?: string
+          task: string
+          user_id: string
+        }
+        Update: {
+          completed_at?: string
+          created_at?: string
+          date?: string
+          focused_duration?: number
+          id?: string
+          linked_activity_id?: string | null
+          planned_duration?: number
+          status?: string
+          task?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      journal_entries: {
+        Row: {
+          content: string
+          created_at: string
+          date: string
+          id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          date: string
+          id?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          date?: string
+          id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      mental_dumps: {
+        Row: {
+          actividades: Json | null
+          completed: boolean
+          consejo_disciplina: string | null
+          created_at: string
+          id: string
+          input_text: string
+          started_focus_time: boolean
+          user_id: string
+          vision_interior: string | null
+        }
+        Insert: {
+          actividades?: Json | null
+          completed?: boolean
+          consejo_disciplina?: string | null
+          created_at?: string
+          id?: string
+          input_text: string
+          started_focus_time?: boolean
+          user_id: string
+          vision_interior?: string | null
+        }
+        Update: {
+          actividades?: Json | null
+          completed?: boolean
+          consejo_disciplina?: string | null
+          created_at?: string
+          id?: string
+          input_text?: string
+          started_focus_time?: boolean
+          user_id?: string
+          vision_interior?: string | null
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           area: string | null
@@ -76,6 +229,33 @@ export type Database = {
           id?: string
           p256dh?: string
           updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      quick_notes: {
+        Row: {
+          created_at: string
+          date: string
+          done: boolean
+          id: string
+          text: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          date: string
+          done?: boolean
+          id?: string
+          text: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          date?: string
+          done?: boolean
+          id?: string
+          text?: string
           user_id?: string
         }
         Relationships: []
