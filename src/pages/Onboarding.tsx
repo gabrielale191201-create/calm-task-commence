@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
+import { useProfile } from '@/hooks/useProfile';
+import { trackUserEvent } from '@/lib/trackEvent';
 import { AppLogo } from '@/components/AppLogo';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -22,10 +24,9 @@ const OBSTACLES = [
 
 export default function Onboarding() {
   const navigate = useNavigate();
+  const { updateProfile } = useProfile();
   const [step, setStep] = useState(1);
   const [userName, setUserName] = useLocalStorage<string>('focuson-user-name', '');
-  const [, setUserArea] = useLocalStorage<string>('focuson-user-area', '');
-  const [, setUserObstacle] = useLocalStorage<string>('focuson-user-obstacle', '');
   const [, setOnboardingDone] = useLocalStorage<boolean>('focuson-onboarding-done', false);
   const [selectedArea, setSelectedArea] = useState('');
   const [selectedObstacle, setSelectedObstacle] = useState('');
@@ -36,15 +37,19 @@ export default function Onboarding() {
     if (step === 2 && !selectedArea) return;
     if (step === 3) {
       if (!selectedObstacle) return;
-      setUserArea(selectedArea);
-      setUserObstacle(selectedObstacle);
       setIsFinishing(true);
+      // Upsert to Supabase profiles
+      updateProfile({ name: userName.trim(), area: selectedArea, obstacle: selectedObstacle });
+      // Track onboarding completion
+      trackUserEvent('onboarding_completed', { name: userName.trim(), area: selectedArea, obstacle: selectedObstacle });
       setTimeout(() => {
         setOnboardingDone(true);
         navigate('/', { replace: true });
       }, 2000);
       return;
     }
+    if (step === 1) trackUserEvent('onboarding_step_name', { name: userName.trim() });
+    if (step === 2) trackUserEvent('onboarding_step_area', { area: selectedArea });
     setStep(step + 1);
   };
 
