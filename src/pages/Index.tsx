@@ -518,6 +518,7 @@ export default function Index() {
     }
     setActiveTab('enfoque');
     timer.startTimer(minutes, taskText);
+    trackUserEvent('focus_started', { task: taskText, minutes });
   };
 
   const handleMarkFocusTaskCompleted = useCallback(() => {
@@ -768,7 +769,7 @@ export default function Index() {
 
       {/* Bottom navigation - hidden during writing mode */}
       <div className={`transition-all duration-300 ${isWritingMode ? 'translate-y-full opacity-0 pointer-events-none' : 'translate-y-0 opacity-100'}`}>
-        <BottomNav activeTab={activeTab} onTabChange={setActiveTab} />
+        <BottomNav activeTab={activeTab} onTabChange={(tab) => { setActiveTab(tab); trackUserEvent('nav_tab_changed', { tab }); }} />
       </div>
 
       {/* How to use overlay */}
