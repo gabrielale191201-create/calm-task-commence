@@ -1,9 +1,9 @@
 import { ArrowRight } from 'lucide-react';
-import { Task, UserProfile } from '@/types/focuson';
+import { Task } from '@/types/focuson';
 import { OrganizationAssistant } from '@/components/ai/OrganizationAssistant';
 
 interface HomePageProps {
-  profile: UserProfile;
+  displayName: string;
   topThreeTasks: Task[];
   onGoToFocus: () => void;
   onToggleTask: (id: string) => void;
@@ -18,7 +18,7 @@ interface HomePageProps {
 }
 
 export function HomePage({
-  profile,
+  displayName,
   onGoToFocus,
   startedStreak,
   hasVictoryToday,
@@ -31,16 +31,6 @@ export function HomePage({
   
   const greeting = today.getHours() < 12 ? 'Buenos días' : today.getHours() < 19 ? 'Buenas tardes' : 'Buenas noches';
   const dateString = `${dayNames[today.getDay()]}, ${today.getDate()} de ${monthNames[today.getMonth()]}`;
-
-  // Read onboarding name from localStorage
-  let displayName = profile.name;
-  try {
-    const stored = localStorage.getItem('focuson-user-name');
-    if (stored) {
-      const parsed = JSON.parse(stored);
-      if (parsed && typeof parsed === 'string') displayName = parsed;
-    }
-  } catch {}
 
   return (
     <div className="page-enter px-6 pt-8 pb-32">

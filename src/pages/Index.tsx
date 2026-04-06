@@ -20,8 +20,10 @@ import { useAlarmSound } from '@/hooks/useAlarmSound';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
 import { useAuthState } from '@/hooks/useAuthState';
 import { useGuestMode } from '@/hooks/useGuestMode';
+import { useProfile } from '@/hooks/useProfile';
 import { useTelegramWebhook } from '@/hooks/useTelegramWebhook';
-import { TabType, Task, Routine, JournalEntry, FocusSession, UserProfile, QuickNote } from '@/types/focuson';
+import { trackUserEvent } from '@/lib/trackEvent';
+import { TabType, Task, Routine, JournalEntry, FocusSession, QuickNote } from '@/types/focuson';
 import { UnlockSession } from '@/types/unlockSession';
 import { AppLogo } from '@/components/AppLogo';
 import { toast } from 'sonner';
@@ -47,7 +49,7 @@ export default function Index() {
   const [activeTab, setActiveTab] = useLocalStorage<TabType>('focuson-tab', 'hoy');
   const [showHowTo, setShowHowTo] = useState(false);
   const [isWritingMode, setIsWritingMode] = useState(false);
-  const [profile, setProfile] = useLocalStorage<UserProfile>('focuson-profile', { name: '' });
+  const { profile } = useProfile();
 
   const handleSignOut = async () => {
     // If guest, just exit guest mode
@@ -147,6 +149,7 @@ export default function Index() {
         durationMinutes: undefined,
       };
       setTasks([...tasks, newTask]);
+      trackUserEvent('task_created', { text: input, source: 'manual', is_top_three: true });
       return;
     }
 
@@ -162,6 +165,7 @@ export default function Index() {
       durationMinutes: input.durationMinutes,
     };
     setTasks([...tasks, newTask]);
+    trackUserEvent('task_created', { text: input.text, source: input.source || 'manual', is_top_three: isTopThree });
 
     // Disparar webhook si tiene fecha + hora
     if (input.scheduledDate && input.scheduledTime) {
@@ -272,6 +276,7 @@ export default function Index() {
         completedAt: newStatus === 'completed' ? now : undefined,
       };
     }));
+    trackUserEvent('task_status_changed', { task_id: id, new_status: newStatus });
   };
 
   const toggleTask = (id: string) => {
@@ -303,6 +308,7 @@ export default function Index() {
 
   const deleteTask = (id: string) => {
     setTasks(tasks.filter(t => t.id !== id));
+    trackUserEvent('task_deleted', { task_id: id });
   };
 
   const removeFromTopThree = (id: string) => {
@@ -435,6 +441,7 @@ export default function Index() {
         createdAt: new Date().toISOString(),
     }]);
     }
+    trackUserEvent('journal_saved', { date, word_count: content.trim().split(/\s+/).length });
   };
 
   // QuickNote handlers (Agendita diaria)
@@ -465,16 +472,20 @@ export default function Index() {
       createdAt: new Date().toISOString(),
     };
     setFloatingNotes([...floatingNotes, newNote]);
+    trackUserEvent('note_created', { text });
   };
 
   const deleteFloatingNote = (id: string) => {
     setFloatingNotes(floatingNotes.filter(n => n.id !== id));
+    trackUserEvent('note_deleted', { note_id: id });
   };
 
   const toggleFloatingNote = (id: string) => {
+    const note = floatingNotes.find(n => n.id === id);
     setFloatingNotes(floatingNotes.map(n =>
       n.id === id ? { ...n, done: !n.done } : n
     ));
+    trackUserEvent('note_toggled', { note_id: id, done: !note?.done });
   };
 
   // Session handlers
@@ -489,6 +500,7 @@ export default function Index() {
       date: new Date().toISOString().split('T')[0],
     };
     setSessions(prev => [...prev, newSession]);
+    trackUserEvent('focus_completed', { task, duration_seconds: duration });
   }, [setSessions]);
 
   // Focus start from task - track which task started it
@@ -506,6 +518,7 @@ export default function Index() {
     }
     setActiveTab('enfoque');
     timer.startTimer(minutes, taskText);
+    trackUserEvent('focus_started', { task: taskText, minutes });
   };
 
   const handleMarkFocusTaskCompleted = useCallback(() => {
@@ -574,7 +587,7 @@ export default function Index() {
       case 'hoy':
         return (
           <HomePage
-            profile={profile}
+            displayName={profile.name}
             topThreeTasks={topThreeTasks}
             onGoToFocus={() => setActiveTab('enfoque')}
             onToggleTask={toggleTask}
@@ -756,7 +769,7 @@ export default function Index() {
 
       {/* Bottom navigation - hidden during writing mode */}
       <div className={`transition-all duration-300 ${isWritingMode ? 'translate-y-full opacity-0 pointer-events-none' : 'translate-y-0 opacity-100'}`}>
-        <BottomNav activeTab={activeTab} onTabChange={setActiveTab} />
+        <BottomNav activeTab={activeTab} onTabChange={(tab) => { setActiveTab(tab); trackUserEvent('nav_tab_changed', { tab }); }} />
       </div>
 
       {/* How to use overlay */}

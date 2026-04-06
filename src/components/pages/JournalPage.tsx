@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Save, ChevronLeft, ChevronRight } from 'lucide-react';
 import { JournalEntry } from '@/types/focuson';
+import { trackUserEvent } from '@/lib/trackEvent';
 
 interface JournalPageProps {
   entries: JournalEntry[];
@@ -14,6 +15,10 @@ export function JournalPage({ entries, onSaveEntry }: JournalPageProps) {
     return todayEntry?.content || '';
   });
   const [saved, setSaved] = useState(false);
+
+  useEffect(() => {
+    trackUserEvent('journal_opened', { date: currentDate });
+  }, []);
 
   const handleDateChange = (direction: 'prev' | 'next') => {
     const date = new Date(currentDate);
