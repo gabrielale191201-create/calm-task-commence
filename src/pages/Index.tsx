@@ -35,6 +35,7 @@ function generateId() {
 interface FloatingNote {
   id: string;
   text: string;
+  done?: boolean;
   createdAt: string;
 }
 
@@ -470,6 +471,12 @@ export default function Index() {
     setFloatingNotes(floatingNotes.filter(n => n.id !== id));
   };
 
+  const toggleFloatingNote = (id: string) => {
+    setFloatingNotes(floatingNotes.map(n =>
+      n.id === id ? { ...n, done: !n.done } : n
+    ));
+  };
+
   // Session handlers
   const saveSession = useCallback((task: string, duration: number) => {
     const newSession: FocusSession = {
@@ -725,6 +732,7 @@ export default function Index() {
         notes={floatingNotes}
         onAddNote={addFloatingNote}
         onDeleteNote={deleteFloatingNote}
+        onToggleNote={toggleFloatingNote}
         onWritingModeChange={setIsWritingMode}
       />
 
