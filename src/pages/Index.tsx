@@ -21,25 +21,14 @@ import { useLocalStorage } from '@/hooks/useLocalStorage';
 import { useAuthState } from '@/hooks/useAuthState';
 import { useGuestMode } from '@/hooks/useGuestMode';
 import { useProfile } from '@/hooks/useProfile';
+import { useSupabaseData } from '@/hooks/useSupabaseData';
+import { useSessionTracker } from '@/hooks/useSessionTracker';
 import { useTelegramWebhook } from '@/hooks/useTelegramWebhook';
 import { trackUserEvent } from '@/lib/trackEvent';
-import { TabType, Task, Routine, JournalEntry, FocusSession, QuickNote } from '@/types/focuson';
-import { UnlockSession } from '@/types/unlockSession';
+import { TabType, Task, Routine } from '@/types/focuson';
 import { AppLogo } from '@/components/AppLogo';
 import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
-
-function generateId() {
-  return Math.random().toString(36).substr(2, 9);
-}
-
-// Interface for floating notes (separate from quick notes in schedule)
-interface FloatingNote {
-  id: string;
-  text: string;
-  done?: boolean;
-  createdAt: string;
-}
 
 export default function Index() {
   const { signOut } = useAuthState();
@@ -51,14 +40,36 @@ export default function Index() {
   const [isWritingMode, setIsWritingMode] = useState(false);
   const { profile } = useProfile();
 
+  // Session tracker for time-in-app telemetry
+  useSessionTracker();
+
+  // Database-first data hook
+  const data = useSupabaseData();
+  const {
+    tasks, quickNotes, journalEntries, sessions, floatingNotes, unlockSessions,
+    addTask, setTaskStatus, deleteTask, updateTask, updateTaskFull, addMultipleTasks,
+    addQuickNote, toggleQuickNote, deleteQuickNote,
+    saveJournalEntry, saveSession,
+    addFloatingNote, deleteFloatingNote, toggleFloatingNote, addFloatingNotesFromAI,
+    saveUnlockSession, updateUnlockSession,
+    setTasks,
+  } = data;
+
+  // Routines stay in localStorage (legacy, section hidden)
+  const [routines, setRoutines] = useLocalStorage<Routine[]>('focuson-routines', []);
+  const [lastActiveDate, setLastActiveDate] = useLocalStorage<string>('focuson-last-active', '');
+
+  const [activeUnlockSessionId, setActiveUnlockSessionId] = useState<string | null>(null);
+
+  const timer = useTimer();
+  const { soundEnabled, setSoundEnabled, playAlarm } = useAlarmSound();
+
   const handleSignOut = async () => {
-    // If guest, just exit guest mode
     if (isGuest) {
       exitGuestMode();
       navigate('/auth', { replace: true });
       return;
     }
-    
     const { error } = await signOut();
     if (error) {
       toast.error('Error al cerrar sesión');
@@ -71,24 +82,10 @@ export default function Index() {
     exitGuestMode();
     navigate('/auth');
   };
-  const [tasks, setTasks] = useLocalStorage<Task[]>('focuson-tasks', []);
-  const [routines, setRoutines] = useLocalStorage<Routine[]>('focuson-routines', []);
-  const [journalEntries, setJournalEntries] = useLocalStorage<JournalEntry[]>('focuson-journal', []);
-  const [sessions, setSessions] = useLocalStorage<FocusSession[]>('focuson-sessions', []);
-  const [quickNotes, setQuickNotes] = useLocalStorage<QuickNote[]>('focuson-quicknotes', []);
-  const [floatingNotes, setFloatingNotes] = useLocalStorage<FloatingNote[]>('focuson-floatingnotes', []);
-  const [unlockSessions, setUnlockSessions] = useLocalStorage<UnlockSession[]>('focuson-unlock-sessions', []);
-  const [activeUnlockSessionId, setActiveUnlockSessionId] = useState<string | null>(null);
-  const [lastActiveDate, setLastActiveDate] = useLocalStorage<string>('focuson-last-active', '');
-
-  const timer = useTimer();
-  const { soundEnabled, setSoundEnabled, playAlarm } = useAlarmSound();
 
   // Play alarm when timer completes
   useEffect(() => {
-    if (timer.isCompleted) {
-      playAlarm();
-    }
+    if (timer.isCompleted) playAlarm();
   }, [timer.isCompleted, playAlarm]);
 
   // Reset routine steps daily
@@ -96,8 +93,7 @@ export default function Index() {
     const today = new Date().toISOString().split('T')[0];
     if (lastActiveDate && lastActiveDate !== today) {
       setRoutines(routines.map(r => ({
-        ...r,
-        steps: r.steps.map(s => ({ ...s, completed: false }))
+        ...r, steps: r.steps.map(s => ({ ...s, completed: false }))
       })));
     }
     setLastActiveDate(today);
@@ -106,177 +102,65 @@ export default function Index() {
   // Calculate streak
   const calculateStreak = useCallback(() => {
     if (sessions.length === 0) return 0;
-    
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    
+    const today = new Date(); today.setHours(0, 0, 0, 0);
     let streak = 0;
     let checkDate = new Date(today);
-    
     while (true) {
       const dateStr = checkDate.toISOString().split('T')[0];
       const hasSessions = sessions.some(s => s.date === dateStr);
-      
-      if (hasSessions) {
-        streak++;
-        checkDate.setDate(checkDate.getDate() - 1);
-      } else if (checkDate.getTime() === today.getTime()) {
-        checkDate.setDate(checkDate.getDate() - 1);
-      } else {
-        break;
-      }
+      if (hasSessions) { streak++; checkDate.setDate(checkDate.getDate() - 1); }
+      else if (checkDate.getTime() === today.getTime()) { checkDate.setDate(checkDate.getDate() - 1); }
+      else break;
     }
-    
     return streak;
   }, [sessions]);
 
-  // Task handlers
-  const addTask = (
+  // Task handlers that need webhook integration
+  const handleAddTask = (
     input: string | { text: string; scheduledDate?: string; scheduledTime?: string; durationMinutes?: number; source?: Task['source'] },
     isTopThree = false
   ) => {
-    if (typeof input === 'string') {
-      const newTask: Task = {
-        id: generateId(),
-        text: input,
-        status: 'pending',
-        source: 'manual',
-        createdAt: new Date().toISOString(),
-        isTopThree: true,
-        // Sin programación por defecto
-        scheduledDate: undefined,
-        scheduledTime: undefined,
-        durationMinutes: undefined,
-      };
-      setTasks([...tasks, newTask]);
-      trackUserEvent('task_created', { text: input, source: 'manual', is_top_three: true });
-      return;
-    }
-
-    const newTask: Task = {
-      id: generateId(),
-      text: input.text,
-      status: 'pending',
-      source: input.source || 'manual',
-      createdAt: new Date().toISOString(),
-      isTopThree,
-      scheduledDate: input.scheduledDate,
-      scheduledTime: input.scheduledTime,
-      durationMinutes: input.durationMinutes,
-    };
-    setTasks([...tasks, newTask]);
-    trackUserEvent('task_created', { text: input.text, source: input.source || 'manual', is_top_three: isTopThree });
-
-    // Disparar webhook si tiene fecha + hora
-    if (input.scheduledDate && input.scheduledTime) {
-      triggerWebhook(newTask.id, input.text, input.scheduledDate, input.scheduledTime).then(result => {
+    const newTask = addTask(input, isTopThree);
+    const opts = typeof input === 'string' ? {} as any : input;
+    if (opts.scheduledDate && opts.scheduledTime) {
+      triggerWebhook(newTask.id, newTask.text, opts.scheduledDate, opts.scheduledTime).then(result => {
         if (!result.sent && result.reason === 'no_telegram') {
           toast('Conecta Telegram para recibir recordatorios', {
             description: 'Así te avisamos a tiempo por mensaje directo.',
-            action: {
-              label: 'Conectar',
-              onClick: () => setActiveTab('horario'),
-            },
+            action: { label: 'Conectar', onClick: () => setActiveTab('horario') },
           });
         }
       });
     }
   };
 
-  // Update task scheduling
-  const updateTask = (id: string, updates: Partial<Pick<Task, 'scheduledDate' | 'scheduledTime' | 'durationMinutes'>>) => {
+  const handleUpdateTask = (id: string, updates: Partial<Pick<Task, 'scheduledDate' | 'scheduledTime' | 'durationMinutes'>>) => {
     const task = tasks.find(t => t.id === id);
     if (!task) return;
-
-    const updatedTask = { ...task, ...updates };
-    setTasks(tasks.map(t => t.id === id ? updatedTask : t));
-
-    // Disparar webhook si ahora tiene fecha + hora
+    updateTask(id, updates);
     const finalDate = updates.scheduledDate ?? task.scheduledDate;
     const finalTime = updates.scheduledTime ?? task.scheduledTime;
-    
     if (finalDate && finalTime) {
-      triggerWebhook(task.id, updatedTask.text, finalDate, finalTime).then(result => {
+      triggerWebhook(task.id, task.text, finalDate, finalTime).then(result => {
         if (!result.sent && result.reason === 'no_telegram') {
           toast('Conecta Telegram para recibir recordatorios', {
             description: 'Así te avisamos a tiempo por mensaje directo.',
-            action: {
-              label: 'Conectar',
-              onClick: () => setActiveTab('horario'),
-            },
+            action: { label: 'Conectar', onClick: () => setActiveTab('horario') },
           });
         }
       });
     }
   };
 
-  // Reuse a completed task — set back to pending with optional new schedule
   const reuseTask = (id: string, updates: Partial<Pick<Task, 'scheduledDate' | 'scheduledTime' | 'durationMinutes'>>) => {
     const task = tasks.find(t => t.id === id);
     if (!task) return;
-
-    const reusedTask: Task = {
-      ...task,
-      status: 'pending',
-      completedAt: task.completedAt, // keep as last_completed_at
-      ...updates,
-    };
-    setTasks(tasks.map(t => t.id === id ? reusedTask : t));
-
-    // Trigger webhook if now has date + time
+    updateTaskFull(id, { status: 'pending', ...updates });
     const finalDate = updates.scheduledDate ?? task.scheduledDate;
     const finalTime = updates.scheduledTime ?? task.scheduledTime;
     if (finalDate && finalTime) {
-      triggerWebhook(task.id, reusedTask.text, finalDate, finalTime);
+      triggerWebhook(task.id, task.text, finalDate, finalTime);
     }
-  };
-
-  // Add multiple tasks from AI - SIN hora, fecha ni duración
-  const addMultipleTasks = (taskTexts: string[], priorityIndices?: number[]) => {
-    const prioritySet = new Set(priorityIndices || []);
-    const todayDate = new Date().toISOString().split('T')[0];
-    const newTasks = taskTexts.map((text, index) => {
-      const isPriority = prioritySet.has(index);
-      return {
-        id: generateId(),
-        text,
-        status: 'pending' as const,
-        source: 'manual' as const,
-        createdAt: new Date().toISOString(),
-        isTopThree: isPriority,
-        isExceptionToday: false,
-        dateAutoAssigned: isPriority ? true : undefined,
-        // Auto-assign date for priorities, none for others
-        scheduledDate: isPriority ? todayDate : undefined,
-        scheduledTime: undefined,
-        durationMinutes: undefined,
-      };
-    });
-    setTasks([...tasks, ...newTasks]);
-    setActiveTab('tareas');
-  };
-
-  // Add floating notes from AI
-  const addFloatingNotesFromAI = (noteTexts: string[]) => {
-    const newNotes = noteTexts.map(text => ({
-      id: generateId(),
-      text,
-      createdAt: new Date().toISOString(),
-    }));
-    setFloatingNotes([...floatingNotes, ...newNotes]);
-  };
-
-  const setTaskStatus = (id: string, newStatus: Task['status']) => {
-    const now = new Date().toISOString();
-    setTasks(tasks.map(t => {
-      if (t.id !== id) return t;
-      return {
-        ...t,
-        status: newStatus,
-        completedAt: newStatus === 'completed' ? now : undefined,
-      };
-    }));
-    trackUserEvent('task_status_changed', { task_id: id, new_status: newStatus });
   };
 
   const toggleTask = (id: string) => {
@@ -285,83 +169,41 @@ export default function Index() {
     setTaskStatus(id, task.status === 'completed' ? 'pending' : 'completed');
   };
 
-  // Migration for old tasks (done → completed)
-  useEffect(() => {
-    const needsMigration = tasks.some((t: any) => typeof t.status === 'undefined' || typeof t.source === 'undefined' || t.status === 'done');
-    if (!needsMigration) return;
-    setTasks(tasks.map((t: any) => {
-      let status: Task['status'] = t.status;
-      if (typeof t.status === 'undefined') {
-        status = t.completed ? 'completed' : 'pending';
-      } else if (t.status === 'done') {
-        status = 'completed';
-      }
-      const source: Task['source'] = t.source || 'manual';
-      return {
-        ...t,
-        status,
-        source,
-      } as Task;
-    }));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  const deleteTask = (id: string) => {
-    setTasks(tasks.filter(t => t.id !== id));
-    trackUserEvent('task_deleted', { task_id: id });
-  };
-
   const removeFromTopThree = (id: string) => {
-    setTasks(tasks.map(t => {
-      if (t.id !== id) return t;
-      const updated: Task = { ...t, isTopThree: false, isExceptionToday: false };
-      // If date was auto-assigned, remove it
-      if (t.dateAutoAssigned) {
-        updated.scheduledDate = undefined;
-        updated.dateAutoAssigned = undefined;
-      }
-      return updated;
-    }));
+    const task = tasks.find(t => t.id === id);
+    if (!task) return;
+    const updates: Partial<Task> = { isTopThree: false, isExceptionToday: false };
+    if (task.dateAutoAssigned) {
+      updates.scheduledDate = undefined;
+      updates.dateAutoAssigned = undefined;
+    }
+    updateTaskFull(id, updates);
   };
 
-  // Toggle priority (isTopThree) with 3+2 exception logic
   const togglePriority = (id: string, forceException?: boolean) => {
     const task = tasks.find(t => t.id === id);
     if (!task) return;
-
     const todayDate = new Date().toISOString().split('T')[0];
 
-    // If already priority, remove it
-    if (task.isTopThree) {
-      removeFromTopThree(id);
-      return;
-    }
+    if (task.isTopThree) { removeFromTopThree(id); return; }
 
-    // Count current priorities for today
     const currentPriorities = tasks.filter(t => t.isTopThree && t.status !== 'completed');
     const normalCount = currentPriorities.filter(t => !t.isExceptionToday).length;
     const exceptionCount = currentPriorities.filter(t => t.isExceptionToday).length;
 
     if (normalCount < 3) {
-      // Normal priority slot available
-      setTasks(tasks.map(t => t.id === id ? {
-        ...t,
-        isTopThree: true,
-        isExceptionToday: false,
-        scheduledDate: t.scheduledDate || todayDate,
-        dateAutoAssigned: !t.scheduledDate ? true : t.dateAutoAssigned,
-      } : t));
+      updateTaskFull(id, {
+        isTopThree: true, isExceptionToday: false,
+        scheduledDate: task.scheduledDate || todayDate,
+        dateAutoAssigned: !task.scheduledDate ? true : task.dateAutoAssigned,
+      });
     } else if (forceException && exceptionCount < 2) {
-      // Exception approved
-      setTasks(tasks.map(t => t.id === id ? {
-        ...t,
-        isTopThree: true,
-        isExceptionToday: true,
-        scheduledDate: t.scheduledDate || todayDate,
-        dateAutoAssigned: !t.scheduledDate ? true : t.dateAutoAssigned,
-      } : t));
+      updateTaskFull(id, {
+        isTopThree: true, isExceptionToday: true,
+        scheduledDate: task.scheduledDate || todayDate,
+        dateAutoAssigned: !task.scheduledDate ? true : task.dateAutoAssigned,
+      });
     } else if (normalCount >= 3 && !forceException) {
-      // Need to show confirmation - return special value
       return 'needs_confirmation';
     } else if (exceptionCount >= 2) {
       toast('Para mantener claridad, hoy el máximo es 5.');
@@ -370,151 +212,30 @@ export default function Index() {
     return 'ok';
   };
 
-  // Routine handlers (kept for data, but section is hidden)
+  // Routine handlers (legacy)
   const addRoutine = (name: string) => {
-    const newRoutine: Routine = {
-      id: generateId(),
-      name,
-      steps: [],
-      createdAt: new Date().toISOString(),
-    };
-    setRoutines([...routines, newRoutine]);
+    setRoutines([...routines, { id: Math.random().toString(36).substr(2, 9), name, steps: [], createdAt: new Date().toISOString() }]);
   };
-
-  const deleteRoutine = (id: string) => {
-    setRoutines(routines.filter(r => r.id !== id));
-  };
-
+  const deleteRoutine = (id: string) => setRoutines(routines.filter(r => r.id !== id));
   const addRoutineStep = (routineId: string, text: string) => {
-    setRoutines(routines.map(r => {
-      if (r.id === routineId) {
-        return {
-          ...r,
-          steps: [...r.steps, { id: generateId(), text, completed: false }]
-        };
-      }
-      return r;
-    }));
+    setRoutines(routines.map(r => r.id === routineId ? { ...r, steps: [...r.steps, { id: Math.random().toString(36).substr(2, 9), text, completed: false }] } : r));
   };
-
   const toggleRoutineStep = (routineId: string, stepId: string) => {
     const now = new Date().toISOString();
-    setRoutines(routines.map(r => {
-      if (r.id === routineId) {
-        return {
-          ...r,
-          steps: r.steps.map(s => {
-            if (s.id !== stepId) return s;
-            const nextCompleted = !s.completed;
-            return { ...s, completed: nextCompleted, completedAt: nextCompleted ? now : undefined };
-          })
-        };
-      }
-      return r;
-    }));
+    setRoutines(routines.map(r => r.id === routineId ? { ...r, steps: r.steps.map(s => s.id !== stepId ? s : { ...s, completed: !s.completed, completedAt: !s.completed ? now : undefined }) } : r));
   };
-
   const deleteRoutineStep = (routineId: string, stepId: string) => {
-    setRoutines(routines.map(r => {
-      if (r.id === routineId) {
-        return {
-          ...r,
-          steps: r.steps.filter(s => s.id !== stepId)
-        };
-      }
-      return r;
-    }));
+    setRoutines(routines.map(r => r.id === routineId ? { ...r, steps: r.steps.filter(s => s.id !== stepId) } : r));
   };
 
-  // Journal handlers
-  const saveJournalEntry = (content: string, date: string) => {
-    const existingIndex = journalEntries.findIndex(e => e.date === date);
-    if (existingIndex >= 0) {
-      const updated = [...journalEntries];
-      updated[existingIndex] = { ...updated[existingIndex], content };
-      setJournalEntries(updated);
-    } else {
-      setJournalEntries([...journalEntries, {
-        id: generateId(),
-        date,
-        content,
-        createdAt: new Date().toISOString(),
-    }]);
-    }
-    trackUserEvent('journal_saved', { date, word_count: content.trim().split(/\s+/).length });
-  };
-
-  // QuickNote handlers (Agendita diaria)
-  const addQuickNote = (text: string, date: string) => {
-    const newNote: QuickNote = {
-      id: generateId(),
-      text,
-      date,
-      done: false,
-      createdAt: new Date().toISOString(),
-    };
-    setQuickNotes([...quickNotes, newNote]);
-  };
-
-  const toggleQuickNote = (id: string) => {
-    setQuickNotes(quickNotes.map(n => n.id === id ? { ...n, done: !n.done } : n));
-  };
-
-  const deleteQuickNote = (id: string) => {
-    setQuickNotes(quickNotes.filter(n => n.id !== id));
-  };
-
-  // Floating notes handlers
-  const addFloatingNote = (text: string) => {
-    const newNote: FloatingNote = {
-      id: generateId(),
-      text,
-      createdAt: new Date().toISOString(),
-    };
-    setFloatingNotes([...floatingNotes, newNote]);
-    trackUserEvent('note_created', { text });
-  };
-
-  const deleteFloatingNote = (id: string) => {
-    setFloatingNotes(floatingNotes.filter(n => n.id !== id));
-    trackUserEvent('note_deleted', { note_id: id });
-  };
-
-  const toggleFloatingNote = (id: string) => {
-    const note = floatingNotes.find(n => n.id === id);
-    setFloatingNotes(floatingNotes.map(n =>
-      n.id === id ? { ...n, done: !n.done } : n
-    ));
-    trackUserEvent('note_toggled', { note_id: id, done: !note?.done });
-  };
-
-  // Session handlers
-  const saveSession = useCallback((task: string, duration: number) => {
-    const newSession: FocusSession = {
-      id: generateId(),
-      task,
-      plannedDuration: duration,
-      focusedDuration: duration,
-      status: 'completed',
-      completedAt: new Date().toISOString(),
-      date: new Date().toISOString().split('T')[0],
-    };
-    setSessions(prev => [...prev, newSession]);
-    trackUserEvent('focus_completed', { task, duration_seconds: duration });
-  }, [setSessions]);
-
-  // Focus start from task - track which task started it
+  // Focus start from task
   const [focusTaskId, setFocusTaskId] = useState<string | null>(null);
 
   const startFocusFromTopTask = (taskText: string, minutes: number) => {
-    // Find the task by text to track it
     const task = tasks.find(t => t.text === taskText);
     if (task) {
       setFocusTaskId(task.id);
-      // Auto-set to in_progress if pending
-      if (task.status === 'pending') {
-        setTaskStatus(task.id, 'in_progress');
-      }
+      if (task.status === 'pending') setTaskStatus(task.id, 'in_progress');
     }
     setActiveTab('enfoque');
     timer.startTimer(minutes, taskText);
@@ -526,48 +247,36 @@ export default function Index() {
       setTaskStatus(focusTaskId, 'completed');
       setFocusTaskId(null);
     }
-  }, [focusTaskId, tasks]);
+  }, [focusTaskId, setTaskStatus]);
 
   const todayISO = new Date().toISOString().split('T')[0];
 
   const hasVictoryToday = (() => {
-    const didSession = sessions.some((s) => s.date === todayISO && s.status === 'completed');
-    const didTask = tasks.some((t) => t.status === 'completed' && (t.completedAt || '').startsWith(todayISO));
-    const didRoutine = routines.some((r) => r.steps.some((st) => st.completed && (st.completedAt || '').startsWith(todayISO)));
+    const didSession = sessions.some(s => s.date === todayISO && s.status === 'completed');
+    const didTask = tasks.some(t => t.status === 'completed' && (t.completedAt || '').startsWith(todayISO));
+    const didRoutine = routines.some(r => r.steps.some(st => st.completed && (st.completedAt || '').startsWith(todayISO)));
     return didSession || didTask || didRoutine;
   })();
 
   const calculateStartedStreak = useCallback(() => {
     const dayHasVictory = (dateStr: string) => {
-      const didSession = sessions.some((s) => s.date === dateStr && s.status === 'completed');
-      const didTask = tasks.some((t) => t.status === 'completed' && (t.completedAt || '').startsWith(dateStr));
-      const didRoutine = routines.some((r) => r.steps.some((st) => st.completed && (st.completedAt || '').startsWith(dateStr)));
-      return didSession || didTask || didRoutine;
+      return sessions.some(s => s.date === dateStr && s.status === 'completed') ||
+        tasks.some(t => t.status === 'completed' && (t.completedAt || '').startsWith(dateStr)) ||
+        routines.some(r => r.steps.some(st => st.completed && (st.completedAt || '').startsWith(dateStr)));
     };
-
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    let streak = 0;
-    let check = new Date(today);
-
+    const today = new Date(); today.setHours(0, 0, 0, 0);
+    let streak = 0; let check = new Date(today);
     while (true) {
       const ds = check.toISOString().split('T')[0];
-      if (dayHasVictory(ds)) {
-        streak++;
-        check.setDate(check.getDate() - 1);
-      } else if (check.getTime() === today.getTime()) {
-        check.setDate(check.getDate() - 1);
-      } else {
-        break;
-      }
+      if (dayHasVictory(ds)) { streak++; check.setDate(check.getDate() - 1); }
+      else if (check.getTime() === today.getTime()) { check.setDate(check.getDate() - 1); }
+      else break;
     }
     return streak;
   }, [sessions, tasks, routines]);
 
   const topThreeTasks = tasks.filter(t => t.isTopThree).slice(0, 3);
-  const regularTasks = tasks.filter(t => !t.isTopThree);
 
-  // Count tasks per date for limit validation (now unlimited, kept for display)
   const getTasksCountForDate = useCallback((dateStr: string) => {
     return tasks.filter(t => t.scheduledDate === dateStr && t.status === 'pending').length;
   }, [tasks]);
@@ -582,6 +291,11 @@ export default function Index() {
     return map;
   }, [tasks]);
 
+  const handleAddMultipleTasks = (taskTexts: string[], priorityIndices?: number[]) => {
+    addMultipleTasks(taskTexts, priorityIndices);
+    setActiveTab('tareas');
+  };
+
   const renderPage = () => {
     switch (activeTab) {
       case 'hoy':
@@ -591,36 +305,28 @@ export default function Index() {
             topThreeTasks={topThreeTasks}
             onGoToFocus={() => setActiveTab('enfoque')}
             onToggleTask={toggleTask}
-            onAddTask={(text) => addTask(text, true)}
+            onAddTask={(text) => handleAddTask(text, true)}
             onRemoveFromTopThree={removeFromTopThree}
             onRequestSchedule={() => setActiveTab('horario')}
             startedStreak={calculateStartedStreak()}
             hasVictoryToday={hasVictoryToday}
             onStartFocusFromTopTask={startFocusFromTopTask}
-            onSendToTasks={addMultipleTasks}
+            onSendToTasks={handleAddMultipleTasks}
             currentTodayPriorityCount={tasks.filter(t => t.isTopThree && t.status !== 'completed').length}
           />
         );
       case 'enfoque':
         return (
           <FocusPage
-            isRunning={timer.isRunning}
-            timeLeft={timer.timeLeft}
-            duration={timer.duration}
-            progress={timer.progress}
-            task={timer.task}
-            isCompleted={timer.isCompleted}
-            soundEnabled={soundEnabled}
-            onStartTimer={timer.startTimer}
-            onStopTimer={timer.stopTimer}
-            onContinueTimer={timer.continueTimer}
-            onAcknowledgeCompletion={timer.acknowledgeCompletion}
-            onToggleSound={setSoundEnabled}
-            onSaveSession={saveSession}
+            isRunning={timer.isRunning} timeLeft={timer.timeLeft} duration={timer.duration}
+            progress={timer.progress} task={timer.task} isCompleted={timer.isCompleted}
+            soundEnabled={soundEnabled} onStartTimer={timer.startTimer} onStopTimer={timer.stopTimer}
+            onContinueTimer={timer.continueTimer} onAcknowledgeCompletion={timer.acknowledgeCompletion}
+            onToggleSound={setSoundEnabled} onSaveSession={saveSession}
             onMarkTaskCompleted={focusTaskId ? handleMarkFocusTaskCompleted : undefined}
             unlockSessionId={activeUnlockSessionId}
             onUnlockSessionComplete={(id) => {
-              setUnlockSessions(prev => prev.map(s => s.id === id ? { ...s, completed: true } : s));
+              updateUnlockSession(id, { completed: true });
               setActiveUnlockSessionId(null);
             }}
           />
@@ -629,49 +335,29 @@ export default function Index() {
         return (
           <TasksPage
             tasks={tasks}
-            onAddTask={(data) => addTask(data, false)}
-            onToggleTask={toggleTask}
-            onDeleteTask={deleteTask}
-            onSetTaskStatus={setTaskStatus}
-            onUpdateTask={updateTask}
-            onReuseTask={reuseTask}
+            onAddTask={(d) => handleAddTask(d, false)}
+            onToggleTask={toggleTask} onDeleteTask={deleteTask} onSetTaskStatus={setTaskStatus}
+            onUpdateTask={handleUpdateTask} onReuseTask={reuseTask}
             onStartFocus={(taskText, minutes) => startFocusFromTopTask(taskText, minutes)}
-            getTasksCountForDate={getTasksCountForDate}
-            onTogglePriority={togglePriority}
+            getTasksCountForDate={getTasksCountForDate} onTogglePriority={togglePriority}
           />
         );
       case 'horario':
         return (
           <SchedulePage
-            tasks={tasks}
-            quickNotes={quickNotes}
+            tasks={tasks} quickNotes={quickNotes}
             onStartFocus={(taskText, minutes) => startFocusFromTopTask(taskText, minutes)}
             tasksCountByDate={tasksCountByDate}
-            onAddQuickNote={addQuickNote}
-            onToggleQuickNote={toggleQuickNote}
-            onDeleteQuickNote={deleteQuickNote}
+            onAddQuickNote={addQuickNote} onToggleQuickNote={toggleQuickNote} onDeleteQuickNote={deleteQuickNote}
           />
         );
-      // Rutinas hidden - data preserved but not shown
       case 'rutinas':
-        // Redirect to home if somehow accessed
         setActiveTab('hoy');
         return null;
       case 'diario':
-        return (
-          <JournalPage
-            entries={journalEntries}
-            onSaveEntry={saveJournalEntry}
-          />
-        );
+        return <JournalPage entries={journalEntries} onSaveEntry={saveJournalEntry} />;
       case 'progreso':
-        return (
-          <ProgressPage
-            sessions={sessions}
-            tasks={tasks}
-            streak={calculateStreak()}
-          />
-        );
+        return <ProgressPage sessions={sessions} tasks={tasks} streak={calculateStreak()} />;
       case 'coach':
         return <CoachPage />;
       default:
@@ -681,40 +367,23 @@ export default function Index() {
 
   return (
     <div className="min-h-screen">
-      {/* Header with help button */}
+      {/* Header */}
       <header className="fixed top-0 left-0 right-0 z-30 backdrop-blur-xl border-b border-border/50" style={{ background: 'hsl(var(--background) / 0.8)' }}>
         <div className="flex items-center justify-between px-6 py-3">
-          {/* Logo - fixed size, calm positioning */}
           <div className="flex items-center gap-2">
-            <div className="pointer-events-none select-none">
-              <AppLogo size={32} />
-            </div>
-            <h1 className="text-lg font-display font-semibold text-primary">
-              Focus On
-            </h1>
+            <div className="pointer-events-none select-none"><AppLogo size={32} /></div>
+            <h1 className="text-lg font-display font-semibold text-primary">Focus On</h1>
           </div>
           <div className="flex items-center gap-1">
-            <button
-              onClick={() => setShowHowTo(true)}
-              className="p-2 rounded-xl hover:bg-muted transition-colors"
-              title="¿Cómo funciona Focus On?"
-            >
+            <button onClick={() => setShowHowTo(true)} className="p-2 rounded-xl hover:bg-muted transition-colors" title="¿Cómo funciona Focus On?">
               <HelpCircle size={22} className="text-muted-foreground" />
             </button>
             {isGuest ? (
-              <button
-                onClick={handleCreateAccount}
-                className="p-2 rounded-xl hover:bg-muted transition-colors"
-                title="Crear tu espacio"
-              >
+              <button onClick={handleCreateAccount} className="p-2 rounded-xl hover:bg-muted transition-colors" title="Crear tu espacio">
                 <UserPlus size={20} className="text-primary" />
               </button>
             ) : (
-              <button
-                onClick={handleSignOut}
-                className="p-2 rounded-xl hover:bg-muted transition-colors"
-                title="Cerrar sesión"
-              >
+              <button onClick={handleSignOut} className="p-2 rounded-xl hover:bg-muted transition-colors" title="Cerrar sesión">
                 <LogOut size={20} className="text-muted-foreground" />
               </button>
             )}
@@ -722,57 +391,41 @@ export default function Index() {
         </div>
       </header>
 
-      {/* Timer indicator when running and not on focus page */}
       {timer.isRunning && activeTab !== 'enfoque' && (
-        <TimerIndicator
-          timeLeft={timer.timeLeft}
-          task={timer.task}
-          onClick={() => setActiveTab('enfoque')}
-        />
+        <TimerIndicator timeLeft={timer.timeLeft} task={timer.task} onClick={() => setActiveTab('enfoque')} />
       )}
 
-      {/* Onboarding + Tagline */}
       <ProductTagline />
       <OnboardingBanner />
 
-      {/* Main content */}
-      <main className="pt-20">
-        {renderPage()}
-      </main>
+      <main className="pt-20">{renderPage()}</main>
 
-      {/* Floating Notes Button - visible on all sections */}
       <FloatingNotesButton
-        notes={floatingNotes}
-        onAddNote={addFloatingNote}
-        onDeleteNote={deleteFloatingNote}
-        onToggleNote={toggleFloatingNote}
+        notes={floatingNotes} onAddNote={addFloatingNote}
+        onDeleteNote={deleteFloatingNote} onToggleNote={toggleFloatingNote}
         onWritingModeChange={setIsWritingMode}
       />
 
-      {/* Guest mode banner - discrete reminder about local storage */}
       <GuestModeBanner />
 
-      {/* Modo Desbloqueo - full on Home/Progress/Journal, compact on Focus/Schedule/Tasks */}
-      <UnlockMode 
-        variant={['hoy', 'progreso', 'diario'].includes(activeTab) ? 'full' : 'compact'} 
+      <UnlockMode
+        variant={['hoy', 'progreso', 'diario'].includes(activeTab) ? 'full' : 'compact'}
         onWritingModeChange={setIsWritingMode}
         onStartFocusTime={(minutes, unlockSessionId) => {
           if (unlockSessionId) setActiveUnlockSessionId(unlockSessionId);
           setActiveTab('enfoque');
           timer.startTimer(minutes, 'Modo Desbloqueo');
         }}
-        onCreateTask={(text) => addTask(text)}
+        onCreateTask={(text) => handleAddTask(text)}
         sessions={unlockSessions}
-        onSaveSession={(session) => setUnlockSessions(prev => [...prev, session])}
-        onUpdateSession={(id, updates) => setUnlockSessions(prev => prev.map(s => s.id === id ? { ...s, ...updates } : s))}
+        onSaveSession={saveUnlockSession}
+        onUpdateSession={updateUnlockSession}
       />
 
-      {/* Bottom navigation - hidden during writing mode */}
       <div className={`transition-all duration-300 ${isWritingMode ? 'translate-y-full opacity-0 pointer-events-none' : 'translate-y-0 opacity-100'}`}>
         <BottomNav activeTab={activeTab} onTabChange={(tab) => { setActiveTab(tab); trackUserEvent('nav_tab_changed', { tab }); }} />
       </div>
 
-      {/* How to use overlay */}
       {showHowTo && <HowToUsePage onClose={() => setShowHowTo(false)} />}
     </div>
   );
