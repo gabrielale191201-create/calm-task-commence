@@ -6,9 +6,17 @@
   "start_url": ".",
   "scope": "/",
   "display": "standalone",
+  "display_override": ["window-controls-overlay"],
   "background_color": "#f7faf8",
   "theme_color": "#4aba82",
   "orientation": "portrait-primary",
+  "iarc_rating_id": "e",
+  "related_applications": [],
+  "prefer_related_applications": false,
+  "scope_extensions": [{"origin": "*.lovable.app"}],
+  "categories": ["productivity", "lifestyle"],
+  "lang": "es",
+  "dir": "ltr",
   "icons": [
     {
       "src": "/icon-192x192.png",
@@ -23,9 +31,24 @@
       "purpose": "any maskable"
     }
   ],
-  "screenshots": [],
-  "categories": ["productivity", "lifestyle"],
-  "lang": "es",
-  "dir": "ltr",
-  "prefer_related_applications": false
+  "screenshots": [
+    {
+      "src": "/screenshot-narrow-1.png",
+      "sizes": "1080x1920",
+      "type": "image/png",
+      "form_factor": "narrow"
+    },
+    {
+      "src": "/screenshot-narrow-2.png",
+      "sizes": "1080x1920",
+      "type": "image/png",
+      "form_factor": "narrow"
+    },
+    {
+      "src": "/screenshot-wide-1.png",
+      "sizes": "1920x1080",
+      "type": "image/png",
+      "form_factor": "wide"
+    }
+  ]
 }
