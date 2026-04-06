@@ -5,6 +5,7 @@ import { cn } from '@/lib/utils';
 interface FloatingNote {
   id: string;
   text: string;
+  done?: boolean;
   createdAt: string;
 }
 
@@ -12,30 +13,21 @@ interface FloatingNotesButtonProps {
   notes: FloatingNote[];
   onAddNote: (text: string) => void;
   onDeleteNote: (id: string) => void;
+  onToggleNote?: (id: string) => void;
   onWritingModeChange?: (active: boolean) => void;
 }
 
-export const FloatingNotesButton = forwardRef<HTMLDivElement, FloatingNotesButtonProps>(function FloatingNotesButton({ notes, onAddNote, onDeleteNote, onWritingModeChange }, ref) {
+export const FloatingNotesButton = forwardRef<HTMLDivElement, FloatingNotesButtonProps>(function FloatingNotesButton({ notes, onAddNote, onDeleteNote, onToggleNote, onWritingModeChange }, ref) {
   const [isOpen, setIsOpen] = useState(false);
   const [newNote, setNewNote] = useState('');
 
-  const handleOpen = () => {
-    setIsOpen(true);
-  };
-
+  const handleOpen = () => setIsOpen(true);
   const handleClose = () => {
     setIsOpen(false);
     onWritingModeChange?.(false);
   };
-
-  // Activate writing mode on input focus (keyboard opens)
-  const handleInputFocus = () => {
-    onWritingModeChange?.(true);
-  };
-
-  const handleInputBlur = () => {
-    onWritingModeChange?.(false);
-  };
+  const handleInputFocus = () => onWritingModeChange?.(true);
+  const handleInputBlur = () => onWritingModeChange?.(false);
 
   const handleAddNote = () => {
     if (newNote.trim()) {
@@ -43,6 +35,9 @@ export const FloatingNotesButton = forwardRef<HTMLDivElement, FloatingNotesButto
       setNewNote('');
     }
   };
+
+  const pendingNotes = notes.filter(n => !n.done);
+  const doneNotes = notes.filter(n => n.done);
 
   return (
     <>
@@ -61,7 +56,7 @@ export const FloatingNotesButton = forwardRef<HTMLDivElement, FloatingNotesButto
         <StickyNote size={22} />
         {notes.length > 0 && (
           <span className="absolute -top-1 -right-1 w-5 h-5 bg-amber-500 text-white text-xs font-bold rounded-full flex items-center justify-center">
-            {notes.length}
+            {pendingNotes.length}
           </span>
         )}
       </button>
@@ -79,10 +74,7 @@ export const FloatingNotesButton = forwardRef<HTMLDivElement, FloatingNotesButto
                   <p className="text-xs text-muted-foreground">(no son tareas)</p>
                 </div>
               </div>
-              <button
-                onClick={handleClose}
-                className="p-2 rounded-xl hover:bg-muted transition-colors"
-              >
+              <button onClick={handleClose} className="p-2 rounded-xl hover:bg-muted transition-colors">
                 <X size={20} className="text-muted-foreground" />
               </button>
             </div>
@@ -96,16 +88,25 @@ export const FloatingNotesButton = forwardRef<HTMLDivElement, FloatingNotesButto
 
             {/* Notes list */}
             <div className="px-6 py-4 max-h-[35vh] overflow-y-auto">
-              {notes.length > 0 ? (
-                <div className="space-y-2">
-                  {notes.map((note) => (
+              {pendingNotes.length > 0 && (
+                <div className="space-y-2 mb-3">
+                  {pendingNotes.map((note) => (
                     <div
                       key={note.id}
-                      className="flex items-start gap-3 p-3 rounded-xl bg-muted/50 group"
+                      className="flex items-start gap-3 p-3 rounded-xl bg-muted/50 group cursor-pointer"
+                      onClick={() => onToggleNote?.(note.id)}
                     >
-                      <span className="flex-1 text-sm text-foreground">{note.text}</span>
+                      {/* Circular check */}
                       <button
-                        onClick={() => onDeleteNote(note.id)}
+                        onClick={(e) => { e.stopPropagation(); onToggleNote?.(note.id); }}
+                        className="w-5 h-5 rounded-full border-2 border-muted-foreground/30 hover:border-green-400 flex-shrink-0 mt-0.5 flex items-center justify-center transition-colors duration-300"
+                        aria-label="Marcar como completada"
+                      />
+                      <span className="flex-1 text-sm text-foreground transition-all duration-300 ease-in-out">
+                        {note.text}
+                      </span>
+                      <button
+                        onClick={(e) => { e.stopPropagation(); onDeleteNote(note.id); }}
                         className="p-1.5 rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10 opacity-0 group-hover:opacity-100 transition-all"
                       >
                         <Trash2 size={14} />
@@ -113,7 +114,39 @@ export const FloatingNotesButton = forwardRef<HTMLDivElement, FloatingNotesButto
                     </div>
                   ))}
                 </div>
-              ) : (
+              )}
+
+              {doneNotes.length > 0 && (
+                <div className="space-y-2">
+                  {doneNotes.map((note) => (
+                    <div
+                      key={note.id}
+                      className="flex items-start gap-3 p-3 rounded-xl bg-muted/30 group cursor-pointer opacity-60"
+                      onClick={() => onToggleNote?.(note.id)}
+                    >
+                      {/* Filled circular check */}
+                      <button
+                        onClick={(e) => { e.stopPropagation(); onToggleNote?.(note.id); }}
+                        className="w-5 h-5 rounded-full bg-green-500 border-2 border-green-500 flex-shrink-0 mt-0.5 flex items-center justify-center transition-colors duration-300"
+                        aria-label="Desmarcar"
+                      >
+                        <Check size={12} className="text-white" strokeWidth={3} />
+                      </button>
+                      <span className="flex-1 text-sm text-muted-foreground line-through italic transition-all duration-300 ease-in-out">
+                        {note.text}
+                      </span>
+                      <button
+                        onClick={(e) => { e.stopPropagation(); onDeleteNote(note.id); }}
+                        className="p-1.5 rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10 opacity-0 group-hover:opacity-100 transition-all"
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {notes.length === 0 && (
                 <p className="text-center text-muted-foreground text-sm py-6">
                   Sin notas todavía.
                 </p>
