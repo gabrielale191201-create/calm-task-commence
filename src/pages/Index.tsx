@@ -20,8 +20,10 @@ import { useAlarmSound } from '@/hooks/useAlarmSound';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
 import { useAuthState } from '@/hooks/useAuthState';
 import { useGuestMode } from '@/hooks/useGuestMode';
+import { useProfile } from '@/hooks/useProfile';
 import { useTelegramWebhook } from '@/hooks/useTelegramWebhook';
-import { TabType, Task, Routine, JournalEntry, FocusSession, UserProfile, QuickNote } from '@/types/focuson';
+import { trackUserEvent } from '@/lib/trackEvent';
+import { TabType, Task, Routine, JournalEntry, FocusSession, QuickNote } from '@/types/focuson';
 import { UnlockSession } from '@/types/unlockSession';
 import { AppLogo } from '@/components/AppLogo';
 import { toast } from 'sonner';
@@ -47,7 +49,7 @@ export default function Index() {
   const [activeTab, setActiveTab] = useLocalStorage<TabType>('focuson-tab', 'hoy');
   const [showHowTo, setShowHowTo] = useState(false);
   const [isWritingMode, setIsWritingMode] = useState(false);
-  const [profile, setProfile] = useLocalStorage<UserProfile>('focuson-profile', { name: '' });
+  const { profile } = useProfile();
 
   const handleSignOut = async () => {
     // If guest, just exit guest mode
