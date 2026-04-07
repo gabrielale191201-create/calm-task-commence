@@ -32,6 +32,8 @@ export function LandingDownload() {
         <a
           href={APK_DOWNLOAD_URL}
           download
+          target="_blank"
+          rel="noopener noreferrer"
           className="w-full max-w-xs"
         >
           <Button
