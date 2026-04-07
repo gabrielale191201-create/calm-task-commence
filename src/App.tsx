@@ -6,6 +6,8 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthStateProvider, useAuthState } from "@/hooks/useAuthState";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { LoadingScreen } from "@/components/LoadingScreen";
+import { usePWAInstalled } from "@/hooks/usePWAInstalled";
+import { LandingDownload } from "@/components/LandingDownload";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import Onboarding from "./pages/Onboarding";
@@ -44,6 +46,13 @@ function OnboardingGuard({ children }: { children: React.ReactNode }) {
 }
 
 function AppRoutes() {
+  const isInstalled = usePWAInstalled();
+
+  // Browser users see download landing; installed app users get the full app
+  if (!isInstalled) {
+    return <LandingDownload />;
+  }
+
   return (
     <Routes>
       <Route path="/auth" element={<Auth />} />
