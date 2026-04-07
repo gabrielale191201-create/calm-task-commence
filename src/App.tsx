@@ -6,6 +6,8 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthStateProvider, useAuthState } from "@/hooks/useAuthState";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { LoadingScreen } from "@/components/LoadingScreen";
+import { usePWAInstalled } from "@/hooks/usePWAInstalled";
+import { LandingDownload } from "@/components/LandingDownload";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import Onboarding from "./pages/Onboarding";
