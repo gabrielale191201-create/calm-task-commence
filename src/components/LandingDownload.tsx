@@ -2,7 +2,7 @@ import { AppLogo } from "@/components/AppLogo";
 import { Button } from "@/components/ui/button";
 import { Download, Smartphone } from "lucide-react";
 
-const APK_DOWNLOAD_URL = "#"; // TODO: reemplaza con tu URL real del APK
+const APK_DOWNLOAD_URL = "https://cmszoptzpkgnroeirilm.supabase.co/storage/v1/object/public/app-releases/Focus%20On.apk";
 
 export function LandingDownload() {
   return (
