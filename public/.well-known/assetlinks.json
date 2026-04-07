@@ -1,0 +1,14 @@
+[
+  {
+    "relation": [
+      "delegate_permission/common.handle_all_urls"
+    ],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "app.focusonlife.twa",
+      "sha256_cert_fingerprints": [
+        "F1:CA:23:3D:89:4F:68:BE:D5:56:BE:FF:95:FF:25:50:C2:D8:A3:30:26:DD:3A:A7:4F:0C:64:30:88:58:1B:E5"
+      ]
+    }
+  }
+]
