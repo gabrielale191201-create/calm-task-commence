@@ -40,6 +40,10 @@ export default function Index() {
   const [activeTab, setActiveTab] = useLocalStorage<TabType>('focuson-tab', 'hoy');
   const [showHowTo, setShowHowTo] = useState(false);
   const [isWritingMode, setIsWritingMode] = useState(false);
+  const [dismissedUpdate, setDismissedUpdate] = useState(() => {
+    try { return localStorage.getItem('focuson-dismiss-update-v1.2') === 'true'; } catch { return false; }
+  });
+  const handleDismissUpdate = () => { setDismissedUpdate(true); try { localStorage.setItem('focuson-dismiss-update-v1.2', 'true'); } catch {} };
   const { profile } = useProfile();
 
   // Session tracker for time-in-app telemetry
