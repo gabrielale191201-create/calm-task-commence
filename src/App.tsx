@@ -9,7 +9,7 @@ import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { LoadingScreen } from "@/components/LoadingScreen";
 import { usePWAInstalled } from "@/hooks/usePWAInstalled";
 import { LandingDownload } from "@/components/LandingDownload";
-import OneSignal from "react-onesignal";
+
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import Onboarding from "./pages/Onboarding";
@@ -77,17 +77,7 @@ function AppRoutes() {
   );
 }
 
-let onesignalInitialized = false;
-
 const App = () => {
-  useEffect(() => {
-    if (onesignalInitialized) return;
-    onesignalInitialized = true;
-    OneSignal.init({
-      appId: "e41d2628-7541-489a-be75-f969db33aa91",
-      allowLocalhostAsSecureOrigin: true,
-    }).catch((err) => console.warn("[OneSignal] init error:", err));
-  }, []);
 
   return (
     <ErrorBoundary>
