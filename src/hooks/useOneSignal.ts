@@ -1,19 +1,49 @@
 import { useCallback, useState, useEffect, useRef } from 'react';
-import OneSignal from 'react-onesignal';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuthState } from '@/hooks/useAuthState';
 
 const ONESIGNAL_APP_ID = 'e41d2628-7541-489a-be75-f969db33aa91';
 
-let initPromise: Promise<void> | null = null;
+declare global {
+  interface Window {
+    OneSignal?: any;
+  }
+}
 
-function initOneSignalOnce() {
-  if (initPromise) return initPromise;
-  initPromise = OneSignal.init({
+let sdkLoaded = false;
+
+function ensureOneSignalScript(): Promise<void> {
+  return new Promise((resolve, reject) => {
+    if (window.OneSignal) { resolve(); return; }
+    if (sdkLoaded) {
+      // script added but not ready yet – poll
+      const t = setInterval(() => { if (window.OneSignal) { clearInterval(t); resolve(); } }, 200);
+      setTimeout(() => { clearInterval(t); reject(new Error('OneSignal script timeout')); }, 8000);
+      return;
+    }
+    sdkLoaded = true;
+    const s = document.createElement('script');
+    s.src = 'https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js';
+    s.async = true;
+    s.onload = () => {
+      const t = setInterval(() => { if (window.OneSignal) { clearInterval(t); resolve(); } }, 200);
+      setTimeout(() => { clearInterval(t); reject(new Error('OneSignal not on window after load')); }, 8000);
+    };
+    s.onerror = () => reject(new Error('Failed to load OneSignal script'));
+    document.head.appendChild(s);
+  });
+}
+
+let initDone = false;
+
+async function initOneSignal() {
+  await ensureOneSignalScript();
+  if (initDone) return;
+  initDone = true;
+  await window.OneSignal.init({
     appId: ONESIGNAL_APP_ID,
     allowLocalhostAsSecureOrigin: true,
   });
-  return initPromise;
 }
 
 export function useOneSignal() {
@@ -21,62 +51,53 @@ export function useOneSignal() {
   const [permissionGranted, setPermissionGranted] = useState(false);
   const savedRef = useRef(false);
 
-  // Initialize SDK once
   useEffect(() => {
-    initOneSignalOnce().then(() => {
-      const granted = OneSignal.Notifications.permission;
-      setPermissionGranted(granted);
-    }).catch(err => console.warn('[OneSignal] init error:', err));
+    initOneSignal()
+      .then(() => {
+        const granted = window.OneSignal?.Notifications?.permission;
+        setPermissionGranted(!!granted);
+      })
+      .catch(err => console.warn('[OneSignal] init error:', err));
   }, []);
 
-  // Save subscription ID to Supabase
   const saveSubscriptionId = useCallback(async () => {
     if (!isAuthenticated || !currentUserId || savedRef.current) return;
     try {
-      await initOneSignalOnce();
-      const subId = OneSignal.User.PushSubscription.id;
+      await initOneSignal();
+      const subId = window.OneSignal?.User?.PushSubscription?.id;
       if (!subId) return;
       savedRef.current = true;
       const { error } = await supabase
         .from('profiles')
         .update({ onesignal_id: subId } as any)
         .eq('user_id', currentUserId);
-      if (error) {
-        console.error('[OneSignal] save error:', error);
-        savedRef.current = false;
-      }
-    } catch (err) {
-      console.error('[OneSignal]', err);
-      savedRef.current = false;
-    }
+      if (error) { console.error('[OneSignal] save error:', error); savedRef.current = false; }
+    } catch (err) { console.error('[OneSignal]', err); savedRef.current = false; }
   }, [isAuthenticated, currentUserId]);
 
-  // Auto-save when already granted
   useEffect(() => {
     if (permissionGranted && isAuthenticated && currentUserId) {
       setTimeout(() => saveSubscriptionId(), 1500);
     }
   }, [permissionGranted, isAuthenticated, currentUserId, saveSubscriptionId]);
 
-  // Request permission via OneSignal prompt
   const requestPermission = useCallback(async () => {
     alert('1. Botón presionado, iniciando...');
 
-    try {
-      await initOneSignalOnce();
-      await OneSignal.Slidedown.promptPush();
-
-      const granted = OneSignal.Notifications.permission;
-      setPermissionGranted(granted);
-
-      if (granted) {
-        alert('2. Permiso concedido');
-        setTimeout(() => saveSubscriptionId(), 1500);
+    if (typeof window !== 'undefined' && window.OneSignal) {
+      try {
+        await window.OneSignal.Slidedown.promptPush({ force: true });
+        const granted = window.OneSignal.Notifications.permission;
+        setPermissionGranted(granted);
+        if (granted) {
+          alert('2. Permiso concedido');
+          setTimeout(() => saveSubscriptionId(), 1500);
+        }
+      } catch (err: any) {
+        alert('Fallo al abrir: ' + (err?.message || String(err)));
       }
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : String(error);
-      console.error('[OneSignal] permission error:', error);
-      alert('Error crítico: ' + errorMessage);
+    } else {
+      alert('Error: OneSignal no está cargado en el window');
     }
   }, [saveSubscriptionId]);
 
