@@ -175,6 +175,7 @@ export type Database = {
           email: string | null
           id: string
           obstacle: string | null
+          onesignal_id: string | null
           updated_at: string
           user_id: string
         }
@@ -185,6 +186,7 @@ export type Database = {
           email?: string | null
           id?: string
           obstacle?: string | null
+          onesignal_id?: string | null
           updated_at?: string
           user_id: string
         }
@@ -195,6 +197,7 @@ export type Database = {
           email?: string | null
           id?: string
           obstacle?: string | null
+          onesignal_id?: string | null
           updated_at?: string
           user_id?: string
         }

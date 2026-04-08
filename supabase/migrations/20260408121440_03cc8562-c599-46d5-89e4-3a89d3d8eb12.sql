@@ -1,0 +1,1 @@
+ALTER TABLE public.profiles ADD COLUMN onesignal_id text DEFAULT NULL;
