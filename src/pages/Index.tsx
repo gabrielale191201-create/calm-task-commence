@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import { HelpCircle, LogOut, UserPlus } from 'lucide-react';
+import { HelpCircle, LogOut, UserPlus, Bell, BellOff } from 'lucide-react';
+import { useOneSignal } from '@/hooks/useOneSignal';
 import { BottomNav } from '@/components/BottomNav';
 import { TimerIndicator } from '@/components/TimerIndicator';
 import { HomePage } from '@/components/pages/HomePage';
@@ -32,6 +33,7 @@ import { useNavigate } from 'react-router-dom';
 
 export default function Index() {
   const { signOut } = useAuthState();
+  const { requestPermission, permissionGranted } = useOneSignal();
   const { isGuest, exitGuestMode } = useGuestMode();
   const { triggerWebhook } = useTelegramWebhook();
   const navigate = useNavigate();
@@ -375,6 +377,11 @@ export default function Index() {
             <h1 className="text-lg font-display font-semibold text-primary">Focus On</h1>
           </div>
           <div className="flex items-center gap-1">
+            {!permissionGranted && !isGuest && (
+              <button onClick={requestPermission} className="p-2 rounded-xl hover:bg-muted transition-colors" title="Activar notificaciones">
+                <Bell size={20} className="text-primary animate-pulse" />
+              </button>
+            )}
             <button onClick={() => setShowHowTo(true)} className="p-2 rounded-xl hover:bg-muted transition-colors" title="¿Cómo funciona Focus On?">
               <HelpCircle size={22} className="text-muted-foreground" />
             </button>
