@@ -60,17 +60,23 @@ export function useOneSignal() {
 
   // Request permission via OneSignal prompt
   const requestPermission = useCallback(async () => {
+    alert('1. Botón presionado, iniciando...');
+
     try {
       await initOneSignalOnce();
       await OneSignal.Slidedown.promptPush();
-      // Check after prompt
+
       const granted = OneSignal.Notifications.permission;
       setPermissionGranted(granted);
+
       if (granted) {
+        alert('2. Permiso concedido');
         setTimeout(() => saveSubscriptionId(), 1500);
       }
-    } catch (err) {
-      console.error('[OneSignal] permission error:', err);
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      console.error('[OneSignal] permission error:', error);
+      alert('Error crítico: ' + errorMessage);
     }
   }, [saveSubscriptionId]);
 
