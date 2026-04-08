@@ -1,82 +1,57 @@
-import { useEffect, useRef, useCallback, useState } from 'react';
+import { useCallback, useState, useEffect, useRef } from 'react';
 import OneSignal from 'react-onesignal';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuthState } from '@/hooks/useAuthState';
 
-const ONESIGNAL_APP_ID = 'e41d2628-7541-489a-be75-f969db33aa91';
-
-let initialized = false;
-
 export function useOneSignal() {
-  const { isAuthenticated, currentUserId: userId } = useAuthState();
+  const { isAuthenticated, currentUserId } = useAuthState();
   const [permissionGranted, setPermissionGranted] = useState(false);
   const savedRef = useRef(false);
 
-  // Initialize OneSignal once
-  useEffect(() => {
-    if (initialized) return;
-    initialized = true;
-
-    OneSignal.init({
-      appId: ONESIGNAL_APP_ID,
-      allowLocalhostAsSecureOrigin: true,
-    }).catch((err) => {
-      console.warn('[OneSignal] init error:', err);
-    });
-  }, []);
-
-  // Save subscription ID to profile
   const saveSubscriptionId = useCallback(async () => {
-    if (!isAuthenticated || !userId || savedRef.current) return;
-
+    if (!isAuthenticated || !currentUserId || savedRef.current) return;
     try {
       const subId = OneSignal.User?.PushSubscription?.id;
       if (!subId) return;
-
       savedRef.current = true;
       const { error } = await supabase
         .from('profiles')
         .update({ onesignal_id: subId } as any)
-        .eq('user_id', userId);
-
+        .eq('user_id', currentUserId);
       if (error) {
-        console.error('[OneSignal] Error saving subscription:', error);
+        console.error('[OneSignal] save error:', error);
         savedRef.current = false;
       }
     } catch (err) {
-      console.error('[OneSignal] Error:', err);
+      console.error('[OneSignal]', err);
       savedRef.current = false;
     }
-  }, [isAuthenticated, userId]);
+  }, [isAuthenticated, currentUserId]);
 
-  // Request permission and capture subscription
   const requestPermission = useCallback(async () => {
     try {
       await OneSignal.Notifications.requestPermission();
-      setPermissionGranted(OneSignal.Notifications.permission);
-
-      // Wait a moment for subscription to propagate
-      setTimeout(() => {
-        saveSubscriptionId();
-      }, 1500);
+      const granted = OneSignal.Notifications.permission;
+      setPermissionGranted(granted);
+      if (granted) {
+        setTimeout(() => saveSubscriptionId(), 1500);
+      }
     } catch (err) {
-      console.error('[OneSignal] Permission error:', err);
+      console.error('[OneSignal] permission error:', err);
     }
   }, [saveSubscriptionId]);
 
-  // Auto-save if permission already granted on load
+  // Auto-save if already granted
   useEffect(() => {
-    if (!isAuthenticated || !userId) return;
-
-    const checkExisting = setTimeout(() => {
+    if (!isAuthenticated || !currentUserId) return;
+    const t = setTimeout(() => {
       if (OneSignal.Notifications?.permission) {
         setPermissionGranted(true);
         saveSubscriptionId();
       }
-    }, 2000);
-
-    return () => clearTimeout(checkExisting);
-  }, [isAuthenticated, userId, saveSubscriptionId]);
+    }, 2500);
+    return () => clearTimeout(t);
+  }, [isAuthenticated, currentUserId, saveSubscriptionId]);
 
   return { requestPermission, permissionGranted };
 }
