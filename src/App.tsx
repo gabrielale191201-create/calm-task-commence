@@ -9,7 +9,7 @@ import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { LoadingScreen } from "@/components/LoadingScreen";
 import { usePWAInstalled } from "@/hooks/usePWAInstalled";
 import { LandingDownload } from "@/components/LandingDownload";
-import OneSignal from "react-onesignal";
+
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import Onboarding from "./pages/Onboarding";
