@@ -8,7 +8,7 @@ const ONESIGNAL_APP_ID = 'e41d2628-7541-489a-be75-f969db33aa91';
 let initialized = false;
 
 export function useOneSignal() {
-  const { userId, isAuthenticated } = useAuthState();
+  const { isAuthenticated, currentUserId: userId } = useAuthState();
   const [permissionGranted, setPermissionGranted] = useState(false);
   const savedRef = useRef(false);
 
