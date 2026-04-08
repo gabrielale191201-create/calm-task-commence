@@ -409,9 +409,28 @@ export default function Index() {
       <ProductTagline />
       <OnboardingBanner />
 
+      {/* Notification CTA Banner */}
+      {!permissionGranted && !isGuest && (
+        <div className="fixed top-[60px] left-0 right-0 z-20 px-4 py-2">
+          <div className="relative flex items-center gap-3 rounded-2xl border border-primary/30 bg-primary/10 backdrop-blur-lg px-4 py-3 shadow-lg">
+            <Bell size={22} className="text-primary shrink-0 animate-pulse" />
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-semibold text-foreground leading-tight">¡Activa las notificaciones!</p>
+              <p className="text-xs text-muted-foreground mt-0.5">Recibe recordatorios de tus tareas y sesiones de enfoque.</p>
+            </div>
+            <button
+              onClick={requestPermission}
+              className="shrink-0 rounded-xl bg-primary px-4 py-2 text-sm font-bold text-primary-foreground shadow-md hover:opacity-90 transition-opacity"
+            >
+              Activar Notificaciones
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Update Banner */}
       {!dismissedUpdate && (
-        <div className="fixed top-[60px] left-0 right-0 z-20 px-4 py-2">
+        <div className={`fixed ${!permissionGranted && !isGuest ? 'top-[120px]' : 'top-[60px]'} left-0 right-0 z-20 px-4 py-2`}>
           <div className="relative flex items-center gap-3 rounded-2xl border border-primary/30 bg-primary/10 backdrop-blur-lg px-4 py-3 shadow-lg">
             <Download size={22} className="text-primary shrink-0 animate-bounce" />
             <div className="flex-1 min-w-0">
