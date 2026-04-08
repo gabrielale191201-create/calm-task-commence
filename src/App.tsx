@@ -45,6 +45,12 @@ function OnboardingGuard({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
+function OneSignalInit() {
+  const { useOneSignal } = require('@/hooks/useOneSignal');
+  useOneSignal();
+  return null;
+}
+
 function AppRoutes() {
   const isInstalled = usePWAInstalled();
 
