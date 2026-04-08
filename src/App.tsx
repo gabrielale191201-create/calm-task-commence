@@ -50,10 +50,10 @@ function OnboardingGuard({ children }: { children: React.ReactNode }) {
 function AppRoutes() {
   const isInstalled = usePWAInstalled();
 
-  // Browser users see download landing; installed app users get the full app
-  if (!isInstalled) {
-    return <LandingDownload />;
-  }
+  // TEMP: disabled standalone gate for debugging OneSignal
+  // if (!isInstalled) {
+  //   return <LandingDownload />;
+  // }
 
   return (
     <Routes>
