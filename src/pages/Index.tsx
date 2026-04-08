@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import { HelpCircle, LogOut, UserPlus, Bell, BellOff } from 'lucide-react';
+import { HelpCircle, LogOut, UserPlus, Bell, BellOff, Download, X } from 'lucide-react';
 import { useOneSignal } from '@/hooks/useOneSignal';
 import { BottomNav } from '@/components/BottomNav';
 import { TimerIndicator } from '@/components/TimerIndicator';
@@ -40,6 +40,10 @@ export default function Index() {
   const [activeTab, setActiveTab] = useLocalStorage<TabType>('focuson-tab', 'hoy');
   const [showHowTo, setShowHowTo] = useState(false);
   const [isWritingMode, setIsWritingMode] = useState(false);
+  const [dismissedUpdate, setDismissedUpdate] = useState(() => {
+    try { return localStorage.getItem('focuson-dismiss-update-v1.2') === 'true'; } catch { return false; }
+  });
+  const handleDismissUpdate = () => { setDismissedUpdate(true); try { localStorage.setItem('focuson-dismiss-update-v1.2', 'true'); } catch {} };
   const { profile } = useProfile();
 
   // Session tracker for time-in-app telemetry
@@ -404,6 +408,31 @@ export default function Index() {
 
       <ProductTagline />
       <OnboardingBanner />
+
+      {/* Update Banner */}
+      {!dismissedUpdate && (
+        <div className="fixed top-[60px] left-0 right-0 z-20 px-4 py-2">
+          <div className="relative flex items-center gap-3 rounded-2xl border border-primary/30 bg-primary/10 backdrop-blur-lg px-4 py-3 shadow-lg">
+            <Download size={22} className="text-primary shrink-0 animate-bounce" />
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-semibold text-foreground leading-tight">¡Nueva actualización crítica disponible!</p>
+              <p className="text-xs text-muted-foreground mt-0.5">Para activar recordatorios y Focus Time, descarga la v1.2.</p>
+            </div>
+            <a
+              href="https://cmszoptzpkgnroeirilm.supabase.co/storage/v1/object/public/app-releases/Focus%20On.apk"
+              download
+              target="_blank"
+              rel="noopener noreferrer"
+              className="shrink-0 rounded-xl bg-primary px-3 py-1.5 text-xs font-bold text-primary-foreground shadow-md hover:opacity-90 transition-opacity"
+            >
+              Descargar
+            </a>
+            <button onClick={handleDismissUpdate} className="shrink-0 p-1 rounded-full hover:bg-muted/50 transition-colors">
+              <X size={16} className="text-muted-foreground" />
+            </button>
+          </div>
+        </div>
+      )}
 
       <main className="pt-20">{renderPage()}</main>
 
