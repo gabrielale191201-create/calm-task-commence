@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { HelpCircle, LogOut, UserPlus, Download, X } from 'lucide-react';
+import { useOneSignal } from '@/hooks/useOneSignal';
 import { BottomNav } from '@/components/BottomNav';
 import { TimerIndicator } from '@/components/TimerIndicator';
 import { HomePage } from '@/components/pages/HomePage';
@@ -32,6 +33,7 @@ import { useNavigate } from 'react-router-dom';
 
 export default function Index() {
   const { signOut } = useAuthState();
+  useOneSignal(); // saves onesignal_id to profile after permission granted via native widget
   const { isGuest, exitGuestMode } = useGuestMode();
   const { triggerWebhook } = useTelegramWebhook();
   const navigate = useNavigate();
