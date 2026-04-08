@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import { HelpCircle, LogOut, UserPlus, Bell, BellOff, Download, X } from 'lucide-react';
+import { HelpCircle, LogOut, UserPlus, Bell, Download, X } from 'lucide-react';
 import { useOneSignal } from '@/hooks/useOneSignal';
 import { BottomNav } from '@/components/BottomNav';
 import { TimerIndicator } from '@/components/TimerIndicator';
