@@ -1,6 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import { HelpCircle, LogOut, UserPlus, Bell, Download, X } from 'lucide-react';
-import { useOneSignal } from '@/hooks/useOneSignal';
+import { HelpCircle, LogOut, UserPlus, Download, X } from 'lucide-react';
 import { BottomNav } from '@/components/BottomNav';
 import { TimerIndicator } from '@/components/TimerIndicator';
 import { HomePage } from '@/components/pages/HomePage';
@@ -33,7 +32,6 @@ import { useNavigate } from 'react-router-dom';
 
 export default function Index() {
   const { signOut } = useAuthState();
-  const { requestPermission, permissionGranted } = useOneSignal();
   const { isGuest, exitGuestMode } = useGuestMode();
   const { triggerWebhook } = useTelegramWebhook();
   const navigate = useNavigate();
@@ -381,10 +379,8 @@ export default function Index() {
             <h1 className="text-lg font-display font-semibold text-primary">Focus On</h1>
           </div>
           <div className="flex items-center gap-1">
-            {!permissionGranted && !isGuest && (
-              <button onClick={requestPermission} className="p-2 rounded-xl hover:bg-muted transition-colors" title="Activar notificaciones">
-                <Bell size={20} className="text-primary animate-pulse" />
-              </button>
+            {false && (
+              <span></span>
             )}
             <button onClick={() => setShowHowTo(true)} className="p-2 rounded-xl hover:bg-muted transition-colors" title="¿Cómo funciona Focus On?">
               <HelpCircle size={22} className="text-muted-foreground" />
@@ -409,28 +405,10 @@ export default function Index() {
       <ProductTagline />
       <OnboardingBanner />
 
-      {/* Notification CTA Banner */}
-      {!permissionGranted && !isGuest && (
-        <div className="fixed top-[60px] left-0 right-0 z-20 px-4 py-2">
-          <div className="relative flex items-center gap-3 rounded-2xl border border-primary/30 bg-primary/10 backdrop-blur-lg px-4 py-3 shadow-lg">
-            <Bell size={22} className="text-primary shrink-0 animate-pulse" />
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-semibold text-foreground leading-tight">¡Activa las notificaciones!</p>
-              <p className="text-xs text-muted-foreground mt-0.5">Recibe recordatorios de tus tareas y sesiones de enfoque.</p>
-            </div>
-            <button
-              onClick={requestPermission}
-              className="shrink-0 rounded-xl bg-primary px-4 py-2 text-sm font-bold text-primary-foreground shadow-md hover:opacity-90 transition-opacity"
-            >
-              Activar Notificaciones
-            </button>
-          </div>
-        </div>
-      )}
 
       {/* Update Banner */}
       {!dismissedUpdate && (
-        <div className={`fixed ${!permissionGranted && !isGuest ? 'top-[120px]' : 'top-[60px]'} left-0 right-0 z-20 px-4 py-2`}>
+        <div className="fixed top-[60px] left-0 right-0 z-20 px-4 py-2">
           <div className="relative flex items-center gap-3 rounded-2xl border border-primary/30 bg-primary/10 backdrop-blur-lg px-4 py-3 shadow-lg">
             <Download size={22} className="text-primary shrink-0 animate-bounce" />
             <div className="flex-1 min-w-0">
