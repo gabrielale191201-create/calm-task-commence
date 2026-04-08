@@ -33,6 +33,7 @@ import { useNavigate } from 'react-router-dom';
 
 export default function Index() {
   const { signOut } = useAuthState();
+  const { requestPermission, permissionGranted } = useOneSignal();
   const { isGuest, exitGuestMode } = useGuestMode();
   const { triggerWebhook } = useTelegramWebhook();
   const navigate = useNavigate();
