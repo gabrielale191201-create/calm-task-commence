@@ -427,7 +427,7 @@ export default function Index() {
             >
               Descargar
             </a>
-            <button onClick={() => setDismissedUpdate(true)} className="shrink-0 p-1 rounded-full hover:bg-muted/50 transition-colors">
+            <button onClick={handleDismissUpdate} className="shrink-0 p-1 rounded-full hover:bg-muted/50 transition-colors">
               <X size={16} className="text-muted-foreground" />
             </button>
           </div>
