@@ -377,6 +377,11 @@ export default function Index() {
             <h1 className="text-lg font-display font-semibold text-primary">Focus On</h1>
           </div>
           <div className="flex items-center gap-1">
+            {!permissionGranted && !isGuest && (
+              <button onClick={requestPermission} className="p-2 rounded-xl hover:bg-muted transition-colors" title="Activar notificaciones">
+                <Bell size={20} className="text-primary animate-pulse" />
+              </button>
+            )}
             <button onClick={() => setShowHowTo(true)} className="p-2 rounded-xl hover:bg-muted transition-colors" title="¿Cómo funciona Focus On?">
               <HelpCircle size={22} className="text-muted-foreground" />
             </button>
