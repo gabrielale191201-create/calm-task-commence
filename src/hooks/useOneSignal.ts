@@ -19,6 +19,8 @@ export function useOneSignal() {
     OneSignal.init({
       appId: '52a6f5c7-05ef-4284-b0fd-93cad0533ebf',
       allowLocalhostAsSecureOrigin: true,
+      serviceWorkerParam: { scope: '/' },
+      serviceWorkerPath: 'OneSignalSDKWorker.js',
     })
       .then(() => {
         console.log('[OneSignal] SDK initialised');

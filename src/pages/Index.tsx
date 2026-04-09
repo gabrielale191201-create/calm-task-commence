@@ -382,33 +382,39 @@ export default function Index() {
             <h1 className="text-lg font-display font-semibold text-primary">Focus On</h1>
           </div>
           <div className="flex items-center gap-1">
-            <button
-              onClick={async () => {
-                alert("1. Botón presionado. Solicitando...");
-                try {
-                  if (!('Notification' in window)) {
-                    alert("Error: Este navegador no soporta notificaciones.");
-                    return;
-                  }
-                  const permission = await Notification.requestPermission();
-                  alert("2. Respuesta del sistema: " + permission);
-
-                  if (permission === 'granted') {
-                    if ((window as any).OneSignal) {
-                      await (window as any).OneSignal.Slidedown.promptPush();
-                    } else {
-                      alert("Error: OneSignal no está cargado en ventana.");
+            {(() => {
+              const isSubscribed = localStorage.getItem('onesignal_subscribed') === 'true';
+              return (
+                <button
+                  onClick={async () => {
+                    if (isSubscribed) return;
+                    try {
+                      if (!('Notification' in window)) {
+                        toast.error('Este navegador no soporta notificaciones.');
+                        return;
+                      }
+                      const permission = await Notification.requestPermission();
+                      if (permission === 'granted') {
+                        try {
+                          await OneSignal.Slidedown.promptPush();
+                        } catch {}
+                        localStorage.setItem('onesignal_subscribed', 'true');
+                        toast.success('¡Notificaciones activadas!');
+                        window.location.reload();
+                      } else if (permission === 'denied') {
+                        toast.error('Notificaciones bloqueadas. Actívalas en los ajustes del navegador.');
+                      }
+                    } catch (err: any) {
+                      toast.error('Error: ' + err.message);
                     }
-                  }
-                } catch (error: any) {
-                  alert("Error fatal: " + error.message);
-                }
-              }}
-              className="p-2 rounded-xl hover:bg-muted transition-colors"
-              title="Activar Notificaciones"
-            >
-              <Bell size={22} className="text-primary" />
-            </button>
+                  }}
+                  className={`p-2 rounded-xl transition-colors ${isSubscribed ? 'bg-primary/15' : 'hover:bg-muted'}`}
+                  title={isSubscribed ? 'Notificaciones activas' : 'Activar Notificaciones'}
+                >
+                  <Bell size={22} className={isSubscribed ? 'text-primary fill-primary' : 'text-primary'} />
+                </button>
+              );
+            })()}
             <button onClick={() => setShowHowTo(true)} className="p-2 rounded-xl hover:bg-muted transition-colors" title="¿Cómo funciona Focus On?">
               <HelpCircle size={22} className="text-muted-foreground" />
             </button>
