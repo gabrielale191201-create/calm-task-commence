@@ -20,11 +20,19 @@ interface FloatingNote {
 }
 
 function generateId() {
-  return Math.random().toString(36).substr(2, 9);
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return crypto.randomUUID();
+  }
+
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (char) => {
+    const random = Math.floor(Math.random() * 16);
+    const value = char === 'x' ? random : (random & 0x3) | 0x8;
+    return value.toString(16);
+  });
 }
 
 export function useSupabaseData() {
-  const { isAuthenticated } = useAuthState();
+  const { isAuthenticated, currentUserId, isLoading: authLoading } = useAuthState();
   const { isGuest } = useGuestMode();
   const useDB = isAuthenticated && !isGuest;
   const userIdRef = useRef<string | null>(null);
@@ -77,40 +85,43 @@ export function useSupabaseData() {
   useEffect(() => {
     let isActive = true;
 
+    if (authLoading) {
+      setLoading(true);
+      return () => { isActive = false; };
+    }
+
     if (!useDB) {
       userIdRef.current = null;
       taskCacheKeyRef.current = null;
+      setDbTasks([]);
       setLoading(false);
+      return () => { isActive = false; };
+    }
+
+    if (!currentUserId) {
+      setLoading(true);
       return () => { isActive = false; };
     }
 
     setLoading(true);
 
-    (async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!isActive) return;
+    const cacheKey = getTaskCacheKey(currentUserId);
+    const taskCache = readTaskCache(cacheKey);
 
-      userIdRef.current = user?.id || null;
+    userIdRef.current = currentUserId;
+    taskCacheKeyRef.current = cacheKey;
+    setDbTasks(taskCache.tasks);
 
-      if (!user) {
-        setDbTasks([]);
-        setLoading(false);
-        return;
-      }
-
-      const cacheKey = getTaskCacheKey(user.id);
-      const taskCache = readTaskCache(cacheKey);
-
-      taskCacheKeyRef.current = cacheKey;
-      setDbTasks(taskCache.tasks);
-
-      await loadAllData(user.id, taskCache);
-
-      if (isActive) setLoading(false);
-    })();
+    loadAllData(currentUserId, taskCache)
+      .catch((error) => {
+        console.error('Error loading app data:', error);
+      })
+      .finally(() => {
+        if (isActive) setLoading(false);
+      });
 
     return () => { isActive = false; };
-  }, [useDB]);
+  }, [authLoading, currentUserId, useDB]);
 
   const loadAllData = async (userId: string, taskCache = readTaskCache(getTaskCacheKey(userId))) => {
     const [tasksRes, qnRes, journalRes, sessionsRes, floatingRes, dumpsRes] = await Promise.all([
