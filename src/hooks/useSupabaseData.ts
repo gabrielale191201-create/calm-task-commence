@@ -7,6 +7,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuthState } from '@/hooks/useAuthState';
 import { useGuestMode } from '@/hooks/useGuestMode';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
+import { getLatestTaskTimestamp, getTaskCacheKey, mergeTaskSources, readTaskCache, toTaskInsert, writeTaskCache } from '@/lib/taskCache';
 import { trackUserEvent } from '@/lib/trackEvent';
 import { Task, QuickNote, JournalEntry, FocusSession } from '@/types/focuson';
 import { UnlockSession } from '@/types/unlockSession';
@@ -27,6 +28,7 @@ export function useSupabaseData() {
   const { isGuest } = useGuestMode();
   const useDB = isAuthenticated && !isGuest;
   const userIdRef = useRef<string | null>(null);
+  const taskCacheKeyRef = useRef<string | null>(null);
 
   // --- localStorage fallbacks for guests ---
   const [guestTasks, setGuestTasks] = useLocalStorage<Task[]>('focuson-tasks', []);
@@ -45,18 +47,72 @@ export function useSupabaseData() {
   const [dbUnlock, setDbUnlock] = useState<UnlockSession[]>([]);
   const [loading, setLoading] = useState(true);
 
+  const setDbTasksAndCache = useCallback((value: Task[] | ((prev: Task[]) => Task[])) => {
+    setDbTasks(prev => {
+      const nextTasks = value instanceof Function ? value(prev) : value;
+      const cacheKey = taskCacheKeyRef.current;
+      if (cacheKey) writeTaskCache(cacheKey, nextTasks);
+      return nextTasks;
+    });
+  }, []);
+
+  const syncTaskCacheToDatabase = useCallback(async (userId: string, cachedTasks: Task[], remoteTasks: Task[]) => {
+    const cachedRows = cachedTasks.map(task => toTaskInsert(task, userId));
+
+    if (cachedRows.length > 0) {
+      const { error } = await supabase.from('tasks').upsert(cachedRows, { onConflict: 'id' });
+      if (error) console.error('Error syncing task cache to database:', error.message);
+    }
+
+    const cachedIds = new Set(cachedTasks.map(task => task.id));
+    const staleRemoteIds = remoteTasks.filter(task => !cachedIds.has(task.id)).map(task => task.id);
+
+    if (staleRemoteIds.length > 0) {
+      const { error } = await supabase.from('tasks').delete().eq('user_id', userId).in('id', staleRemoteIds);
+      if (error) console.error('Error removing stale remote tasks:', error.message);
+    }
+  }, []);
+
   // Get user id
   useEffect(() => {
-    if (!useDB) { setLoading(false); return; }
+    let isActive = true;
+
+    if (!useDB) {
+      userIdRef.current = null;
+      taskCacheKeyRef.current = null;
+      setLoading(false);
+      return () => { isActive = false; };
+    }
+
+    setLoading(true);
+
     (async () => {
       const { data: { user } } = await supabase.auth.getUser();
+      if (!isActive) return;
+
       userIdRef.current = user?.id || null;
-      if (user) await loadAllData(user.id);
-      setLoading(false);
+
+      if (!user) {
+        setDbTasks([]);
+        setLoading(false);
+        return;
+      }
+
+      const cacheKey = getTaskCacheKey(user.id);
+      const taskCache = readTaskCache(cacheKey);
+
+      taskCacheKeyRef.current = cacheKey;
+      setDbTasks(taskCache.tasks);
+
+      await loadAllData(user.id, taskCache);
+
+      if (isActive) setLoading(false);
     })();
+
+    return () => { isActive = false; };
   }, [useDB]);
 
-  const loadAllData = async (userId: string) => {
+  const loadAllData = async (userId: string, taskCache = readTaskCache(getTaskCacheKey(userId))) => {
     const [tasksRes, qnRes, journalRes, sessionsRes, floatingRes, dumpsRes] = await Promise.all([
       supabase.from('tasks').select('*').eq('user_id', userId).order('created_at', { ascending: false }),
       supabase.from('quick_notes').select('*').eq('user_id', userId).order('created_at', { ascending: true }),
@@ -66,7 +122,18 @@ export function useSupabaseData() {
       supabase.from('mental_dumps').select('*').eq('user_id', userId).order('created_at', { ascending: false }),
     ]);
 
-    if (tasksRes.data) setDbTasks(tasksRes.data.map(mapDbTask));
+    if (tasksRes.data) {
+      const remoteTasks = tasksRes.data.map(mapDbTask);
+      const latestRemoteTimestamp = getLatestTaskTimestamp(tasksRes.data);
+      const cacheIsAuthoritative = taskCache.exists && (!!taskCache.updatedAt ? (!latestRemoteTimestamp || taskCache.updatedAt >= latestRemoteTimestamp) : remoteTasks.length === 0);
+      const mergedTasks = mergeTaskSources(taskCache.tasks, remoteTasks, cacheIsAuthoritative);
+
+      setDbTasksAndCache(mergedTasks);
+
+      if (cacheIsAuthoritative) {
+        syncTaskCacheToDatabase(userId, mergedTasks, remoteTasks).then();
+      }
+    }
     if (qnRes.data) setDbQuickNotes(qnRes.data.map((r: any) => ({ id: r.id, text: r.text, date: r.date, done: r.done, createdAt: r.created_at })));
     if (journalRes.data) setDbJournal(journalRes.data.map((r: any) => ({ id: r.id, date: r.date, content: r.content, createdAt: r.created_at })));
     if (sessionsRes.data) setDbSessions(sessionsRes.data.map((r: any) => ({
@@ -118,7 +185,7 @@ export function useSupabaseData() {
     };
 
     if (useDB) {
-      setDbTasks(prev => [newTask, ...prev]);
+      setDbTasksAndCache(prev => [newTask, ...prev]);
       const uid = userIdRef.current;
       if (uid) {
         supabase.from('tasks').insert({
@@ -141,7 +208,7 @@ export function useSupabaseData() {
     });
 
     if (useDB) {
-      setDbTasks(updater);
+      setDbTasksAndCache(updater);
       supabase.from('tasks').update({
         status: newStatus, completed_at: newStatus === 'completed' ? now : null,
       } as any).eq('id', id).then();
@@ -153,7 +220,7 @@ export function useSupabaseData() {
 
   const deleteTask = useCallback((id: string) => {
     if (useDB) {
-      setDbTasks(prev => prev.filter(t => t.id !== id));
+      setDbTasksAndCache(prev => prev.filter(t => t.id !== id));
       supabase.from('tasks').delete().eq('id', id).then();
     } else {
       setGuestTasks(prev => prev.filter(t => t.id !== id));
@@ -164,7 +231,7 @@ export function useSupabaseData() {
   const updateTask = useCallback((id: string, updates: Partial<Pick<Task, 'scheduledDate' | 'scheduledTime' | 'durationMinutes'>>) => {
     const updater = (prev: Task[]) => prev.map(t => t.id !== id ? t : { ...t, ...updates });
     if (useDB) {
-      setDbTasks(updater);
+      setDbTasksAndCache(updater);
       supabase.from('tasks').update({
         scheduled_date: updates.scheduledDate ?? undefined,
         scheduled_time: updates.scheduledTime ?? undefined,
@@ -178,7 +245,7 @@ export function useSupabaseData() {
   const updateTaskFull = useCallback((id: string, updates: Partial<Task>) => {
     const updater = (prev: Task[]) => prev.map(t => t.id !== id ? t : { ...t, ...updates });
     if (useDB) {
-      setDbTasks(updater);
+      setDbTasksAndCache(updater);
       const dbUpdates: any = {};
       if (updates.isTopThree !== undefined) dbUpdates.is_top_three = updates.isTopThree;
       if (updates.isExceptionToday !== undefined) dbUpdates.is_exception_today = updates.isExceptionToday;
@@ -205,7 +272,7 @@ export function useSupabaseData() {
     });
 
     if (useDB) {
-      setDbTasks(prev => [...newTasks, ...prev]);
+      setDbTasksAndCache(prev => [...newTasks, ...prev]);
       const uid = userIdRef.current;
       if (uid) {
         supabase.from('tasks').insert(newTasks.map(t => ({
@@ -401,6 +468,6 @@ export function useSupabaseData() {
     // Unlock sessions
     saveUnlockSession, updateUnlockSession,
     // Raw setters for legacy compatibility
-    setTasks: useDB ? setDbTasks : setGuestTasks,
+    setTasks: useDB ? setDbTasksAndCache : setGuestTasks,
   };
 }
