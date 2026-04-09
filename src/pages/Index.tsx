@@ -383,16 +383,26 @@ export default function Index() {
           </div>
           <div className="flex items-center gap-1">
             <button
-              onClick={() => {
-                Notification.requestPermission().then((permission) => {
-                  if (permission === 'granted') {
-                    OneSignal.Slidedown.promptPush();
-                  } else if (permission === 'denied') {
-                    alert('Chrome bloqueó las notificaciones para esta web. Toca el ícono de ajustes en la barra de arriba a la izquierda y permítelas manualmente.');
-                  } else {
-                    OneSignal.Slidedown.promptPush();
+              onClick={async () => {
+                alert("1. Botón presionado. Solicitando...");
+                try {
+                  if (!('Notification' in window)) {
+                    alert("Error: Este navegador no soporta notificaciones.");
+                    return;
                   }
-                });
+                  const permission = await Notification.requestPermission();
+                  alert("2. Respuesta del sistema: " + permission);
+
+                  if (permission === 'granted') {
+                    if ((window as any).OneSignal) {
+                      await (window as any).OneSignal.Slidedown.promptPush();
+                    } else {
+                      alert("Error: OneSignal no está cargado en ventana.");
+                    }
+                  }
+                } catch (error: any) {
+                  alert("Error fatal: " + error.message);
+                }
               }}
               className="p-2 rounded-xl hover:bg-muted transition-colors"
               title="Activar Notificaciones"
