@@ -123,7 +123,7 @@ export function useSupabaseData() {
     return () => { isActive = false; };
   }, [authLoading, currentUserId, useDB]);
 
-  const loadAllData = async (userId: string, taskCache = readTaskCache(getTaskCacheKey(userId))) => {
+  const loadAllData = async (userId: string, initialTaskCache = readTaskCache(getTaskCacheKey(userId))) => {
     const [tasksRes, qnRes, journalRes, sessionsRes, floatingRes, dumpsRes] = await Promise.all([
       supabase.from('tasks').select('*').eq('user_id', userId).order('created_at', { ascending: false }),
       supabase.from('quick_notes').select('*').eq('user_id', userId).order('created_at', { ascending: true }),
@@ -136,6 +136,8 @@ export function useSupabaseData() {
     if (tasksRes.data) {
       const remoteTasks = tasksRes.data.map(mapDbTask);
       const latestRemoteTimestamp = getLatestTaskTimestamp(tasksRes.data);
+      const liveTaskCache = readTaskCache(taskCacheKeyRef.current ?? getTaskCacheKey(userId));
+      const taskCache = liveTaskCache.exists ? liveTaskCache : initialTaskCache;
       const cacheIsAuthoritative = taskCache.exists && (!!taskCache.updatedAt ? (!latestRemoteTimestamp || taskCache.updatedAt >= latestRemoteTimestamp) : remoteTasks.length === 0);
       const mergedTasks = mergeTaskSources(taskCache.tasks, remoteTasks, cacheIsAuthoritative);
 
