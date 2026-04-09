@@ -384,7 +384,15 @@ export default function Index() {
           <div className="flex items-center gap-1">
             <button
               onClick={() => {
-                OneSignal.Slidedown.promptPush();
+                Notification.requestPermission().then((permission) => {
+                  if (permission === 'granted') {
+                    OneSignal.Slidedown.promptPush();
+                  } else if (permission === 'denied') {
+                    alert('Chrome bloqueó las notificaciones para esta web. Toca el ícono de ajustes en la barra de arriba a la izquierda y permítelas manualmente.');
+                  } else {
+                    OneSignal.Slidedown.promptPush();
+                  }
+                });
               }}
               className="p-2 rounded-xl hover:bg-muted transition-colors"
               title="Activar Notificaciones"
