@@ -382,6 +382,15 @@ export default function Index() {
             <h1 className="text-lg font-display font-semibold text-primary">Focus On</h1>
           </div>
           <div className="flex items-center gap-1">
+            <button
+              onClick={() => {
+                OneSignal.Slidedown.promptPush();
+              }}
+              className="p-2 rounded-xl hover:bg-muted transition-colors"
+              title="Activar Notificaciones"
+            >
+              <Bell size={22} className="text-primary" />
+            </button>
             <button onClick={() => setShowHowTo(true)} className="p-2 rounded-xl hover:bg-muted transition-colors" title="¿Cómo funciona Focus On?">
               <HelpCircle size={22} className="text-muted-foreground" />
             </button>
