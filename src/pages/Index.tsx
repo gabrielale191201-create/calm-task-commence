@@ -449,7 +449,7 @@ export default function Index() {
               <p className="text-xs text-muted-foreground mt-0.5">Para activar recordatorios y Focus Time, descarga la v1.2.</p>
             </div>
             <a
-              href="https://cmszoptzpkgnroeirilm.supabase.co/storage/v1/object/public/app-releases/Focus%20On.apk"
+              href="https://github.com/gabrielale191201-create/calm-task-commence/releases/download/v1.2.0/Focus_On_2.apk"
               download
               target="_blank"
               rel="noopener noreferrer"
