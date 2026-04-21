@@ -1,7 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { HelpCircle, LogOut, UserPlus, Download, X, Bell } from 'lucide-react';
-import OneSignal from 'react-onesignal';
-import { useOneSignal } from '@/hooks/useOneSignal';
 import { BottomNav } from '@/components/BottomNav';
 import { TimerIndicator } from '@/components/TimerIndicator';
 import { HomePage } from '@/components/pages/HomePage';
@@ -34,7 +32,6 @@ import { useNavigate } from 'react-router-dom';
 
 export default function Index() {
   const { signOut } = useAuthState();
-  useOneSignal(); // saves onesignal_id to profile after permission granted via native widget
   const { isGuest, exitGuestMode } = useGuestMode();
   const { triggerWebhook } = useTelegramWebhook();
   const navigate = useNavigate();
@@ -383,7 +380,7 @@ export default function Index() {
           </div>
           <div className="flex items-center gap-1">
             {(() => {
-              const isSubscribed = localStorage.getItem('onesignal_subscribed') === 'true';
+              const isSubscribed = localStorage.getItem('notifications_enabled') === 'true';
               return (
                 <button
                   onClick={async () => {
@@ -395,17 +392,15 @@ export default function Index() {
                       }
                       const permission = await Notification.requestPermission();
                       if (permission === 'granted') {
-                        try {
-                          await OneSignal.Slidedown.promptPush();
-                        } catch {}
-                        localStorage.setItem('onesignal_subscribed', 'true');
-                        toast.success('¡Notificaciones activadas!');
-                        window.location.reload();
+                        localStorage.setItem('notifications_enabled', 'true');
+                        toast.success('Notificaciones activadas');
                       } else if (permission === 'denied') {
                         toast.error('Notificaciones bloqueadas. Actívalas en los ajustes del navegador.');
+                      } else {
+                        toast.error('No se activaron las notificaciones.');
                       }
                     } catch (err: any) {
-                      toast.error('Error: ' + err.message);
+                      toast.error('Error: ' + (err?.message ?? 'desconocido'));
                     }
                   }}
                   className={`p-2 rounded-xl transition-colors ${isSubscribed ? 'bg-primary/15' : 'hover:bg-muted'}`}
