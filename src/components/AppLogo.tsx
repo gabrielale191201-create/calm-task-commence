@@ -3,9 +3,10 @@ import React from 'react';
 interface AppLogoProps {
   size?: number;
   variant?: 'default' | 'white';
+  className?: string;
 }
 
-export const AppLogo: React.FC<AppLogoProps> = ({ size = 32, variant = 'default' }) => {
+export const AppLogo: React.FC<AppLogoProps> = ({ size = 32, variant = 'default', className }) => {
   const bgColor = variant === 'white' ? '#ffffff' : '#4aba82';
   const fgColor = variant === 'white' ? '#4aba82' : '#ffffff';
 
@@ -17,6 +18,7 @@ export const AppLogo: React.FC<AppLogoProps> = ({ size = 32, variant = 'default'
       xmlns="http://www.w3.org/2000/svg"
       role="img"
       aria-label="Focus On"
+      className={className}
     >
       <rect x="0" y="0" width="100" height="100" rx="22" fill={bgColor} />
       <g transform="translate(50, 52)">
