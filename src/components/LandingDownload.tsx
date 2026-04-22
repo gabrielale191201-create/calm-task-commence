@@ -20,7 +20,7 @@ export function LandingDownload() {
             FocusON
           </h1>
           <p className="text-lg sm:text-xl text-[hsl(240,5%,65%)] font-medium">
-            Tu compañero para días difíciles
+            La IA organiza, tú ejecutas.
           </p>
         </div>
 
