@@ -173,30 +173,36 @@ export type Database = {
           created_at: string
           display_name: string | null
           email: string | null
+          goal: string | null
           id: string
           obstacle: string | null
           updated_at: string
           user_id: string
+          user_type: string | null
         }
         Insert: {
           area?: string | null
           created_at?: string
           display_name?: string | null
           email?: string | null
+          goal?: string | null
           id?: string
           obstacle?: string | null
           updated_at?: string
           user_id: string
+          user_type?: string | null
         }
         Update: {
           area?: string | null
           created_at?: string
           display_name?: string | null
           email?: string | null
+          goal?: string | null
           id?: string
           obstacle?: string | null
           updated_at?: string
           user_id?: string
+          user_type?: string | null
         }
         Relationships: []
       }
