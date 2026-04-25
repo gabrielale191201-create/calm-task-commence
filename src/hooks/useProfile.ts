@@ -7,6 +7,8 @@ export interface Profile {
   name: string;
   area?: string;
   obstacle?: string;
+  userType?: string;
+  goal?: string;
 }
 
 export function useProfile() {
@@ -23,10 +25,14 @@ export function useProfile() {
         const name = stored ? JSON.parse(stored) : '';
         const area = localStorage.getItem('focuson-user-area');
         const obstacle = localStorage.getItem('focuson-user-obstacle');
+        const userType = localStorage.getItem('focuson-user-type');
+        const goal = localStorage.getItem('focuson-goal');
         setProfile({
           name: typeof name === 'string' ? name : '',
           area: area ? JSON.parse(area) : undefined,
           obstacle: obstacle ? JSON.parse(obstacle) : undefined,
+          userType: userType ? JSON.parse(userType) : undefined,
+          goal: goal ? JSON.parse(goal) : undefined,
         });
       } catch {}
       setLoading(false);
@@ -45,7 +51,7 @@ export function useProfile() {
 
         const { data } = await supabase
           .from('profiles')
-          .select('display_name, area, obstacle')
+          .select('display_name, area, obstacle, user_type, goal')
           .eq('user_id', user.id)
           .maybeSingle();
 
@@ -54,6 +60,8 @@ export function useProfile() {
             name: (data as any).display_name || '',
             area: (data as any).area || undefined,
             obstacle: (data as any).obstacle || undefined,
+            userType: (data as any).user_type || undefined,
+            goal: (data as any).goal || undefined,
           });
         }
       } catch {}
@@ -70,6 +78,8 @@ export function useProfile() {
       if (updates.name !== undefined) localStorage.setItem('focuson-user-name', JSON.stringify(updates.name));
       if (updates.area !== undefined) localStorage.setItem('focuson-user-area', JSON.stringify(updates.area));
       if (updates.obstacle !== undefined) localStorage.setItem('focuson-user-obstacle', JSON.stringify(updates.obstacle));
+      if (updates.userType !== undefined) localStorage.setItem('focuson-user-type', JSON.stringify(updates.userType));
+      if (updates.goal !== undefined) localStorage.setItem('focuson-goal', JSON.stringify(updates.goal));
       return;
     }
 
@@ -81,6 +91,8 @@ export function useProfile() {
         display_name: newProfile.name || null,
         area: newProfile.area || null,
         obstacle: newProfile.obstacle || null,
+        user_type: newProfile.userType || null,
+        goal: newProfile.goal || null,
       } as any).eq('user_id', user.id);
     } catch {}
   }, [profile, isGuest]);
