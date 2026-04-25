@@ -1,0 +1,3 @@
+ALTER TABLE public.profiles
+ADD COLUMN IF NOT EXISTS user_type TEXT,
+ADD COLUMN IF NOT EXISTS goal TEXT;
