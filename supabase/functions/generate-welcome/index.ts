@@ -1,0 +1,100 @@
+// Edge function: genera mensaje de bienvenida personalizado al final del onboarding.
+// Usa ANTHROPIC_API_KEY (secret). Modelo: claude-haiku-20240307.
+
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers":
+    "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
+};
+
+Deno.serve(async (req) => {
+  if (req.method === "OPTIONS") {
+    return new Response(null, { headers: corsHeaders });
+  }
+
+  try {
+    const body = await req.json().catch(() => ({}));
+    const name = (body?.name || "").toString().trim() || "campeón";
+    const area = (body?.area || "").toString().trim() || "no especificada";
+    const obstacle = (body?.obstacle || "").toString().trim() || "no especificado";
+    // Campos opcionales adicionales (si vienen del frontend extendido)
+    const userType = (body?.userType || "").toString().trim();
+    const goal = (body?.goal || "").toString().trim();
+
+    const ANTHROPIC_API_KEY = Deno.env.get("ANTHROPIC_API_KEY");
+    if (!ANTHROPIC_API_KEY) {
+      return new Response(
+        JSON.stringify({ error: "ANTHROPIC_API_KEY no configurada" }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
+
+    const systemPrompt =
+      "Eres un coach de productividad empático. Responde SIEMPRE en español. Sé breve: máximo 2 oraciones.";
+
+    const extra = [
+      userType ? `tipo de usuario: ${userType}` : "",
+      goal ? `meta principal: ${goal}` : "",
+    ].filter(Boolean).join(", ");
+
+    const userPrompt =
+      `El usuario se llama ${name}, su área de mayor ruido mental es ${area} y su obstáculo principal es ${obstacle}` +
+      (extra ? ` (${extra})` : "") +
+      `. Escribe un mensaje de bienvenida motivador y personalizado.`;
+
+    const ctrl = new AbortController();
+    const timeout = setTimeout(() => ctrl.abort(), 12000);
+
+    let resp: Response;
+    try {
+      resp = await fetch("https://api.anthropic.com/v1/messages", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-api-key": ANTHROPIC_API_KEY,
+          "anthropic-version": "2023-06-01",
+        },
+        body: JSON.stringify({
+          model: "claude-haiku-20240307",
+          max_tokens: 250,
+          system: systemPrompt,
+          messages: [{ role: "user", content: userPrompt }],
+        }),
+        signal: ctrl.signal,
+      });
+    } finally {
+      clearTimeout(timeout);
+    }
+
+    if (!resp.ok) {
+      const errTxt = await resp.text();
+      console.error("Anthropic error", resp.status, errTxt);
+      return new Response(
+        JSON.stringify({ error: `Anthropic error ${resp.status}` }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
+
+    const data = await resp.json();
+    const message = (data?.content?.[0]?.text || "").trim();
+
+    if (!message) {
+      return new Response(
+        JSON.stringify({ error: "Respuesta vacía de la IA" }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
+
+    return new Response(
+      JSON.stringify({ message }),
+      { headers: { ...corsHeaders, "Content-Type": "application/json" } },
+    );
+  } catch (e) {
+    console.error("generate-welcome error", e);
+    return new Response(
+      JSON.stringify({ error: (e as Error)?.message || "Error desconocido" }),
+      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+    );
+  }
+});

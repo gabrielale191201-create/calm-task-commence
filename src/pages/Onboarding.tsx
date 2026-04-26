@@ -89,8 +89,8 @@ export default function Onboarding() {
       setLoadingTextIndex((i) => (i + 1) % LOADING_TEXTS.length);
     }, 1100);
 
-    // Llamada a la edge function
-    const aiPromise = supabase.functions.invoke('onboarding-welcome', {
+    // Llamada a la edge function (Claude haiku)
+    const aiPromise = supabase.functions.invoke('generate-welcome', {
       body: {
         name: userName.trim(),
         userType: selectedUserType,
