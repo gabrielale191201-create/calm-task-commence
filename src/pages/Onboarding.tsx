@@ -3,158 +3,119 @@ import { useNavigate } from 'react-router-dom';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
 import { useProfile } from '@/hooks/useProfile';
 import { trackUserEvent } from '@/lib/trackEvent';
-import { supabase } from '@/integrations/supabase/client';
 import { AppLogo } from '@/components/AppLogo';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Progress } from '@/components/ui/progress';
-import { ArrowRight, ArrowLeft, Sparkles } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
+import { ArrowRight, ArrowLeft, Sparkles, CheckCircle } from 'lucide-react';
 
 const USER_TYPES = [
-  { id: 'profesional', label: 'Profesional / Trabajador', emoji: '💼', desc: 'Trabajo en empresa o institución' },
-  { id: 'emprendedor', label: 'Emprendedor / Freelance', emoji: '🚀', desc: 'Tengo mi propio negocio o proyecto' },
+  { id: 'profesional', label: 'Profesional', emoji: '💼', desc: 'Trabajo en empresa o institución' },
+  { id: 'emprendedor', label: 'Emprendedor', emoji: '🚀', desc: 'Tengo mi propio negocio o proyecto' },
   { id: 'estudiante', label: 'Estudiante', emoji: '📚', desc: 'Estudio y quiero rendir mejor' },
-  { id: 'personal', label: 'Crecimiento Personal', emoji: '🧘', desc: 'Quiero organizarme mejor en mi vida' },
+  { id: 'personal', label: 'Crecimiento Personal', emoji: '🧘', desc: 'Quiero organizarme mejor' },
 ];
 
 const AREAS = [
-  { id: 'emprendimiento', label: 'Emprendimiento', emoji: '🚀', desc: 'Mi negocio o proyecto propio' },
-  { id: 'estudios', label: 'Estudios', emoji: '📚', desc: 'Carrera, exámenes, aprendizaje' },
-  { id: 'trabajo', label: 'Trabajo Corporativo', emoji: '💼', desc: 'Reuniones, deadlines, equipo' },
-  { id: 'personal', label: 'Vida Personal', emoji: '🧘', desc: 'Familia, salud, hábitos' },
+  { id: 'emprendimiento', label: 'Emprendimiento', emoji: '🚀', desc: 'Proyectos y negocios propios' },
+  { id: 'estudios', label: 'Estudios', emoji: '📚', desc: 'Tareas, exámenes y aprendizaje' },
+  { id: 'trabajo', label: 'Trabajo', emoji: '💼', desc: 'Responsabilidades laborales' },
+  { id: 'personal', label: 'Vida Personal', emoji: '🧘', desc: 'Hábitos y bienestar' },
 ];
 
 const OBSTACLES = [
-  { id: 'procrastinacion', label: 'Procrastinación', emoji: '⏳', desc: 'Lo dejo todo para después' },
-  { id: 'tiempo', label: 'Falta de Tiempo', emoji: '⚡', desc: 'El día no me alcanza' },
-  { id: 'ideas', label: 'Exceso de ideas', emoji: '💡', desc: 'Mi mente no para' },
-  { id: 'cansancio', label: 'Cansancio', emoji: '😴', desc: 'No tengo energía mental' },
+  { id: 'procrastinacion', label: 'Procrastinación', emoji: '⏳', desc: 'Postergo lo que debo hacer' },
+  { id: 'tiempo', label: 'Falta de Tiempo', emoji: '⚡', desc: 'Nunca alcanza el día' },
+  { id: 'ideas', label: 'Exceso de Ideas', emoji: '💡', desc: 'Mi mente no para' },
+  { id: 'cansancio', label: 'Cansancio Mental', emoji: '😴', desc: 'Me agoto antes de empezar' },
 ];
 
 const GOALS = [
   { id: 'terminar_tareas', label: 'Terminar lo que empiezo', emoji: '✅', desc: 'Ejecutar sin dejarlas a medias' },
-  { id: 'reducir_ansiedad', label: 'Reducir la ansiedad mental', emoji: '🧠', desc: 'Ordenar el caos en mi cabeza' },
+  { id: 'reducir_ansiedad', label: 'Reducir la ansiedad', emoji: '🧠', desc: 'Ordenar el caos en mi cabeza' },
   { id: 'ser_mas_productivo', label: 'Ser más productivo', emoji: '⚡', desc: 'Hacer más en menos tiempo' },
-  { id: 'construir_habitos', label: 'Construir hábitos reales', emoji: '📈', desc: 'Consistencia día a día' },
+  { id: 'construir_habitos', label: 'Construir hábitos', emoji: '📈', desc: 'Consistencia día a día' },
 ];
 
+const FALLBACK_MESSAGES: Record<string, string> = {
+  profesional: 'El trabajo no para, pero tu energía sí tiene límites. Empieza hoy escribiendo todo lo que tienes pendiente en Focus On — la IA lo organiza y tú decides qué va primero.',
+  emprendedor: 'Los emprendedores tienen mil ideas y poco tiempo. Escribe tus 3 tareas más importantes hoy en Focus On y enfócate solo en esas. El resto puede esperar.',
+  estudiante: 'Estudiar con el cerebro saturado no funciona. Empieza por escribir todas tus pendientes en Focus On — la IA las ordena y tú ejecutas una a la vez.',
+  personal: 'El primer paso es simple: saca todo lo que tienes en mente y escríbelo en Focus On. La claridad llega sola cuando vacías el caos de tu cabeza.',
+};
+
 const LOADING_TEXTS = [
+  'Analizando tu perfil...',
   'Entendiendo tu contexto...',
   'Configurando tu espacio...',
   'Preparando tu primer día...',
+  'Casi listo...',
 ];
 
-const FALLBACKS: Record<string, (name: string) => string> = {
-  profesional: (n) => `Hola ${n}. Sé lo que es tener el día lleno y la mente saturada. Empieza hoy con una sola tarea: abre Focus On y escribe todo lo que tienes pendiente. La IA lo organizará por ti.`,
-  emprendedor: (n) => `Hola ${n}. Los emprendedores tienen mil ideas y poco tiempo. Hoy, escribe tus 3 tareas más importantes en Focus On y enfócate solo en esas. El resto puede esperar.`,
-  estudiante: (n) => `Hola ${n}. Estudiar con el cerebro saturado no funciona. Empieza por escribir todas tus pendientes en Focus On — la IA las ordena y tú ejecutas una a la vez.`,
-  personal: (n) => `Hola ${n}. El primer paso es simple: escribe todo lo que tienes en mente ahora mismo en Focus On. La claridad llega sola cuando sacas el caos de tu cabeza.`,
-};
-
-const TOTAL_STEPS = 5;
-
+type Step = 1 | 2 | 3 | 4 | 5;
 type Phase = 'steps' | 'loading' | 'welcome';
 
 export default function Onboarding() {
   const navigate = useNavigate();
   const { updateProfile } = useProfile();
+  const [step, setStep] = useState<Step>(1);
   const [phase, setPhase] = useState<Phase>('steps');
-  const [step, setStep] = useState(1);
   const [userName, setUserName] = useLocalStorage<string>('focuson-user-name', '');
   const [, setOnboardingDone] = useLocalStorage<boolean>('focuson-onboarding-done', false);
-  const [selectedUserType, setSelectedUserType] = useState('');
-  const [selectedArea, setSelectedArea] = useState('');
-  const [selectedObstacle, setSelectedObstacle] = useState('');
-  const [selectedGoal, setSelectedGoal] = useState('');
-  const [welcomeMessage, setWelcomeMessage] = useState('');
-  const [loadingProgress, setLoadingProgress] = useState(0);
-  const [loadingTextIndex, setLoadingTextIndex] = useState(0);
+  const [selectedUserType, setSelectedUserType] = useState<string>('');
+  const [selectedArea, setSelectedArea] = useState<string>('');
+  const [selectedObstacle, setSelectedObstacle] = useState<string>('');
+  const [selectedGoal, setSelectedGoal] = useState<string>('');
+  const [welcomeMessage, setWelcomeMessage] = useState<string>('');
+  const [loadingText, setLoadingText] = useState<string>(LOADING_TEXTS[0]);
+  const [progress, setProgress] = useState<number>(0);
 
-  // Animación de carga + llamada a IA
+  // Animated loading text
   useEffect(() => {
     if (phase !== 'loading') return;
+    let i = 0;
+    const interval = setInterval(() => {
+      i = (i + 1) % LOADING_TEXTS.length;
+      setLoadingText(LOADING_TEXTS[i]);
+    }, 800);
+    return () => clearInterval(interval);
+  }, [phase]);
 
-    const startedAt = Date.now();
-    const minDuration = 3000;
-
-    // Progreso visual
-    const progressInterval = setInterval(() => {
-      const elapsed = Date.now() - startedAt;
-      const pct = Math.min(95, (elapsed / minDuration) * 100);
-      setLoadingProgress(pct);
-    }, 80);
-
-    // Texto cambiante
-    const textInterval = setInterval(() => {
-      setLoadingTextIndex((i) => (i + 1) % LOADING_TEXTS.length);
-    }, 1100);
-
-    // Llamada a la edge function (Claude haiku)
-    const aiPromise = supabase.functions.invoke('generate-welcome', {
-      body: {
-        name: userName.trim(),
-        userType: selectedUserType,
-        area: selectedArea,
-        obstacle: selectedObstacle,
-        goal: selectedGoal,
-      },
-    }).then(({ data, error }) => {
-      if (error || !data?.message) {
-        const fb = FALLBACKS[selectedUserType] || FALLBACKS.personal;
-        return fb(userName.trim() || 'campeón');
-      }
-      return data.message as string;
-    }).catch(() => {
-      const fb = FALLBACKS[selectedUserType] || FALLBACKS.personal;
-      return fb(userName.trim() || 'campeón');
-    });
-
-    // Esperar al menos minDuration y a la IA
-    Promise.all([
-      aiPromise,
-      new Promise((r) => setTimeout(r, minDuration)),
-    ]).then(([msg]) => {
-      clearInterval(progressInterval);
-      clearInterval(textInterval);
-      setLoadingProgress(100);
-      const finalMsg = msg as string;
-      setWelcomeMessage(finalMsg);
-      try { localStorage.setItem('focuson-welcome-message', finalMsg); } catch {}
-      setTimeout(() => setPhase('welcome'), 250);
-    });
-
-    return () => {
-      clearInterval(progressInterval);
-      clearInterval(textInterval);
-    };
-  }, [phase, userName, selectedUserType, selectedArea, selectedObstacle, selectedGoal]);
+  // Animated progress bar
+  useEffect(() => {
+    if (phase !== 'loading') return;
+    setProgress(0);
+    const interval = setInterval(() => {
+      setProgress((p) => {
+        if (p >= 95) {
+          clearInterval(interval);
+          return 95;
+        }
+        return p + 2;
+      });
+    }, 60);
+    return () => clearInterval(interval);
+  }, [phase]);
 
   const canAdvance = () => {
     if (step === 1) return userName.trim().length > 0;
-    if (step === 2) return !!selectedUserType;
-    if (step === 3) return !!selectedArea;
-    if (step === 4) return !!selectedObstacle;
-    if (step === 5) return !!selectedGoal;
+    if (step === 2) return selectedUserType !== '';
+    if (step === 3) return selectedArea !== '';
+    if (step === 4) return selectedObstacle !== '';
+    if (step === 5) return selectedGoal !== '';
     return false;
   };
 
-  const handleNext = () => {
+  const handleNext = async () => {
     if (!canAdvance()) return;
 
     if (step === 1) trackUserEvent('onboarding_step_name', { name: userName.trim() });
-    if (step === 2) trackUserEvent('onboarding_step_user_type', { userType: selectedUserType });
+    if (step === 2) trackUserEvent('onboarding_step_usertype', { userType: selectedUserType });
     if (step === 3) trackUserEvent('onboarding_step_area', { area: selectedArea });
     if (step === 4) trackUserEvent('onboarding_step_obstacle', { obstacle: selectedObstacle });
 
     if (step === 5) {
-      // Completar onboarding
-      updateProfile({
-        name: userName.trim(),
-        userType: selectedUserType,
-        area: selectedArea,
-        obstacle: selectedObstacle,
-        goal: selectedGoal,
-      });
+      trackUserEvent('onboarding_step_goal', { goal: selectedGoal });
       trackUserEvent('onboarding_completed', {
         name: userName.trim(),
         userType: selectedUserType,
@@ -162,15 +123,51 @@ export default function Onboarding() {
         obstacle: selectedObstacle,
         goal: selectedGoal,
       });
+
+      updateProfile({
+        name: userName.trim(),
+        area: selectedArea,
+        obstacle: selectedObstacle,
+        userType: selectedUserType,
+        goal: selectedGoal,
+      });
+
       setPhase('loading');
+
+      try {
+        const { data, error } = await supabase.functions.invoke('generate-welcome', {
+          body: {
+            name: userName.trim(),
+            userType: selectedUserType,
+            area: selectedArea,
+            obstacle: selectedObstacle,
+            goal: selectedGoal,
+          },
+        });
+
+        if (error) throw error;
+        const message =
+          (data as any)?.message ||
+          FALLBACK_MESSAGES[selectedUserType] ||
+          FALLBACK_MESSAGES.personal;
+        setWelcomeMessage(message);
+        localStorage.setItem('focuson-welcome-message', message);
+      } catch {
+        const fallback = FALLBACK_MESSAGES[selectedUserType] || FALLBACK_MESSAGES.personal;
+        setWelcomeMessage(fallback);
+        localStorage.setItem('focuson-welcome-message', fallback);
+      }
+
+      setProgress(100);
+      setTimeout(() => setPhase('welcome'), 600);
       return;
     }
 
-    setStep(step + 1);
+    setStep((s) => (s + 1) as Step);
   };
 
   const handleBack = () => {
-    if (step > 1) setStep(step - 1);
+    if (step > 1) setStep((s) => (s - 1) as Step);
   };
 
   const handleFinish = () => {
@@ -178,247 +175,197 @@ export default function Onboarding() {
     navigate('/', { replace: true });
   };
 
-  // ───────── Pantalla de carga con IA ─────────
+  // PHASE: LOADING
   if (phase === 'loading') {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-background p-6">
-        <div className="animate-pulse mb-8">
-          <AppLogo size={72} />
-        </div>
-        <h2 className="text-xl font-display font-semibold text-foreground mb-3 text-center">
-          La IA está analizando tu perfil...
-        </h2>
-        <p className="text-sm text-primary mb-8 h-5 transition-opacity duration-300">
-          {LOADING_TEXTS[loadingTextIndex]}
-        </p>
-        <div className="w-full max-w-xs">
-          <Progress value={loadingProgress} className="h-2" />
-        </div>
-        <div className="mt-6 flex items-center gap-2 text-xs text-muted-foreground">
-          <Sparkles size={12} className="text-primary" />
-          <span>Personalizando con IA</span>
+      <div className="min-h-screen flex items-center justify-center px-6 bg-background">
+        <div className="w-full max-w-md space-y-8 text-center">
+          <div className="flex justify-center">
+            <AppLogo size={56} />
+          </div>
+          <div className="space-y-4">
+            <p className="text-lg font-medium text-foreground transition-opacity duration-300">
+              {loadingText}
+            </p>
+            <div className="w-full h-2 bg-muted rounded-full overflow-hidden">
+              <div
+                className="h-full bg-primary transition-all duration-300 ease-out"
+                style={{ width: `${progress}%` }}
+              />
+            </div>
+          </div>
+          <p className="text-sm text-muted-foreground">
+            La IA está analizando tu perfil para personalizar tu experiencia
+          </p>
         </div>
       </div>
     );
   }
 
-  // ───────── Pantalla de bienvenida final ─────────
+  // PHASE: WELCOME
   if (phase === 'welcome') {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-background p-6 animate-fade-in">
-        <div className="w-full max-w-md flex flex-col items-center">
-          <AppLogo size={64} className="mb-6" />
-          <h1 className="text-3xl font-display font-semibold text-foreground mb-6 text-center">
-            ¡Hola, {userName.trim() || 'campeón'}!
-          </h1>
+      <div className="min-h-screen flex items-center justify-center px-6 py-10 bg-background">
+        <div className="w-full max-w-md space-y-6">
+          <div className="flex justify-center gap-3 items-center">
+            <AppLogo size={48} />
+            <CheckCircle className="text-primary" size={28} />
+          </div>
 
-          <div
-            className="w-full rounded-2xl p-6 mb-8 border border-primary/20"
-            style={{ background: 'hsl(var(--primary) / 0.08)' }}
-          >
-            <p className="text-base leading-relaxed text-foreground font-display text-center">
-              {welcomeMessage}
-            </p>
+          <div className="text-center space-y-2">
+            <h1 className="text-3xl font-semibold text-foreground">
+              ¡Hola, {userName}!
+            </h1>
+            <p className="text-muted-foreground">Tu espacio está listo.</p>
+          </div>
+
+          <div className="bg-primary/10 border border-primary/20 rounded-2xl p-6">
+            <div className="flex items-start gap-3">
+              <Sparkles className="text-primary mt-1 shrink-0" size={20} />
+              <p className="text-foreground leading-relaxed whitespace-pre-line">
+                {welcomeMessage}
+              </p>
+            </div>
           </div>
 
           <Button
             onClick={handleFinish}
-            className="w-full h-14 text-base rounded-2xl gap-2 btn-primary-focus"
+            className="w-full h-14 rounded-2xl text-base font-medium"
           >
             Empezar mi día
-            <ArrowRight size={18} />
+            <ArrowRight className="ml-1" />
           </Button>
         </div>
       </div>
     );
   }
 
-  // ───────── Pasos del onboarding ─────────
+  // PHASE: STEPS
+  const OPTIONS_MAP: Record<number, typeof USER_TYPES> = {
+    2: USER_TYPES,
+    3: AREAS,
+    4: OBSTACLES,
+    5: GOALS,
+  };
+
+  const SELECTED_MAP: Record<number, string> = {
+    2: selectedUserType,
+    3: selectedArea,
+    4: selectedObstacle,
+    5: selectedGoal,
+  };
+
+  const SET_MAP: Record<number, (v: string) => void> = {
+    2: setSelectedUserType,
+    3: setSelectedArea,
+    4: setSelectedObstacle,
+    5: setSelectedGoal,
+  };
+
+  const TITLES: Record<number, string> = {
+    1: '¿Cómo te gusta que te llamen?',
+    2: '¿Cómo describirías tu situación actual?',
+    3: '¿Qué área genera más caos en tu día?',
+    4: '¿Cuál es tu mayor enemigo del foco?',
+    5: '¿Qué quieres lograr con Focus On?',
+  };
+
+  const SUBTITLES: Record<number, string> = {
+    1: 'Así personalizamos tu experiencia.',
+    2: 'Selecciona la que más te identifique.',
+    3: 'Sé honesto, Focus On se adapta a ti.',
+    4: 'Tu obstáculo real, no el que crees que deberías tener.',
+    5: 'Tu meta define cómo la IA te guía.',
+  };
+
   return (
-    <div className="min-h-screen flex flex-col bg-background">
+    <div className="min-h-screen flex flex-col px-6 py-8 bg-background">
       {/* Progress bar */}
-      <div className="px-6 pt-6">
-        <div className="flex gap-2 mb-8">
-          {Array.from({ length: TOTAL_STEPS }, (_, i) => i + 1).map((s) => (
+      <div className="w-full max-w-md mx-auto mb-8 space-y-2">
+        <div className="flex gap-2">
+          {[1, 2, 3, 4, 5].map((s) => (
             <div
               key={s}
-              className={`h-1 flex-1 rounded-full transition-all duration-500 ${
+              className={`h-1.5 flex-1 rounded-full transition-colors duration-300 ${
                 s <= step ? 'bg-primary' : 'bg-muted'
               }`}
             />
           ))}
         </div>
+        <p className="text-xs text-muted-foreground text-center">
+          Paso {step} de 5
+        </p>
       </div>
 
-      <div className="flex-1 flex flex-col items-center justify-center px-6 pb-12">
-        {/* Step 1: Name */}
-        {step === 1 && (
-          <div key="s1" className="w-full max-w-md space-y-8 animate-fade-in">
-            <div className="text-center">
-              <AppLogo size={48} className="mx-auto mb-6" />
-              <h1 className="text-2xl font-display font-semibold text-foreground mb-2">
-                ¿Cómo te gusta que te llamen?
-              </h1>
-              <p className="text-sm text-muted-foreground">
-                Así personalizamos tu experiencia.
-              </p>
-            </div>
+      <div className="flex-1 flex flex-col w-full max-w-md mx-auto">
+        <div className="flex-1 space-y-6">
+          {/* Header */}
+          <div className="text-center space-y-3">
+            {step === 1 && (
+              <div className="flex justify-center">
+                <AppLogo size={48} />
+              </div>
+            )}
+            <h1 className="text-2xl font-semibold text-foreground leading-tight">
+              {TITLES[step]}
+            </h1>
+            <p className="text-sm text-muted-foreground">{SUBTITLES[step]}</p>
+          </div>
+
+          {/* Step 1: Name input */}
+          {step === 1 && (
             <Input
               value={userName}
               onChange={(e) => setUserName(e.target.value)}
               placeholder="Tu nombre o apodo..."
-              className="text-center text-lg h-14 focus-input rounded-2xl"
+              className="text-center text-lg h-14 rounded-2xl"
               autoFocus
               onKeyDown={(e) => e.key === 'Enter' && handleNext()}
             />
-          </div>
-        )}
+          )}
 
-        {/* Step 2: Tipo de usuario */}
-        {step === 2 && (
-          <div key="s2" className="w-full max-w-md space-y-8 animate-fade-in">
-            <div className="text-center">
-              <h1 className="text-2xl font-display font-semibold text-foreground mb-2">
-                ¿Cómo describirías mejor tu situación actual?
-              </h1>
-              <p className="text-sm text-muted-foreground">
-                Elige la que más se acerque a ti.
-              </p>
-            </div>
+          {/* Steps 2-5: Option grid */}
+          {step >= 2 && (
             <div className="grid grid-cols-2 gap-3">
-              {USER_TYPES.map((opt) => (
+              {OPTIONS_MAP[step].map((opt) => (
                 <button
                   key={opt.id}
-                  onClick={() => setSelectedUserType(opt.id)}
-                  className={`focus-card p-5 text-center transition-all duration-200 active:scale-[0.97] flex flex-col items-center ${
-                    selectedUserType === opt.id
+                  type="button"
+                  onClick={() => SET_MAP[step](opt.id)}
+                  className={`p-5 text-center rounded-2xl border bg-card transition-all duration-200 active:scale-[0.97] flex flex-col items-center gap-1 ${
+                    SELECTED_MAP[step] === opt.id
                       ? 'border-primary bg-primary/10 ring-1 ring-primary/30'
-                      : 'hover:border-primary/30'
+                      : 'border-border hover:border-primary/30'
                   }`}
                 >
-                  <span className="text-2xl mb-2 block">{opt.emoji}</span>
-                  <span className="text-sm font-medium text-foreground leading-tight">{opt.label}</span>
-                  <span className="text-xs text-muted-foreground mt-1.5 leading-snug">{opt.desc}</span>
+                  <span className="text-2xl">{opt.emoji}</span>
+                  <span className="text-sm font-medium text-foreground">{opt.label}</span>
+                  <span className="text-xs text-muted-foreground leading-snug">{opt.desc}</span>
                 </button>
               ))}
             </div>
-          </div>
-        )}
+          )}
+        </div>
 
-        {/* Step 3: Área */}
-        {step === 3 && (
-          <div key="s3" className="w-full max-w-md space-y-8 animate-fade-in">
-            <div className="text-center">
-              <h1 className="text-2xl font-display font-semibold text-foreground mb-2">
-                ¿Qué área genera más caos en tu día?
-              </h1>
-              <p className="text-sm text-muted-foreground">
-                Selecciona la que más te identifique.
-              </p>
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              {AREAS.map((opt) => (
-                <button
-                  key={opt.id}
-                  onClick={() => setSelectedArea(opt.id)}
-                  className={`focus-card p-5 text-center transition-all duration-200 active:scale-[0.97] flex flex-col items-center ${
-                    selectedArea === opt.id
-                      ? 'border-primary bg-primary/10 ring-1 ring-primary/30'
-                      : 'hover:border-primary/30'
-                  }`}
-                >
-                  <span className="text-2xl mb-2 block">{opt.emoji}</span>
-                  <span className="text-sm font-medium text-foreground leading-tight">{opt.label}</span>
-                  <span className="text-xs text-muted-foreground mt-1.5 leading-snug">{opt.desc}</span>
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Step 4: Obstáculo */}
-        {step === 4 && (
-          <div key="s4" className="w-full max-w-md space-y-8 animate-fade-in">
-            <div className="text-center">
-              <h1 className="text-2xl font-display font-semibold text-foreground mb-2">
-                ¿Cuál es tu mayor enemigo del foco?
-              </h1>
-              <p className="text-sm text-muted-foreground">
-                Sé honesto. Focus On se adapta a ti.
-              </p>
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              {OBSTACLES.map((opt) => (
-                <button
-                  key={opt.id}
-                  onClick={() => setSelectedObstacle(opt.id)}
-                  className={`focus-card p-5 text-center transition-all duration-200 active:scale-[0.97] flex flex-col items-center ${
-                    selectedObstacle === opt.id
-                      ? 'border-primary bg-primary/10 ring-1 ring-primary/30'
-                      : 'hover:border-primary/30'
-                  }`}
-                >
-                  <span className="text-2xl mb-2 block">{opt.emoji}</span>
-                  <span className="text-sm font-medium text-foreground leading-tight">{opt.label}</span>
-                  <span className="text-xs text-muted-foreground mt-1.5 leading-snug">{opt.desc}</span>
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Step 5: Meta */}
-        {step === 5 && (
-          <div key="s5" className="w-full max-w-md space-y-8 animate-fade-in">
-            <div className="text-center">
-              <h1 className="text-2xl font-display font-semibold text-foreground mb-2">
-                ¿Qué quieres lograr con Focus On?
-              </h1>
-              <p className="text-sm text-muted-foreground">
-                Tu meta principal nos ayuda a guiarte.
-              </p>
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              {GOALS.map((opt) => (
-                <button
-                  key={opt.id}
-                  onClick={() => setSelectedGoal(opt.id)}
-                  className={`focus-card p-5 text-center transition-all duration-200 active:scale-[0.97] flex flex-col items-center ${
-                    selectedGoal === opt.id
-                      ? 'border-primary bg-primary/10 ring-1 ring-primary/30'
-                      : 'hover:border-primary/30'
-                  }`}
-                >
-                  <span className="text-2xl mb-2 block">{opt.emoji}</span>
-                  <span className="text-sm font-medium text-foreground leading-tight">{opt.label}</span>
-                  <span className="text-xs text-muted-foreground mt-1.5 leading-snug">{opt.desc}</span>
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Botones */}
-        <div className="w-full max-w-md mt-10 space-y-3">
+        {/* Buttons */}
+        <div className="flex gap-3 pt-6">
+          {step > 1 && (
+            <Button
+              variant="outline"
+              onClick={handleBack}
+              className="h-14 rounded-2xl px-5"
+            >
+              <ArrowLeft />
+            </Button>
+          )}
           <Button
             onClick={handleNext}
             disabled={!canAdvance()}
-            className="w-full h-14 text-base rounded-2xl gap-2 btn-primary-focus"
+            className="flex-1 h-14 rounded-2xl text-base font-medium"
           >
-            {step === TOTAL_STEPS ? 'Comenzar' : 'Continuar'}
-            <ArrowRight size={18} />
+            {step === 5 ? 'Comenzar' : 'Continuar'}
+            <ArrowRight className="ml-1" />
           </Button>
-
-          {step > 1 && (
-            <Button
-              onClick={handleBack}
-              variant="ghost"
-              className="w-full h-11 text-sm rounded-2xl gap-2 text-muted-foreground hover:text-foreground"
-            >
-              <ArrowLeft size={16} />
-              Atrás
-            </Button>
-          )}
         </div>
       </div>
     </div>
