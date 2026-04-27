@@ -71,6 +71,57 @@ export function CoachContentReader({ open, onClose, content }: CoachContentReade
 
 // ── Content Library ──
 export const coachContentLibrary: Record<string, CoachContent> = {
+  '1': {
+    cardTitle: 'El primer paso siempre duele',
+    essayTitle: 'El primer paso siempre duele',
+    category: 'Lectura',
+    readTime: '8 min',
+    paragraphs: [
+      'Existe una mentira que todos hemos creído en algún momento: que para actuar primero necesitas sentirte listo. No es así. Nunca lo fue.',
+      'La motivación no es el combustible que mueve la acción. Es al revés. La acción es lo que genera la motivación. Tu cerebro no quiere esforzarse — está diseñado para conservar energía. Cada vez que tienes algo difícil por delante, activa una alarma interna que traduce como "no tengo ganas". Eso no es debilidad. Es biología.',
+      'Lo que hace la diferencia es entender que ese malestar es la señal correcta, no una razón para detenerte.',
+      '"No actúas cuando te sientes listo. Te sientes listo cuando actúas."',
+      'Existe un umbral. Un momento exacto entre el pensamiento y la acción donde tu cerebro puede sabotearte. Dura aproximadamente 5 segundos. Si en esos 5 segundos no te mueves, tu mente construirá un argumento perfecto para no hacerlo. Racionalizará, buscará alternativas, encontrará razones válidas.',
+      'La solución no es ser más disciplinado. Es ser más rápido. Cuando aparezca la tarea que evitas, no pienses. Abre el documento. Pon el cronómetro. Escribe la primera oración. Lo que sea. Pero muévete antes de que los 5 segundos pasen. El movimiento, por pequeño que sea, rompe el patrón de parálisis.',
+      'La razón por la que procrastinas no siempre es pereza. Muchas veces es porque la tarea que te pusiste es demasiado grande para tu estado actual. "Terminar el proyecto" no es una tarea — es un destino. "Abrir el documento y escribir el título" sí es una tarea.',
+      'Cuando reduces el primer paso al tamaño correcto, tu cerebro deja de resistirse. Ya no percibe una amenaza — percibe algo manejable. Y lo manejable se hace. Focus On existe exactamente para esto: para que no tengas que decidir por dónde empezar.',
+      'Tu acción de hoy: escoge la tarea que más has evitado esta semana. Reduce el primer paso hasta que sea ridículamente pequeño. Tan pequeño que no puedas decir que no. Ese es tu punto de entrada. Empieza en los próximos 5 minutos.',
+    ],
+  },
+  '4': {
+    cardTitle: 'La mente que no cede',
+    essayTitle: 'La mente que no cede',
+    category: 'Lectura',
+    readTime: '12 min',
+    paragraphs: [
+      'La comodidad no te forma. La presión sí. No hablo de sufrimiento innecesario — hablo de ese momento exacto donde algo es difícil y tienes dos opciones: cedes o sigues.',
+      'Lo que eliges en ese momento, repetido miles de veces a lo largo de tu vida, determina quién eres. No tus intenciones. No tus planes. Tus elecciones bajo presión. La buena noticia es que esa capacidad de no ceder no es un rasgo con el que naces. Es un músculo. Y como todo músculo, se entrena.',
+      '"No eres lo que dices que vas a hacer. Eres lo que haces cuando tienes ganas de parar."',
+      'Cuando algo se pone difícil, tu mente empieza a negociar. "Solo por hoy no importa." "Ya lo hago mañana." "No estoy en mi mejor momento." "Esto no vale la pena."',
+      'Ese diálogo interno no es neutro. Es el enemigo más peligroso que tienes, porque habla con tu voz y conoce tus puntos débiles. Las personas mentalmente fuertes no lo tienen silenciado — lo tienen identificado. Saben que cuando aparece, es exactamente el momento de actuar. No después. Ahora.',
+      'Cada vez que actúas a pesar del diálogo interno, lo debilitas. Cada vez que cedes, lo fortaleces. Así de simple. Así de brutal.',
+      'Una de las confusiones más comunes: creer que las personas valientes no sienten miedo. Sí lo sienten. La diferencia es que actúan de todas formas. La fortaleza mental no es no sentir dudas, cansancio o incertidumbre. Es desarrollar la capacidad de hacer lo que necesitas hacer aunque todo eso esté presente.',
+      'Eso se construye en lo pequeño. En hacer la tarea cuando no tienes ganas. En abrir Focus On cuando preferirías ver el teléfono. En completar el bloque de foco cuando a los 10 minutos ya quieres parar. Cada acción pequeña en la dirección correcta es un depósito en tu cuenta de fortaleza mental.',
+      'Tu acción de hoy: identifica una cosa que has estado evitando porque se siente incómoda. No porque sea imposible — porque es incómoda. Hazlo. Solo esa cosa. La incomodidad dura minutos. La evasión dura semanas.',
+    ],
+  },
+  '7': {
+    cardTitle: 'Los que sí terminan',
+    essayTitle: 'Los que sí terminan',
+    category: 'Lectura',
+    readTime: '15 min',
+    paragraphs: [
+      'Empezar es fácil. Todos empezamos cosas: dietas, proyectos, hábitos, negocios, cursos. La energía del inicio es real — la novedad motiva, la posibilidad emociona.',
+      'El problema es el día 8. El día 15. El día donde ya no hay novedad, donde el progreso es invisible, donde la dificultad se vuelve real y la motivación inicial se ha evaporado. Ahí es donde se separan los que terminan de los que no. Y la diferencia no es talento ni suerte. Es un conjunto de comportamientos específicos que puedes aprender.',
+      'Comportamiento 1: hacen el trabajo feo. Todo proyecto tiene una parte emocionante y una parte aburrida. La parte emocionante te hace empezar. La parte aburrida determina si terminas. Los que completan las cosas no evitan el trabajo feo: lo identifican, lo programan, lo hacen primero. Saben que si lo dejan para después, "después" nunca llega.',
+      '"El éxito no está en la inspiración. Está en las horas que nadie ve, haciendo lo que nadie quiere hacer."',
+      'Comportamiento 2: no dependen del estado de ánimo. "Hoy no me siento bien." "No estoy inspirado." "Mañana lo hago con más energía." Las personas que terminan las cosas han aprendido algo fundamental: el estado de ánimo es un mal jefe.',
+      'No esperan sentirse bien para trabajar. Trabajan, y muchas veces el estado de ánimo mejora como consecuencia. El movimiento genera momentum, y el momentum genera motivación — no al revés. Desconectaron la producción del sentimiento. Producen en las buenas y en las malas. Eso, con el tiempo, los lleva donde quieren llegar.',
+      'Comportamiento 3: tienen identidad, no solo metas. "Quiero terminar este proyecto" es una meta. "Soy alguien que termina lo que empieza" es una identidad. La diferencia es enorme.',
+      'Cuando tu comportamiento está anclado a quién eres y no solo a lo que quieres, la consistencia cambia. Abandonar ya no es solo perder una oportunidad — es actuar en contra de tu identidad. Las personas que más producen no se motivan diciéndose lo que quieren lograr. Se motivan recordándose quiénes son.',
+      'Tu acción de hoy: escribe esta frase en algún lugar donde la veas: "Soy alguien que termina lo que empieza." No es afirmación vacía — es una declaración de identidad. Cada vez que eliges trabajar cuando no tienes ganas, estás siendo fiel a esa identidad. Empieza hoy.',
+    ],
+  },
   '3': {
     cardTitle: 'Disciplina Implacable',
     essayTitle: 'La Ilusión de la Motivación y el Despertar del 40%',
