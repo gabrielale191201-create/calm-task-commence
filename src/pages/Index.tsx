@@ -317,6 +317,7 @@ export default function Index() {
             onStartFocusFromTopTask={startFocusFromTopTask}
             onSendToTasks={handleAddMultipleTasks}
             currentTodayPriorityCount={tasks.filter(t => t.isTopThree && t.status !== 'completed').length}
+            onGoToCoach={() => setActiveTab('coach')}
           />
         );
       case 'enfoque':

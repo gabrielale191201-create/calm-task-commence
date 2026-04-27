@@ -1,6 +1,7 @@
 import { ArrowRight } from 'lucide-react';
 import { Task } from '@/types/focuson';
 import { OrganizationAssistant } from '@/components/ai/OrganizationAssistant';
+import { CoachBubble } from '@/components/CoachBubble';
 
 interface HomePageProps {
   displayName: string;
@@ -15,6 +16,7 @@ interface HomePageProps {
   onStartFocusFromTopTask: (taskText: string, minutes: number) => void;
   onSendToTasks: (tasks: string[], priorityIndices?: number[]) => void;
   currentTodayPriorityCount?: number;
+  onGoToCoach?: () => void;
 }
 
 export function HomePage({
@@ -24,6 +26,7 @@ export function HomePage({
   hasVictoryToday,
   onSendToTasks,
   currentTodayPriorityCount,
+  onGoToCoach,
 }: HomePageProps) {
   const today = new Date();
   const dayNames = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
@@ -81,6 +84,8 @@ export function HomePage({
           <ArrowRight size={18} />
         </button>
       </div>
+
+      {onGoToCoach && <CoachBubble onClick={onGoToCoach} />}
     </div>
   );
 }
