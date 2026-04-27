@@ -1,5 +1,5 @@
 // Edge function: genera mensaje de bienvenida personalizado al final del onboarding.
-// Usa ANTHROPIC_API_KEY (secret). Modelo: claude-haiku-20240307.
+// Usa Lovable AI Gateway (LOVABLE_API_KEY auto-provisto). Modelo: google/gemini-2.5-flash.
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -18,14 +18,13 @@ Deno.serve(async (req) => {
     const name = (body?.name || "").toString().trim() || "campeón";
     const area = (body?.area || "").toString().trim() || "no especificada";
     const obstacle = (body?.obstacle || "").toString().trim() || "no especificado";
-    // Campos opcionales adicionales (si vienen del frontend extendido)
     const userType = (body?.userType || "").toString().trim();
     const goal = (body?.goal || "").toString().trim();
 
-    const ANTHROPIC_API_KEY = Deno.env.get("ANTHROPIC_API_KEY");
-    if (!ANTHROPIC_API_KEY) {
+    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+    if (!LOVABLE_API_KEY) {
       return new Response(
-        JSON.stringify({ error: "ANTHROPIC_API_KEY no configurada" }),
+        JSON.stringify({ error: "LOVABLE_API_KEY no configurada" }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
     }
@@ -48,18 +47,18 @@ Deno.serve(async (req) => {
 
     let resp: Response;
     try {
-      resp = await fetch("https://api.anthropic.com/v1/messages", {
+      resp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "x-api-key": ANTHROPIC_API_KEY,
-          "anthropic-version": "2023-06-01",
+          Authorization: `Bearer ${LOVABLE_API_KEY}`,
         },
         body: JSON.stringify({
-          model: "claude-3-haiku-20240307",
-          max_tokens: 250,
-          system: systemPrompt,
-          messages: [{ role: "user", content: userPrompt }],
+          model: "google/gemini-2.5-flash",
+          messages: [
+            { role: "system", content: systemPrompt },
+            { role: "user", content: userPrompt },
+          ],
         }),
         signal: ctrl.signal,
       });
@@ -69,15 +68,27 @@ Deno.serve(async (req) => {
 
     if (!resp.ok) {
       const errTxt = await resp.text();
-      console.error("Anthropic error", resp.status, errTxt);
+      console.error("AI gateway error", resp.status, errTxt);
+      if (resp.status === 429) {
+        return new Response(
+          JSON.stringify({ error: "Demasiadas solicitudes, intenta en un momento." }),
+          { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+        );
+      }
+      if (resp.status === 402) {
+        return new Response(
+          JSON.stringify({ error: "Créditos de IA agotados." }),
+          { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+        );
+      }
       return new Response(
-        JSON.stringify({ error: `Anthropic error ${resp.status}` }),
+        JSON.stringify({ error: `AI gateway error ${resp.status}` }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
     }
 
     const data = await resp.json();
-    const message = (data?.content?.[0]?.text || "").trim();
+    const message = (data?.choices?.[0]?.message?.content || "").trim();
 
     if (!message) {
       return new Response(
