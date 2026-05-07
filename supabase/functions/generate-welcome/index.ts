@@ -13,13 +13,41 @@ Deno.serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
+  // Require authenticated user to prevent AI credit drain
+  const authHeader = req.headers.get("Authorization");
+  if (!authHeader?.startsWith("Bearer ")) {
+    return new Response(JSON.stringify({ error: "Unauthorized" }), {
+      status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
+  try {
+    const { createClient } = await import("https://esm.sh/@supabase/supabase-js@2");
+    const sb = createClient(
+      Deno.env.get("SUPABASE_URL")!,
+      Deno.env.get("SUPABASE_ANON_KEY")!,
+      { global: { headers: { Authorization: authHeader } } },
+    );
+    const token = authHeader.replace("Bearer ", "");
+    const { data: claims, error: cErr } = await sb.auth.getClaims(token);
+    if (cErr || !claims?.claims) {
+      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+        status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+  } catch {
+    return new Response(JSON.stringify({ error: "Unauthorized" }), {
+      status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
+
   try {
     const body = await req.json().catch(() => ({}));
-    const name = (body?.name || "").toString().trim() || "campeón";
-    const area = (body?.area || "").toString().trim() || "no especificada";
-    const obstacle = (body?.obstacle || "").toString().trim() || "no especificado";
-    const userType = (body?.userType || "").toString().trim();
-    const goal = (body?.goal || "").toString().trim();
+    const clip = (s: unknown, n: number) => (s ?? "").toString().trim().slice(0, n);
+    const name = clip(body?.name, 100) || "campeón";
+    const area = clip(body?.area, 200) || "no especificada";
+    const obstacle = clip(body?.obstacle, 200) || "no especificado";
+    const userType = clip(body?.userType, 50);
+    const goal = clip(body?.goal, 200);
 
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) {
