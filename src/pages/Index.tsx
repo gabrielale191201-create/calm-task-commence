@@ -409,11 +409,16 @@ export default function Index() {
             <button
               onClick={async () => {
                 if (notifEnabled || notifLoading) return;
-                if (!pushSupported) {
-                  toast.error('Este dispositivo no soporta notificaciones push.');
-                  return;
-                }
                 try {
+                  const nativeGranted = await requestPermissions();
+                  if (nativeGranted) {
+                    toast.success('Notificaciones activadas ✓');
+                    return;
+                  }
+                  if (!pushSupported) {
+                    toast.error('Este dispositivo no soporta notificaciones push.');
+                    return;
+                  }
                   await subscribePush();
                   toast.success('Notificaciones activadas ✓');
                 } catch (err: any) {
@@ -421,10 +426,10 @@ export default function Index() {
                 }
               }}
               disabled={notifLoading}
-              className={`p-2 rounded-xl transition-colors ${notifEnabled ? 'bg-primary/15' : 'hover:bg-muted'} ${notifLoading ? 'opacity-50' : ''}`}
-              title={notifEnabled ? 'Notificaciones activas' : 'Activar Notificaciones'}
+              className={`p-2 rounded-xl transition-colors ${(notifEnabled || hasPermission) ? 'bg-primary/15' : 'hover:bg-muted'} ${notifLoading ? 'opacity-50' : ''}`}
+              title={(notifEnabled || hasPermission) ? 'Notificaciones activas' : 'Activar Notificaciones'}
             >
-              <Bell size={22} className={notifEnabled ? 'text-primary fill-primary' : 'text-primary'} />
+              <Bell size={22} className={(notifEnabled || hasPermission) ? 'text-primary fill-primary' : 'text-primary'} />
             </button>
             <button onClick={() => setShowHowTo(true)} className="p-2 rounded-xl hover:bg-muted transition-colors" title="¿Cómo funciona Focus On?">
               <HelpCircle size={22} className="text-muted-foreground" />
