@@ -64,6 +64,7 @@ export default function Index() {
   } = data;
 
   useTaskNotifications(tasks);
+  const { scheduleNotification, cancelNotificationByTaskId, requestPermissions, hasPermission } = useLocalNotifications();
 
   // Routines stay in localStorage (legacy, section hidden)
   const [routines, setRoutines] = useLocalStorage<Routine[]>('focuson-routines', []);
