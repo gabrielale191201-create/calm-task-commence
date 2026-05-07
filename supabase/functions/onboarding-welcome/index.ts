@@ -27,9 +27,42 @@ function fallback(userType: string | undefined, name: string) {
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
+  // Require authenticated user to prevent AI credit drain
+  const authHeader = req.headers.get("Authorization");
+  if (!authHeader?.startsWith("Bearer ")) {
+    return new Response(JSON.stringify({ error: "Unauthorized" }), {
+      status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
   try {
-    const { name, userType, area, obstacle, goal } = await req.json();
-    const safeName = (name || "").trim() || "campeón";
+    const { createClient } = await import("https://esm.sh/@supabase/supabase-js@2");
+    const sb = createClient(
+      Deno.env.get("SUPABASE_URL")!,
+      Deno.env.get("SUPABASE_ANON_KEY")!,
+      { global: { headers: { Authorization: authHeader } } },
+    );
+    const token = authHeader.replace("Bearer ", "");
+    const { data: claims, error: cErr } = await sb.auth.getClaims(token);
+    if (cErr || !claims?.claims) {
+      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+        status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+  } catch {
+    return new Response(JSON.stringify({ error: "Unauthorized" }), {
+      status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
+
+  try {
+    const raw = await req.json();
+    const clip = (s: unknown, n: number) => (s ?? "").toString().trim().slice(0, n);
+    const name = clip(raw?.name, 100);
+    const userType = clip(raw?.userType, 50);
+    const area = clip(raw?.area, 200);
+    const obstacle = clip(raw?.obstacle, 200);
+    const goal = clip(raw?.goal, 200);
+    const safeName = name || "campeón";
 
     const ANTHROPIC_API_KEY = Deno.env.get("ANTHROPIC_API_KEY");
     if (!ANTHROPIC_API_KEY) {
