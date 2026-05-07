@@ -52,6 +52,20 @@ Deno.serve(async (req) => {
     return new Response('ok', { headers: corsHeaders });
   }
 
+  // Auth: allow either valid CRON_SECRET header OR service-role key
+  const cronSecret = Deno.env.get('CRON_SECRET');
+  const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+  const providedCron = req.headers.get('x-cron-secret');
+  const authHeader = req.headers.get('Authorization') || '';
+  const providedBearer = authHeader.replace('Bearer ', '');
+  const cronOk = !!cronSecret && providedCron === cronSecret;
+  const serviceOk = !!serviceRoleKey && providedBearer === serviceRoleKey;
+  if (!cronOk && !serviceOk) {
+    return new Response(JSON.stringify({ error: 'Forbidden' }), {
+      status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    });
+  }
+
   // Validate VAPID configuration
   const vapidPublicKey = Deno.env.get('VAPID_PUBLIC_KEY');
   const vapidPrivateKey = Deno.env.get('VAPID_PRIVATE_KEY');
