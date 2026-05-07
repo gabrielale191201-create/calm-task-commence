@@ -29,6 +29,7 @@ import { TabType, Task, Routine } from '@/types/focuson';
 import { AppLogo } from '@/components/AppLogo';
 import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
+import { useTaskNotifications } from '@/hooks/useTaskNotifications';
 
 export default function Index() {
   const { signOut } = useAuthState();
