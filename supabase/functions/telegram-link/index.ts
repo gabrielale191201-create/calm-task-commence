@@ -7,11 +7,9 @@ const corsHeaders = {
 
 function generateCode(): string {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789';
-  let code = '';
-  for (let i = 0; i < 12; i++) {
-    code += chars.charAt(Math.floor(Math.random() * chars.length));
-  }
-  return code;
+  const bytes = new Uint8Array(12);
+  crypto.getRandomValues(bytes);
+  return Array.from(bytes).map((b) => chars[b % chars.length]).join('');
 }
 
 Deno.serve(async (req) => {
