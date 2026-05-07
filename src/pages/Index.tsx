@@ -31,6 +31,7 @@ import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
 import { useTaskNotifications } from '@/hooks/useTaskNotifications';
 import { usePushNotifications } from '@/hooks/usePushNotifications';
+import { useLocalNotifications, taskIdToNumericId } from '@/hooks/useLocalNotifications';
 
 export default function Index() {
   const { signOut } = useAuthState();
