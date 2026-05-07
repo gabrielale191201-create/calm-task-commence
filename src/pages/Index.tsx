@@ -30,6 +30,7 @@ import { AppLogo } from '@/components/AppLogo';
 import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
 import { useTaskNotifications } from '@/hooks/useTaskNotifications';
+import { usePushNotifications } from '@/hooks/usePushNotifications';
 
 export default function Index() {
   const { signOut } = useAuthState();
@@ -42,9 +43,7 @@ export default function Index() {
   const [dismissedUpdate, setDismissedUpdate] = useState(() => {
     try { return localStorage.getItem('focuson-dismiss-update-v1.2') === 'true'; } catch { return false; }
   });
-  const [notifEnabled, setNotifEnabled] = useState(() => {
-    try { return localStorage.getItem('notifications_enabled') === 'true'; } catch { return false; }
-  });
+  const { isSupported: pushSupported, isSubscribed: notifEnabled, loading: notifLoading, subscribe: subscribePush } = usePushNotifications();
   const handleDismissUpdate = () => { setDismissedUpdate(true); try { localStorage.setItem('focuson-dismiss-update-v1.2', 'true'); } catch {} };
   const { profile } = useProfile();
 
@@ -388,29 +387,20 @@ export default function Index() {
           <div className="flex items-center gap-1">
             <button
               onClick={async () => {
-                if (notifEnabled) return;
+                if (notifEnabled || notifLoading) return;
+                if (!pushSupported) {
+                  toast.error('Este dispositivo no soporta notificaciones push.');
+                  return;
+                }
                 try {
-                  if (!('Notification' in window)) {
-                    toast.error('Este navegador no soporta notificaciones.');
-                    return;
-                  }
-                  const permission = await Notification.requestPermission();
-                  if (permission === 'granted') {
-                    localStorage.setItem('notifications_enabled', 'true');
-                    setNotifEnabled(true);
-                    toast.success('Notificaciones activadas ✓');
-                    new Notification('Focus On', {
-                      body: 'Las notificaciones están activas. Te avisaremos cuando sea hora de enfocarte.',
-                      icon: '/icon-192x192.png',
-                    });
-                  } else if (permission === 'denied') {
-                    toast.error('Notificaciones bloqueadas. Actívalas en ajustes del navegador.');
-                  }
+                  await subscribePush();
+                  toast.success('Notificaciones activadas ✓');
                 } catch (err: any) {
-                  toast.error('Error: ' + (err?.message ?? 'desconocido'));
+                  toast.error(err?.message ?? 'No se pudieron activar las notificaciones.');
                 }
               }}
-              className={`p-2 rounded-xl transition-colors ${notifEnabled ? 'bg-primary/15' : 'hover:bg-muted'}`}
+              disabled={notifLoading}
+              className={`p-2 rounded-xl transition-colors ${notifEnabled ? 'bg-primary/15' : 'hover:bg-muted'} ${notifLoading ? 'opacity-50' : ''}`}
               title={notifEnabled ? 'Notificaciones activas' : 'Activar Notificaciones'}
             >
               <Bell size={22} className={notifEnabled ? 'text-primary fill-primary' : 'text-primary'} />
