@@ -44,7 +44,10 @@ export default function Index() {
   const [dismissedUpdate, setDismissedUpdate] = useState(() => {
     try { return localStorage.getItem('focuson-dismiss-update-v1.2') === 'true'; } catch { return false; }
   });
-  const { isSupported: pushSupported, isSubscribed: notifEnabled, loading: notifLoading, subscribe: subscribePush } = usePushNotifications();
+  const { isSupported: pushSupported, isSubscribed: pushSubscribed, loading: notifLoading, subscribe: subscribePush } = usePushNotifications();
+  const [notifEnabled, setNotifEnabled] = useState(() => {
+    try { return localStorage.getItem('notifications_enabled') === 'true'; } catch { return false; }
+  });
   const handleDismissUpdate = () => { setDismissedUpdate(true); try { localStorage.setItem('focuson-dismiss-update-v1.2', 'true'); } catch {} };
   const { profile } = useProfile();
 
