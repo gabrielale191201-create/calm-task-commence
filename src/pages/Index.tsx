@@ -161,6 +161,16 @@ export default function Index() {
     const finalDate = updates.scheduledDate ?? task.scheduledDate;
     const finalTime = updates.scheduledTime ?? task.scheduledTime;
     if (finalDate && finalTime) {
+      const scheduleAt = new Date(`${finalDate}T${finalTime}`);
+      if (scheduleAt > new Date()) {
+        cancelNotificationByTaskId(task.id);
+        scheduleNotification({
+          id: taskIdToNumericId(task.id),
+          title: '⏰ Focus On — Es tu momento',
+          body: task.text,
+          scheduleAt,
+        });
+      }
       triggerWebhook(task.id, task.text, finalDate, finalTime).then(result => {
         if (!result.sent && result.reason === 'no_telegram') {
           toast('Conecta Telegram para recibir recordatorios', {
