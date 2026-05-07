@@ -3,6 +3,6 @@
   "target": {
     "namespace": "android_app",
     "package_name": "app.focusonlife.twa",
-    "sha256_cert_fingerprints": ["C5:14:DC:90:F2:12:5F:17:9C:5C:B5:34:12:38:B8:5A:C4:6F:71:EF:A9:33:53:60:B6:FD:54:07:BC:67:09:75"]
+    "sha256_cert_fingerprints": ["15:04:0F:B3:2F:E8:E7:0B:62:FE:7B:AC:2C:32:58:67:E9:E1:A8:B2:35:6C:7E:5D:A9:86:AC:B4:9D:00:AD:8F"]
   }
 }]
