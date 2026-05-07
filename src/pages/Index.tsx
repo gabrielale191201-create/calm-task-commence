@@ -31,6 +31,7 @@ import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
 import { useTaskNotifications } from '@/hooks/useTaskNotifications';
 import { usePushNotifications } from '@/hooks/usePushNotifications';
+import { useLocalNotifications, taskIdToNumericId } from '@/hooks/useLocalNotifications';
 
 export default function Index() {
   const { signOut } = useAuthState();
@@ -63,6 +64,7 @@ export default function Index() {
   } = data;
 
   useTaskNotifications(tasks);
+  const { scheduleNotification, cancelNotificationByTaskId, requestPermissions, hasPermission } = useLocalNotifications();
 
   // Routines stay in localStorage (legacy, section hidden)
   const [routines, setRoutines] = useLocalStorage<Routine[]>('focuson-routines', []);
@@ -132,6 +134,15 @@ export default function Index() {
     const newTask = addTask(input, isTopThree);
     const opts = typeof input === 'string' ? {} as any : input;
     if (opts.scheduledDate && opts.scheduledTime) {
+      const scheduleAt = new Date(`${opts.scheduledDate}T${opts.scheduledTime}`);
+      if (scheduleAt > new Date()) {
+        scheduleNotification({
+          id: taskIdToNumericId(newTask.id),
+          title: '⏰ Focus On — Es tu momento',
+          body: newTask.text,
+          scheduleAt,
+        });
+      }
       triggerWebhook(newTask.id, newTask.text, opts.scheduledDate, opts.scheduledTime).then(result => {
         if (!result.sent && result.reason === 'no_telegram') {
           toast('Conecta Telegram para recibir recordatorios', {
@@ -150,6 +161,16 @@ export default function Index() {
     const finalDate = updates.scheduledDate ?? task.scheduledDate;
     const finalTime = updates.scheduledTime ?? task.scheduledTime;
     if (finalDate && finalTime) {
+      const scheduleAt = new Date(`${finalDate}T${finalTime}`);
+      if (scheduleAt > new Date()) {
+        cancelNotificationByTaskId(task.id);
+        scheduleNotification({
+          id: taskIdToNumericId(task.id),
+          title: '⏰ Focus On — Es tu momento',
+          body: task.text,
+          scheduleAt,
+        });
+      }
       triggerWebhook(task.id, task.text, finalDate, finalTime).then(result => {
         if (!result.sent && result.reason === 'no_telegram') {
           toast('Conecta Telegram para recibir recordatorios', {
@@ -388,11 +409,16 @@ export default function Index() {
             <button
               onClick={async () => {
                 if (notifEnabled || notifLoading) return;
-                if (!pushSupported) {
-                  toast.error('Este dispositivo no soporta notificaciones push.');
-                  return;
-                }
                 try {
+                  const nativeGranted = await requestPermissions();
+                  if (nativeGranted) {
+                    toast.success('Notificaciones activadas ✓');
+                    return;
+                  }
+                  if (!pushSupported) {
+                    toast.error('Este dispositivo no soporta notificaciones push.');
+                    return;
+                  }
                   await subscribePush();
                   toast.success('Notificaciones activadas ✓');
                 } catch (err: any) {
@@ -400,10 +426,10 @@ export default function Index() {
                 }
               }}
               disabled={notifLoading}
-              className={`p-2 rounded-xl transition-colors ${notifEnabled ? 'bg-primary/15' : 'hover:bg-muted'} ${notifLoading ? 'opacity-50' : ''}`}
-              title={notifEnabled ? 'Notificaciones activas' : 'Activar Notificaciones'}
+              className={`p-2 rounded-xl transition-colors ${(notifEnabled || hasPermission) ? 'bg-primary/15' : 'hover:bg-muted'} ${notifLoading ? 'opacity-50' : ''}`}
+              title={(notifEnabled || hasPermission) ? 'Notificaciones activas' : 'Activar Notificaciones'}
             >
-              <Bell size={22} className={notifEnabled ? 'text-primary fill-primary' : 'text-primary'} />
+              <Bell size={22} className={(notifEnabled || hasPermission) ? 'text-primary fill-primary' : 'text-primary'} />
             </button>
             <button onClick={() => setShowHowTo(true)} className="p-2 rounded-xl hover:bg-muted transition-colors" title="¿Cómo funciona Focus On?">
               <HelpCircle size={22} className="text-muted-foreground" />
