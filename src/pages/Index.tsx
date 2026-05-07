@@ -44,7 +44,10 @@ export default function Index() {
   const [dismissedUpdate, setDismissedUpdate] = useState(() => {
     try { return localStorage.getItem('focuson-dismiss-update-v1.2') === 'true'; } catch { return false; }
   });
-  const { isSupported: pushSupported, isSubscribed: notifEnabled, loading: notifLoading, subscribe: subscribePush } = usePushNotifications();
+  const { isSupported: pushSupported, isSubscribed: pushSubscribed, loading: notifLoading, subscribe: subscribePush } = usePushNotifications();
+  const [notifEnabled, setNotifEnabled] = useState(() => {
+    try { return localStorage.getItem('notifications_enabled') === 'true'; } catch { return false; }
+  });
   const handleDismissUpdate = () => { setDismissedUpdate(true); try { localStorage.setItem('focuson-dismiss-update-v1.2', 'true'); } catch {} };
   const { profile } = useProfile();
 
@@ -408,21 +411,21 @@ export default function Index() {
           <div className="flex items-center gap-1">
             <button
               onClick={async () => {
-                if (notifEnabled || notifLoading) return;
-                try {
-                  const nativeGranted = await requestPermissions();
-                  if (nativeGranted) {
-                    toast.success('Notificaciones activadas ✓');
-                    return;
-                  }
-                  if (!pushSupported) {
-                    toast.error('Este dispositivo no soporta notificaciones push.');
-                    return;
-                  }
-                  await subscribePush();
+                if (!('Notification' in window)) {
+                  toast.error('Este navegador no soporta notificaciones.');
+                  return;
+                }
+                const permission = await Notification.requestPermission();
+                if (permission === 'granted') {
+                  localStorage.setItem('notifications_enabled', 'true');
+                  setNotifEnabled(true);
                   toast.success('Notificaciones activadas ✓');
-                } catch (err: any) {
-                  toast.error(err?.message ?? 'No se pudieron activar las notificaciones.');
+                  new Notification('Focus On', {
+                    body: 'Te avisaremos cuando sea hora de enfocarte.',
+                    icon: '/icon-192x192.png',
+                  });
+                } else {
+                  toast.error('Activa los permisos en ajustes del navegador.');
                 }
               }}
               disabled={notifLoading}
