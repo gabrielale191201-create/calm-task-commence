@@ -15,11 +15,9 @@ interface TelegramLocalState {
  */
 function generateLinkCode(): string {
   const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-  let code = 'FO-';
-  for (let i = 0; i < 8; i++) {
-    code += chars.charAt(Math.floor(Math.random() * chars.length));
-  }
-  return code;
+  const bytes = new Uint8Array(8);
+  crypto.getRandomValues(bytes);
+  return 'FO-' + Array.from(bytes).map(b => chars[b % chars.length]).join('');
 }
 
 export function useTelegramLocalConnection() {

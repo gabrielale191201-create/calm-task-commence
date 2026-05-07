@@ -47,11 +47,16 @@ export function useTelegramWebhook() {
       console.log('[TelegramWebhook] Sending:', payload);
 
       try {
+        const headers: Record<string, string> = {
+          'Content-Type': 'application/json',
+        };
+        const webhookSecret = import.meta.env.VITE_N8N_WEBHOOK_SECRET as string | undefined;
+        if (webhookSecret) {
+          headers['X-Webhook-Secret'] = webhookSecret;
+        }
         const response = await fetch(N8N_WEBHOOK_URL, {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
+          headers,
           body: JSON.stringify(payload),
         });
 
