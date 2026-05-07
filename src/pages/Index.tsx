@@ -41,6 +41,9 @@ export default function Index() {
   const [dismissedUpdate, setDismissedUpdate] = useState(() => {
     try { return localStorage.getItem('focuson-dismiss-update-v1.2') === 'true'; } catch { return false; }
   });
+  const [notifEnabled, setNotifEnabled] = useState(() => {
+    try { return localStorage.getItem('notifications_enabled') === 'true'; } catch { return false; }
+  });
   const handleDismissUpdate = () => { setDismissedUpdate(true); try { localStorage.setItem('focuson-dismiss-update-v1.2', 'true'); } catch {} };
   const { profile } = useProfile();
 
@@ -380,37 +383,35 @@ export default function Index() {
             <h1 className="text-lg font-display font-semibold text-primary">Focus On</h1>
           </div>
           <div className="flex items-center gap-1">
-            {(() => {
-              const isSubscribed = localStorage.getItem('notifications_enabled') === 'true';
-              return (
-                <button
-                  onClick={async () => {
-                    if (isSubscribed) return;
-                    try {
-                      if (!('Notification' in window)) {
-                        toast.error('Este navegador no soporta notificaciones.');
-                        return;
-                      }
-                      const permission = await Notification.requestPermission();
-                      if (permission === 'granted') {
-                        localStorage.setItem('notifications_enabled', 'true');
-                        toast.success('Notificaciones activadas');
-                      } else if (permission === 'denied') {
-                        toast.error('Notificaciones bloqueadas. Actívalas en los ajustes del navegador.');
-                      } else {
-                        toast.error('No se activaron las notificaciones.');
-                      }
-                    } catch (err: any) {
-                      toast.error('Error: ' + (err?.message ?? 'desconocido'));
-                    }
-                  }}
-                  className={`p-2 rounded-xl transition-colors ${isSubscribed ? 'bg-primary/15' : 'hover:bg-muted'}`}
-                  title={isSubscribed ? 'Notificaciones activas' : 'Activar Notificaciones'}
-                >
-                  <Bell size={22} className={isSubscribed ? 'text-primary fill-primary' : 'text-primary'} />
-                </button>
-              );
-            })()}
+            <button
+              onClick={async () => {
+                if (notifEnabled) return;
+                try {
+                  if (!('Notification' in window)) {
+                    toast.error('Este navegador no soporta notificaciones.');
+                    return;
+                  }
+                  const permission = await Notification.requestPermission();
+                  if (permission === 'granted') {
+                    localStorage.setItem('notifications_enabled', 'true');
+                    setNotifEnabled(true);
+                    toast.success('Notificaciones activadas ✓');
+                    new Notification('Focus On', {
+                      body: 'Las notificaciones están activas. Te avisaremos cuando sea hora de enfocarte.',
+                      icon: '/icon-192x192.png',
+                    });
+                  } else if (permission === 'denied') {
+                    toast.error('Notificaciones bloqueadas. Actívalas en ajustes del navegador.');
+                  }
+                } catch (err: any) {
+                  toast.error('Error: ' + (err?.message ?? 'desconocido'));
+                }
+              }}
+              className={`p-2 rounded-xl transition-colors ${notifEnabled ? 'bg-primary/15' : 'hover:bg-muted'}`}
+              title={notifEnabled ? 'Notificaciones activas' : 'Activar Notificaciones'}
+            >
+              <Bell size={22} className={notifEnabled ? 'text-primary fill-primary' : 'text-primary'} />
+            </button>
             <button onClick={() => setShowHowTo(true)} className="p-2 rounded-xl hover:bg-muted transition-colors" title="¿Cómo funciona Focus On?">
               <HelpCircle size={22} className="text-muted-foreground" />
             </button>
