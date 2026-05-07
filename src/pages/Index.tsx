@@ -408,21 +408,21 @@ export default function Index() {
           <div className="flex items-center gap-1">
             <button
               onClick={async () => {
-                if (notifEnabled || notifLoading) return;
-                try {
-                  const nativeGranted = await requestPermissions();
-                  if (nativeGranted) {
-                    toast.success('Notificaciones activadas ✓');
-                    return;
-                  }
-                  if (!pushSupported) {
-                    toast.error('Este dispositivo no soporta notificaciones push.');
-                    return;
-                  }
-                  await subscribePush();
+                if (!('Notification' in window)) {
+                  toast.error('Este navegador no soporta notificaciones.');
+                  return;
+                }
+                const permission = await Notification.requestPermission();
+                if (permission === 'granted') {
+                  localStorage.setItem('notifications_enabled', 'true');
+                  setNotifEnabled(true);
                   toast.success('Notificaciones activadas ✓');
-                } catch (err: any) {
-                  toast.error(err?.message ?? 'No se pudieron activar las notificaciones.');
+                  new Notification('Focus On', {
+                    body: 'Te avisaremos cuando sea hora de enfocarte.',
+                    icon: '/icon-192x192.png',
+                  });
+                } else {
+                  toast.error('Activa los permisos en ajustes del navegador.');
                 }
               }}
               disabled={notifLoading}
