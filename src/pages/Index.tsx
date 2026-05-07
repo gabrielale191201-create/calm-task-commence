@@ -134,6 +134,15 @@ export default function Index() {
     const newTask = addTask(input, isTopThree);
     const opts = typeof input === 'string' ? {} as any : input;
     if (opts.scheduledDate && opts.scheduledTime) {
+      const scheduleAt = new Date(`${opts.scheduledDate}T${opts.scheduledTime}`);
+      if (scheduleAt > new Date()) {
+        scheduleNotification({
+          id: taskIdToNumericId(newTask.id),
+          title: '⏰ Focus On — Es tu momento',
+          body: newTask.text,
+          scheduleAt,
+        });
+      }
       triggerWebhook(newTask.id, newTask.text, opts.scheduledDate, opts.scheduledTime).then(result => {
         if (!result.sent && result.reason === 'no_telegram') {
           toast('Conecta Telegram para recibir recordatorios', {
