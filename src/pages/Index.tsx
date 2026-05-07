@@ -63,6 +63,8 @@ export default function Index() {
     setTasks,
   } = data;
 
+  useTaskNotifications(tasks);
+
   // Routines stay in localStorage (legacy, section hidden)
   const [routines, setRoutines] = useLocalStorage<Routine[]>('focuson-routines', []);
   const [lastActiveDate, setLastActiveDate] = useLocalStorage<string>('focuson-last-active', '');
