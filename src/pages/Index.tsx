@@ -69,6 +69,7 @@ export default function Index() {
 
   useTaskNotifications(tasks);
   const { scheduleNotification, cancelNotificationByTaskId, requestPermissions, hasPermission } = useLocalNotifications();
+  const { isSubscribed: oneSignalSubscribed, subscribe: oneSignalSubscribe } = useOneSignal();
 
   // Routines stay in localStorage (legacy, section hidden)
   const [routines, setRoutines] = useLocalStorage<Routine[]>('focuson-routines', []);
@@ -412,28 +413,18 @@ export default function Index() {
           <div className="flex items-center gap-1">
             <button
               onClick={async () => {
-                if (!('Notification' in window)) {
-                  toast.error('Este navegador no soporta notificaciones.');
-                  return;
-                }
-                const permission = await Notification.requestPermission();
-                if (permission === 'granted') {
-                  localStorage.setItem('notifications_enabled', 'true');
-                  setNotifEnabled(true);
+                const result = await oneSignalSubscribe();
+                if (result) {
                   toast.success('Notificaciones activadas ✓');
-                  new Notification('Focus On', {
-                    body: 'Te avisaremos cuando sea hora de enfocarte.',
-                    icon: '/icon-192x192.png',
-                  });
                 } else {
-                  toast.error('Activa los permisos en ajustes del navegador.');
+                  toast.error('No se pudieron activar las notificaciones.');
                 }
               }}
               disabled={notifLoading}
-              className={`p-2 rounded-xl transition-colors ${(notifEnabled || hasPermission) ? 'bg-primary/15' : 'hover:bg-muted'} ${notifLoading ? 'opacity-50' : ''}`}
-              title={(notifEnabled || hasPermission) ? 'Notificaciones activas' : 'Activar Notificaciones'}
+              className={`p-2 rounded-xl transition-colors ${oneSignalSubscribed ? 'bg-primary/15' : 'hover:bg-muted'} ${notifLoading ? 'opacity-50' : ''}`}
+              title={oneSignalSubscribed ? 'Notificaciones activas' : 'Activar Notificaciones'}
             >
-              <Bell size={22} className={(notifEnabled || hasPermission) ? 'text-primary fill-primary' : 'text-primary'} />
+              <Bell size={22} className={oneSignalSubscribed ? 'text-primary fill-primary' : 'text-primary'} />
             </button>
             <button onClick={() => setShowHowTo(true)} className="p-2 rounded-xl hover:bg-muted transition-colors" title="¿Cómo funciona Focus On?">
               <HelpCircle size={22} className="text-muted-foreground" />
