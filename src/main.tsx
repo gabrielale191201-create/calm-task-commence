@@ -1,6 +1,14 @@
 import { createRoot } from "react-dom/client";
+import OneSignal from 'react-onesignal';
 import App from "./App.tsx";
 import "./index.css";
+
+OneSignal.init({
+  appId: '52a6f5c7-05ef-4284-b0fd-93cad0533ebf',
+  allowLocalhostAsSecureOrigin: true,
+  notifyButton: { enable: false },
+  serviceWorkerParam: { scope: '/' },
+}).catch(() => {});
 
 // Register Service Worker for PWA (skip in iframes and preview hosts)
 const isInIframe = (() => {

@@ -32,6 +32,7 @@ import { useNavigate } from 'react-router-dom';
 import { useTaskNotifications } from '@/hooks/useTaskNotifications';
 import { usePushNotifications } from '@/hooks/usePushNotifications';
 import { useLocalNotifications, taskIdToNumericId } from '@/hooks/useLocalNotifications';
+import { useOneSignal } from '@/hooks/useOneSignal';
 
 export default function Index() {
   const { signOut } = useAuthState();
