@@ -1,22 +1,38 @@
 import { useEffect, useState } from 'react';
-import OneSignal from 'react-onesignal';
+
+declare global {
+  interface Window {
+    OneSignal: any;
+    OneSignalDeferred: any[];
+  }
+}
 
 export function useOneSignal() {
   const [isSubscribed, setIsSubscribed] = useState(false);
 
   useEffect(() => {
-    (OneSignal as any).isPushNotificationsEnabled?.().then(setIsSubscribed).catch(() => {});
+    window.OneSignalDeferred = window.OneSignalDeferred || [];
+    window.OneSignalDeferred.push(async (OneSignal: any) => {
+      const enabled = await OneSignal.User.PushSubscription.optedIn;
+      setIsSubscribed(enabled);
+    });
   }, []);
 
   const subscribe = async (): Promise<boolean> => {
-    try {
-      await (OneSignal as any).showNativePrompt?.();
-      const enabled = await (OneSignal as any).isPushNotificationsEnabled?.();
-      setIsSubscribed(!!enabled);
-      return !!enabled;
-    } catch {
-      return false;
-    }
+    return new Promise((resolve) => {
+      window.OneSignalDeferred = window.OneSignalDeferred || [];
+      window.OneSignalDeferred.push(async (OneSignal: any) => {
+        try {
+          await OneSignal.Notifications.requestPermission();
+          await OneSignal.User.PushSubscription.optIn();
+          const enabled = await OneSignal.User.PushSubscription.optedIn;
+          setIsSubscribed(enabled);
+          resolve(enabled);
+        } catch {
+          resolve(false);
+        }
+      });
+    });
   };
 
   return { isSubscribed, subscribe };

@@ -78,6 +78,15 @@
 
     <meta name="twitter:image" content="https://focusonlife.app/og-image.png" />
 
+    <script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer></script>
+    <script>
+      window.OneSignalDeferred = window.OneSignalDeferred || [];
+      OneSignalDeferred.push(async function(OneSignal) {
+        await OneSignal.init({
+          appId: "31d83ecf-0efd-45f5-adb4-a16d4adcf0aa",
+        });
+      });
+    </script>
   </head>
 
   <body>
