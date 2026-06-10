@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { Sparkles, Send, Loader2, AlertCircle, RefreshCw, Check } from 'lucide-react';
+import { useState, useRef, useEffect } from 'react';
+import { Sparkles, Send, Loader2, AlertCircle, RefreshCw, Check, Mic, MicOff } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
