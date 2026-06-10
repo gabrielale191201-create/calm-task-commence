@@ -2,6 +2,8 @@ import { useState, useRef, useEffect } from 'react';
 import { Sparkles, Send, Loader2, AlertCircle, RefreshCw, Check, Mic, MicOff } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { Capacitor } from '@capacitor/core';
+import { SpeechRecognition as NativeSpeech } from '@capacitor-community/speech-recognition';
 
 interface AIResponse {
   tasks: string[];
@@ -27,7 +29,26 @@ export function OrganizationAssistant({
   const recognitionRef = useRef<any>(null);
   const baseTextRef = useRef<string>('');
 
+  const isNative = Capacitor.isNativePlatform();
+  const partialListenerRef = useRef<any>(null);
+
   useEffect(() => {
+    if (isNative) {
+      // Native (Capacitor/TWA-Android): usar plugin nativo
+      (async () => {
+        try {
+          const avail = await NativeSpeech.available();
+          setSpeechSupported(!!avail.available);
+        } catch {
+          setSpeechSupported(false);
+        }
+      })();
+      return () => {
+        try { NativeSpeech.stop(); } catch {}
+        try { partialListenerRef.current?.remove?.(); } catch {}
+      };
+    }
+    // Web: Web Speech API
     const SR: any = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
     if (!SR) return;
     setSpeechSupported(true);
@@ -65,9 +86,64 @@ export function OrganizationAssistant({
     return () => {
       try { recognition.stop(); } catch {}
     };
-  }, []);
+  }, [isNative]);
+
+  const startNative = async () => {
+    try {
+      const perm = await NativeSpeech.checkPermissions();
+      if (perm.speechRecognition !== 'granted') {
+        const req = await NativeSpeech.requestPermissions();
+        if (req.speechRecognition !== 'granted') {
+          toast.error('Permiso de micrófono denegado. Actívalo en ajustes.');
+          return;
+        }
+      }
+
+      baseTextRef.current = input;
+
+      // Listener de resultados parciales en tiempo real
+      try { partialListenerRef.current?.remove?.(); } catch {}
+      partialListenerRef.current = await NativeSpeech.addListener(
+        'partialResults',
+        (data: any) => {
+          const matches: string[] = data?.matches || [];
+          const text = matches[0] || '';
+          const combined = (baseTextRef.current + ' ' + text).trim();
+          setInput(combined);
+        }
+      );
+
+      await NativeSpeech.start({
+        language: 'es-ES',
+        maxResults: 1,
+        prompt: 'Habla ahora',
+        partialResults: true,
+        popup: false,
+      });
+      setIsListening(true);
+    } catch (e: any) {
+      console.error('[Speech native start]', e);
+      toast.error('No se pudo iniciar el micrófono.');
+      setIsListening(false);
+    }
+  };
+
+  const stopNative = async () => {
+    try { await NativeSpeech.stop(); } catch {}
+    try { partialListenerRef.current?.remove?.(); } catch {}
+    setIsListening(false);
+  };
 
   const toggleListening = () => {
+    if (isNative) {
+      if (!speechSupported) {
+        toast.error('El reconocimiento de voz no está disponible en este dispositivo.');
+        return;
+      }
+      if (isListening) stopNative();
+      else startNative();
+      return;
+    }
     if (!speechSupported || !recognitionRef.current) {
       toast.error('Tu navegador no soporta entrada por voz');
       return;
@@ -85,6 +161,7 @@ export function OrganizationAssistant({
       }
     }
   };
+
 
   const processWithAI = async () => {
     if (!input.trim()) {
