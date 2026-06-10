@@ -22,6 +22,69 @@ export function OrganizationAssistant({
   const [response, setResponse] = useState<AIResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [selectedPriorities, setSelectedPriorities] = useState<Set<number>>(new Set());
+  const [isListening, setIsListening] = useState(false);
+  const [speechSupported, setSpeechSupported] = useState(false);
+  const recognitionRef = useRef<any>(null);
+  const baseTextRef = useRef<string>('');
+
+  useEffect(() => {
+    const SR: any = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (!SR) return;
+    setSpeechSupported(true);
+    const recognition = new SR();
+    recognition.lang = 'es-ES';
+    recognition.continuous = true;
+    recognition.interimResults = true;
+
+    recognition.onresult = (event: any) => {
+      let finalText = '';
+      let interim = '';
+      for (let i = 0; i < event.results.length; i++) {
+        const transcript = event.results[i][0].transcript;
+        if (event.results[i].isFinal) finalText += transcript;
+        else interim += transcript;
+      }
+      const combined = (baseTextRef.current + ' ' + finalText + ' ' + interim).trim();
+      setInput(combined);
+    };
+
+    recognition.onerror = (event: any) => {
+      if (event.error === 'not-allowed' || event.error === 'service-not-allowed') {
+        toast.error('Permiso de micrófono denegado. Actívalo en ajustes.');
+      } else if (event.error === 'no-speech') {
+        toast('No se detectó voz. Intenta de nuevo.');
+      } else if (event.error !== 'aborted') {
+        toast.error('Error con el micrófono. Intenta de nuevo.');
+      }
+      setIsListening(false);
+    };
+
+    recognition.onend = () => setIsListening(false);
+
+    recognitionRef.current = recognition;
+    return () => {
+      try { recognition.stop(); } catch {}
+    };
+  }, []);
+
+  const toggleListening = () => {
+    if (!speechSupported || !recognitionRef.current) {
+      toast.error('Tu navegador no soporta entrada por voz');
+      return;
+    }
+    if (isListening) {
+      try { recognitionRef.current.stop(); } catch {}
+      setIsListening(false);
+    } else {
+      baseTextRef.current = input;
+      try {
+        recognitionRef.current.start();
+        setIsListening(true);
+      } catch {
+        setIsListening(false);
+      }
+    }
+  };
 
   const processWithAI = async () => {
     if (!input.trim()) {
