@@ -173,13 +173,30 @@ export function OrganizationAssistant({
     <div className="focus-card animate-slide-up">
       {!response ? (
         <>
-          <textarea
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            placeholder="Ejemplo: estudiar para el parcial, enviar informe, llamar al cliente, organizar apuntes…"
-            className="w-full min-h-[120px] px-4 py-3 rounded-xl bg-muted/50 border border-border/50 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 resize-none"
-            disabled={isProcessing}
-          />
+          <div className="relative">
+            <textarea
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              placeholder="Ejemplo: estudiar para el parcial, enviar informe, llamar al cliente, organizar apuntes…"
+              className="w-full min-h-[120px] px-4 py-3 pr-14 rounded-xl bg-muted/50 border border-border/50 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 resize-none"
+              disabled={isProcessing}
+            />
+            {speechSupported && (
+              <button
+                type="button"
+                onClick={toggleListening}
+                disabled={isProcessing}
+                aria-label={isListening ? 'Detener grabación' : 'Dictar por voz'}
+                className={`absolute bottom-3 right-3 w-10 h-10 rounded-full flex items-center justify-center transition-all ${
+                  isListening
+                    ? 'bg-red-500 text-white animate-pulse shadow-lg shadow-red-500/40'
+                    : 'bg-primary/10 text-primary hover:bg-primary/20'
+                }`}
+              >
+                {isListening ? <MicOff size={18} /> : <Mic size={18} />}
+              </button>
+            )}
+          </div>
 
           {error && (
             <div className="mt-3 p-3 rounded-xl bg-destructive/10 border border-destructive/30 flex items-start gap-2">
