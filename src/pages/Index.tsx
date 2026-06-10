@@ -30,7 +30,6 @@ import { AppLogo } from '@/components/AppLogo';
 import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
 import { useTaskNotifications } from '@/hooks/useTaskNotifications';
-import { usePushNotifications } from '@/hooks/usePushNotifications';
 import { useLocalNotifications, taskIdToNumericId } from '@/hooks/useLocalNotifications';
 import { useOneSignal } from '@/hooks/useOneSignal';
 
@@ -45,10 +44,7 @@ export default function Index() {
   const [dismissedUpdate, setDismissedUpdate] = useState(() => {
     try { return localStorage.getItem('focuson-dismiss-update-v1.2') === 'true'; } catch { return false; }
   });
-  const { isSupported: pushSupported, isSubscribed: pushSubscribed, loading: notifLoading, subscribe: subscribePush } = usePushNotifications();
-  const [notifEnabled, setNotifEnabled] = useState(() => {
-    try { return localStorage.getItem('notifications_enabled') === 'true'; } catch { return false; }
-  });
+  const notifLoading = false;
   const handleDismissUpdate = () => { setDismissedUpdate(true); try { localStorage.setItem('focuson-dismiss-update-v1.2', 'true'); } catch {} };
   const { profile } = useProfile();
 
