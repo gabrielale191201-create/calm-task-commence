@@ -181,21 +181,20 @@ export function OrganizationAssistant({
               className="w-full min-h-[120px] px-4 py-3 pr-14 rounded-xl bg-muted/50 border border-border/50 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 resize-none"
               disabled={isProcessing}
             />
-            {speechSupported && (
-              <button
-                type="button"
-                onClick={toggleListening}
-                disabled={isProcessing}
-                aria-label={isListening ? 'Detener grabación' : 'Dictar por voz'}
-                className={`absolute bottom-3 right-3 w-10 h-10 rounded-full flex items-center justify-center transition-all ${
-                  isListening
-                    ? 'bg-red-500 text-white animate-pulse shadow-lg shadow-red-500/40'
-                    : 'bg-primary/10 text-primary hover:bg-primary/20'
-                }`}
-              >
-                {isListening ? <MicOff size={18} /> : <Mic size={18} />}
-              </button>
-            )}
+            <button
+              type="button"
+              onClick={toggleListening}
+              disabled={isProcessing}
+              aria-label={isListening ? 'Detener grabación' : 'Dictar por voz'}
+              title={speechSupported ? 'Dictar por voz' : 'Tu navegador no soporta entrada por voz'}
+              className={`absolute bottom-3 right-3 w-11 h-11 rounded-full flex items-center justify-center transition-all ring-2 ring-background ${
+                isListening
+                  ? 'bg-red-500 text-white animate-pulse shadow-lg shadow-red-500/40'
+                  : 'bg-primary text-primary-foreground hover:scale-105 shadow-md'
+              }`}
+            >
+              {isListening ? <MicOff size={20} /> : <Mic size={20} />}
+            </button>
           </div>
 
           {error && (
