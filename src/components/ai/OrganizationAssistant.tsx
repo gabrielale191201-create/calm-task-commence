@@ -2,6 +2,8 @@ import { useState, useRef, useEffect } from 'react';
 import { Sparkles, Send, Loader2, AlertCircle, RefreshCw, Check, Mic, MicOff } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { Capacitor } from '@capacitor/core';
+import { SpeechRecognition as NativeSpeech } from '@capacitor-community/speech-recognition';
 
 interface AIResponse {
   tasks: string[];
