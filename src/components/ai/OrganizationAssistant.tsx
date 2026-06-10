@@ -250,28 +250,31 @@ export function OrganizationAssistant({
     <div className="focus-card animate-slide-up">
       {!response ? (
         <>
-          <div className="relative">
+          <div className="space-y-3">
+            <div className="flex justify-end">
+              <button
+                type="button"
+                onClick={toggleListening}
+                disabled={isProcessing}
+                aria-label={isListening ? 'Detener grabación' : 'Dictar por voz'}
+                title={speechSupported ? 'Dictar por voz' : 'Tu navegador no soporta entrada por voz'}
+                className={`inline-flex h-11 items-center gap-2 rounded-full px-4 text-sm font-semibold shadow-md transition-all ring-2 ring-background ${
+                  isListening
+                    ? 'bg-destructive text-destructive-foreground animate-pulse shadow-destructive/30'
+                    : 'bg-primary text-primary-foreground hover:scale-105 shadow-primary/20'
+                }`}
+              >
+                {isListening ? <MicOff size={18} /> : <Mic size={18} />}
+                {isListening ? 'Detener' : 'Dictar'}
+              </button>
+            </div>
             <textarea
               value={input}
               onChange={(e) => setInput(e.target.value)}
               placeholder="Ejemplo: estudiar para el parcial, enviar informe, llamar al cliente, organizar apuntes…"
-              className="w-full min-h-[120px] px-4 py-3 pr-14 rounded-xl bg-muted/50 border border-border/50 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 resize-none"
+              className="w-full min-h-[120px] px-4 py-3 rounded-xl bg-muted/50 border border-border/50 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 resize-none"
               disabled={isProcessing}
             />
-            <button
-              type="button"
-              onClick={toggleListening}
-              disabled={isProcessing}
-              aria-label={isListening ? 'Detener grabación' : 'Dictar por voz'}
-              title={speechSupported ? 'Dictar por voz' : 'Tu navegador no soporta entrada por voz'}
-              className={`absolute bottom-3 right-3 w-11 h-11 rounded-full flex items-center justify-center transition-all ring-2 ring-background ${
-                isListening
-                  ? 'bg-red-500 text-white animate-pulse shadow-lg shadow-red-500/40'
-                  : 'bg-primary text-primary-foreground hover:scale-105 shadow-md'
-              }`}
-            >
-              {isListening ? <MicOff size={20} /> : <Mic size={20} />}
-            </button>
           </div>
 
           {error && (
