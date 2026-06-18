@@ -35,12 +35,3 @@ verify_jwt = false
 
 [functions.telegram-webhook]
 verify_jwt = false
-
-[functions.google-calendar-connect]
-verify_jwt = false
-
-[functions.google-calendar-callback]
-verify_jwt = false
-
-[functions.google-calendar-disconnect]
-verify_jwt = false
