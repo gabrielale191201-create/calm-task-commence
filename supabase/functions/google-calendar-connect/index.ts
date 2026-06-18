@@ -12,7 +12,13 @@ const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SUPABASE_ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY')!;
 const STATE_SECRET = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 
-const REDIRECT_URI = `${SUPABASE_URL}/functions/v1/google-calendar-callback`;
+const DEFAULT_REDIRECT_ORIGIN = 'https://focusonlife.app';
+const ALLOWED_REDIRECT_ORIGINS = new Set([
+  'https://focusonlife.app',
+  'https://www.focusonlife.app',
+  'https://calm-task-commence.lovable.app',
+  'http://localhost:5173',
+]);
 const SCOPES = [
   'https://www.googleapis.com/auth/calendar.events',
   'openid',
@@ -31,6 +37,17 @@ async function signState(payload: string): Promise<string> {
   const sig = await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(payload));
   const b64 = btoa(String.fromCharCode(...new Uint8Array(sig)));
   return b64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+
+function normalizeRedirectOrigin(value?: string): string {
+  try {
+    const origin = new URL(value || DEFAULT_REDIRECT_ORIGIN).origin;
+    if (ALLOWED_REDIRECT_ORIGINS.has(origin)) return origin;
+    if (/^https:\/\/[a-z0-9-]+\.lovableproject\.com$/i.test(origin)) return origin;
+  } catch (_) {
+    // keep safe default
+  }
+  return DEFAULT_REDIRECT_ORIGIN;
 }
 
 Deno.serve(async (req) => {
@@ -57,9 +74,11 @@ Deno.serve(async (req) => {
     const userId = data.claims.sub;
 
     const body = await req.json().catch(() => ({}));
-    const returnTo: string = body.return_to || 'https://focusonlife.app/';
+    const redirectOrigin = normalizeRedirectOrigin(body.redirect_origin || body.return_to);
+    const redirectUri = `${redirectOrigin}/calendar/callback`;
+    const returnTo: string = body.return_to || `${redirectOrigin}/`;
 
-    const payloadObj = { u: userId, r: returnTo, n: crypto.randomUUID(), t: Date.now() };
+    const payloadObj = { u: userId, r: returnTo, d: redirectUri, n: crypto.randomUUID(), t: Date.now() };
     const payload = btoa(JSON.stringify(payloadObj))
       .replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
     const sig = await signState(payload);
@@ -67,7 +86,7 @@ Deno.serve(async (req) => {
 
     const params = new URLSearchParams({
       client_id: CLIENT_ID,
-      redirect_uri: REDIRECT_URI,
+      redirect_uri: redirectUri,
       response_type: 'code',
       scope: SCOPES,
       access_type: 'offline',
@@ -75,6 +94,7 @@ Deno.serve(async (req) => {
       include_granted_scopes: 'true',
       state,
     });
+    if (typeof data.claims.email === 'string') params.set('login_hint', data.claims.email);
 
     const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}`;
 
