@@ -5,6 +5,7 @@ import { toast } from 'sonner';
 const STATE_KEY = 'gcal-oauth-state';
 const REDIRECT_PATH = '/calendar/callback';
 const PRODUCTION_ORIGIN = 'https://focusonlife.app';
+const PENDING_CONNECT_KEY = 'focuson-pending-google-calendar-connect';
 
 function isTemporaryPreviewHost() {
   return window.location.hostname.endsWith('lovableproject.com');
@@ -54,9 +55,11 @@ export function useGoogleCalendar() {
         toast.info('Google Calendar se conecta desde la app publicada', {
           description: 'Te llevo a focusonlife.app para usar una URL autorizada por Google.',
         });
-        window.location.assign(PRODUCTION_ORIGIN);
+        window.location.assign(`${PRODUCTION_ORIGIN}/?gcal_connect=1`);
         return;
       }
+
+      localStorage.removeItem(PENDING_CONNECT_KEY);
 
       const redirect_uri = getGoogleCalendarRedirectUri();
       const { data, error } = await supabase.functions.invoke('google-calendar-connect', {
