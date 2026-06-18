@@ -188,6 +188,7 @@ export default function Index() {
           });
         }
       });
+      syncScheduledTaskToGoogle(newTask);
     }
   };
 
@@ -216,6 +217,7 @@ export default function Index() {
           });
         }
       });
+      syncScheduledTaskToGoogle({ ...task, ...updates, scheduledDate: finalDate, scheduledTime: finalTime });
     }
   };
 
@@ -227,6 +229,7 @@ export default function Index() {
     const finalTime = updates.scheduledTime ?? task.scheduledTime;
     if (finalDate && finalTime) {
       triggerWebhook(task.id, task.text, finalDate, finalTime);
+      syncScheduledTaskToGoogle({ ...task, status: 'pending', ...updates, scheduledDate: finalDate, scheduledTime: finalTime });
     }
   };
 
@@ -404,7 +407,7 @@ export default function Index() {
           <TasksPage
             tasks={tasks}
             onAddTask={(d) => handleAddTask(d, false)}
-            onToggleTask={toggleTask} onDeleteTask={deleteTask} onSetTaskStatus={setTaskStatus}
+            onToggleTask={toggleTask} onDeleteTask={removeTaskEverywhere} onSetTaskStatus={setTaskStatus}
             onUpdateTask={handleUpdateTask} onReuseTask={reuseTask}
             onStartFocus={(taskText, minutes) => startFocusFromTopTask(taskText, minutes)}
             getTasksCountForDate={getTasksCountForDate} onTogglePriority={togglePriority}
