@@ -6,6 +6,7 @@ import { toISODate, startOfWeekMonday, parseTimeToMinutes, formatWeekRangeEs, pa
 import { TimeBlock } from '@/components/schedule/TimeBlock';
 import { StartFocusDialog } from '@/components/StartFocusDialog';
 import { DailyAgendita } from '@/components/schedule/DailyAgendita';
+import { GoogleCalendarConnect } from '@/components/schedule/GoogleCalendarConnect';
 
 
 type View = 'hoy' | 'semana';
@@ -118,6 +119,10 @@ export function SchedulePage({ tasks, quickNotes, onStartFocus, tasksCountByDate
           Rango visible: 05:00 – 23:00
         </p>
       </div>
+
+      <GoogleCalendarConnect />
+
+      
 
       
 
