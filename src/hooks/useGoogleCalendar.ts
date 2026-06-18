@@ -7,13 +7,18 @@ const STATE_KEY = 'gcal-oauth-state';
 const REDIRECT_PATH = '/calendar/callback';
 const PRODUCTION_ORIGIN = 'https://focusonlife.app';
 export const GOOGLE_CALENDAR_PENDING_CONNECT_KEY = 'focuson-pending-google-calendar-connect';
+const GOOGLE_CALENDAR_ALLOWED_ORIGINS = new Set([
+  PRODUCTION_ORIGIN,
+  'https://www.focusonlife.app',
+  'https://calm-task-commence.lovable.app',
+]);
 
-function isTemporaryPreviewHost() {
-  return window.location.hostname.endsWith('lovableproject.com');
+function shouldUseProductionOAuthOrigin() {
+  return !GOOGLE_CALENDAR_ALLOWED_ORIGINS.has(window.location.origin);
 }
 
 function getGoogleCalendarRedirectUri() {
-  const origin = isTemporaryPreviewHost()
+  const origin = shouldUseProductionOAuthOrigin()
     ? PRODUCTION_ORIGIN
     : window.location.origin;
 
@@ -52,7 +57,7 @@ export function useGoogleCalendar() {
   const connect = useCallback(async () => {
     setWorking(true);
     try {
-      if (isTemporaryPreviewHost()) {
+      if (shouldUseProductionOAuthOrigin()) {
         toast.info('Google Calendar se conecta desde la app publicada', {
           description: 'Te llevo a focusonlife.app para usar una URL autorizada por Google.',
         });
