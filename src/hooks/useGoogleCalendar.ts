@@ -61,7 +61,7 @@ export function useGoogleCalendar() {
         toast.info('Google Calendar se conecta desde la app publicada', {
           description: 'Te llevo a focusonlife.app para usar una URL autorizada por Google.',
         });
-        window.location.assign(`${PRODUCTION_ORIGIN}/?gcal_connect=1`);
+        window.location.assign(`${PRODUCTION_ORIGIN}/auth?gcal_connect=1`);
         return;
       }
 

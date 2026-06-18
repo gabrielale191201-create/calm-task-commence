@@ -1,8 +1,8 @@
 {
-  "name": "Focus On",
-  "short_name": "Focus On",
+  "name": "Focus On Life",
+  "short_name": "Focus On Life",
   "id": "focusonlife.app",
-  "description": "La IA organiza, tú ejecutas.",
+  "description": "Focus On Life convierte ideas y pendientes en tareas concretas, bloques de Focus Time y organización personal con IA.",
   "start_url": ".",
   "scope": "/",
   "display": "standalone",
