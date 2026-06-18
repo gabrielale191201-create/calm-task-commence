@@ -7,14 +7,12 @@ const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SERVICE_ROLE = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 const STATE_SECRET = SERVICE_ROLE;
 
-const REDIRECT_URI = `${SUPABASE_URL}/functions/v1/google-calendar-callback`;
-
 function b64urlToStr(s: string): string {
   const pad = s.length % 4 === 0 ? '' : '='.repeat(4 - (s.length % 4));
   return atob(s.replace(/-/g, '+').replace(/_/g, '/') + pad);
 }
 
-async function verifyState(state: string): Promise<{ u: string; r: string } | null> {
+async function verifyState(state: string): Promise<{ u: string; r: string; d: string } | null> {
   const [payload, sig] = state.split('.');
   if (!payload || !sig) return null;
   const key = await crypto.subtle.importKey(
@@ -31,7 +29,8 @@ async function verifyState(state: string): Promise<{ u: string; r: string } | nu
   try {
     const parsed = JSON.parse(b64urlToStr(payload));
     if (Date.now() - parsed.t > 10 * 60 * 1000) return null; // 10 min expiry
-    return { u: parsed.u, r: parsed.r };
+    if (!parsed.d) return null;
+    return { u: parsed.u, r: parsed.r, d: parsed.d };
   } catch {
     return null;
   }
@@ -63,7 +62,7 @@ Deno.serve(async (req) => {
         code,
         client_id: CLIENT_ID,
         client_secret: CLIENT_SECRET,
-        redirect_uri: REDIRECT_URI,
+        redirect_uri: verified.d,
         grant_type: 'authorization_code',
       }),
     });
