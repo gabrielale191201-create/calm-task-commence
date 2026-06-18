@@ -4,6 +4,15 @@ import { toast } from 'sonner';
 
 const STATE_KEY = 'gcal-oauth-state';
 const REDIRECT_PATH = '/calendar/callback';
+const PRODUCTION_ORIGIN = 'https://focusonlife.app';
+
+function getGoogleCalendarRedirectUri() {
+  const origin = window.location.hostname.endsWith('lovableproject.com')
+    ? PRODUCTION_ORIGIN
+    : window.location.origin;
+
+  return `${origin}${REDIRECT_PATH}`;
+}
 
 export interface GoogleCalendarConnection {
   google_email: string | null;
@@ -37,7 +46,7 @@ export function useGoogleCalendar() {
   const connect = useCallback(async () => {
     setWorking(true);
     try {
-      const redirect_uri = `${window.location.origin}${REDIRECT_PATH}`;
+      const redirect_uri = getGoogleCalendarRedirectUri();
       const { data, error } = await supabase.functions.invoke('google-calendar-connect', {
         body: { redirect_uri },
       });
@@ -52,7 +61,7 @@ export function useGoogleCalendar() {
   }, []);
 
   const completeOAuth = useCallback(async (code: string, state: string) => {
-    const redirect_uri = `${window.location.origin}${REDIRECT_PATH}`;
+    const redirect_uri = getGoogleCalendarRedirectUri();
     const { data, error } = await supabase.functions.invoke('google-calendar-callback', {
       body: { code, state, redirect_uri },
     });
