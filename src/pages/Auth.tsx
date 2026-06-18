@@ -35,14 +35,14 @@ export default function Auth() {
       if (params.get('gcal_connect') === '1') {
         localStorage.setItem(GOOGLE_CALENDAR_PENDING_CONNECT_KEY, 'true');
       }
-      navigate('/', { replace: true });
+      navigate('/app', { replace: true });
     }
   }, [isAuthenticated, isGuest, isLoading, navigate]);
 
   const handleContinueAsGuest = () => {
     enterGuestMode();
     toast.success('¡Bienvenido! Tus datos se guardarán en este dispositivo.');
-    navigate('/', { replace: true });
+    navigate('/app', { replace: true });
   };
 
   const handleGoogleSignIn = async () => {
@@ -117,7 +117,7 @@ export default function Auth() {
     }
     
     toast.success('¡Bienvenido!');
-    navigate('/', { replace: true });
+    navigate('/app', { replace: true });
   };
 
   const handleSignUp = async (e: React.FormEvent) => {

@@ -172,7 +172,7 @@ export default function Onboarding() {
 
   const handleFinish = () => {
     setOnboardingDone(true);
-    navigate('/', { replace: true });
+    navigate('/app', { replace: true });
   };
 
   // PHASE: LOADING

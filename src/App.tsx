@@ -73,6 +73,7 @@ function AppRoutes() {
         <Route path="/auth" element={<Auth />} />
         <Route path="/privacidad" element={<Privacy />} />
         <Route path="/terminos" element={<Terms />} />
+        <Route path="/" element={<About />} />
         <Route path="/about" element={<About />} />
         <Route path="/sobre" element={<About />} />
         <Route path="/auth/callback" element={<AuthCallback />} />
@@ -88,7 +89,7 @@ function AppRoutes() {
             <Onboarding />
           </ProtectedRoute>
         } />
-        <Route path="/" element={
+        <Route path="/app" element={
           <ProtectedRoute>
             <OnboardingGuard>
               <Index />
