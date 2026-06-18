@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { HelpCircle, LogOut, UserPlus, Download, X, Bell } from 'lucide-react';
 import { BottomNav } from '@/components/BottomNav';
 import { TimerIndicator } from '@/components/TimerIndicator';
@@ -67,7 +67,8 @@ export default function Index() {
   useTaskNotifications(tasks);
   const { scheduleNotification, cancelNotificationByTaskId, requestPermissions, hasPermission } = useLocalNotifications();
   const { isSubscribed: oneSignalSubscribed, subscribe: oneSignalSubscribe } = useOneSignal();
-  const { connect: connectGoogleCalendar, syncTask: syncGoogleCalendarTask, deleteTaskEvent: deleteGoogleCalendarTaskEvent } = useGoogleCalendar();
+  const { connection: googleCalendarConnection, connect: connectGoogleCalendar, syncTask: syncGoogleCalendarTask, deleteTaskEvent: deleteGoogleCalendarTaskEvent } = useGoogleCalendar();
+  const googleCalendarSyncingIds = useRef(new Set<string>());
 
   // Routines stay in localStorage (legacy, section hidden)
   const [routines, setRoutines] = useLocalStorage<Routine[]>('focuson-routines', []);
@@ -135,6 +136,18 @@ export default function Index() {
     }
     deleteTask(id);
   };
+
+  useEffect(() => {
+    if (isGuest || !googleCalendarConnection) return;
+
+    tasks
+      .filter(t => t.status === 'pending' && t.scheduledDate && t.scheduledTime && t.durationMinutes && !t.googleEventId)
+      .forEach((task) => {
+        if (googleCalendarSyncingIds.current.has(task.id)) return;
+        googleCalendarSyncingIds.current.add(task.id);
+        syncScheduledTaskToGoogle(task);
+      });
+  }, [tasks, isGuest, googleCalendarConnection]);
 
   // Reset routine steps daily
   useEffect(() => {
