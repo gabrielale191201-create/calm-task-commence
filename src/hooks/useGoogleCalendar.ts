@@ -48,7 +48,10 @@ export function useGoogleCalendar() {
     setBusy(true);
     try {
       const { data, error } = await supabase.functions.invoke('google-calendar-connect', {
-        body: { return_to: window.location.origin + '/' },
+        body: {
+          redirect_origin: window.location.origin,
+          return_to: window.location.origin + '/',
+        },
       });
       if (error) throw error;
       if (data?.url) {
