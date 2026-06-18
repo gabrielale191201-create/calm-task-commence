@@ -31,7 +31,7 @@ export default function CalendarCallback() {
     completeOAuth(code, state)
       .then(() => {
         toast.success('Google Calendar conectado');
-        navigate('/', { replace: true });
+        navigate('/app', { replace: true });
       })
       .catch((e) => setError(e.message ?? 'Error al completar la conexión'));
   }, [params, completeOAuth, navigate]);
@@ -42,7 +42,7 @@ export default function CalendarCallback() {
         <h1 className="text-xl font-semibold text-foreground">No se pudo conectar</h1>
         <p className="text-sm text-muted-foreground max-w-md">{error}</p>
         <button
-          onClick={() => navigate('/', { replace: true })}
+          onClick={() => navigate('/app', { replace: true })}
           className="px-4 py-2 rounded-xl bg-primary text-primary-foreground text-sm"
         >
           Volver

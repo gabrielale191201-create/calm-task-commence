@@ -58,8 +58,8 @@ export default function AuthCallback() {
 
           if (data.session) {
             console.log('[Auth Callback] Session established via PKCE');
-            window.history.replaceState({}, document.title, '/');
-            navigate('/', { replace: true });
+            window.history.replaceState({}, document.title, '/app');
+            navigate('/app', { replace: true });
             return;
           }
         }
@@ -86,8 +86,8 @@ export default function AuthCallback() {
 
           if (data.session) {
             console.log('[Auth Callback] Session established via implicit flow');
-            window.history.replaceState({}, document.title, '/');
-            navigate('/', { replace: true });
+            window.history.replaceState({}, document.title, '/app');
+            navigate('/app', { replace: true });
             return;
           }
         }
@@ -105,8 +105,8 @@ export default function AuthCallback() {
             if (session) {
               console.log('[Auth Callback] Session found!');
               if (mounted) {
-                window.history.replaceState({}, document.title, '/');
-                navigate('/', { replace: true });
+                window.history.replaceState({}, document.title, '/app');
+                navigate('/app', { replace: true });
               }
               return true;
             }
@@ -141,8 +141,8 @@ export default function AuthCallback() {
               
               if (session) {
                 subscription.unsubscribe();
-                window.history.replaceState({}, document.title, '/');
-                navigate('/', { replace: true });
+                window.history.replaceState({}, document.title, '/app');
+                navigate('/app', { replace: true });
               } else if (event === 'SIGNED_OUT') {
                 subscription.unsubscribe();
                 navigate('/auth', { replace: true });
