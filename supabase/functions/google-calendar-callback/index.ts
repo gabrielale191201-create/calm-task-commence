@@ -5,6 +5,12 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+const ALLOWED_REDIRECT_URIS = new Set([
+  'https://focusonlife.app/calendar/callback',
+  'https://www.focusonlife.app/calendar/callback',
+  'https://calm-task-commence.lovable.app/calendar/callback',
+]);
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
 
@@ -29,6 +35,9 @@ Deno.serve(async (req) => {
     const { code, redirect_uri, state } = await req.json();
     if (!code || !redirect_uri) {
       return new Response(JSON.stringify({ error: 'code y redirect_uri requeridos' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    }
+    if (typeof redirect_uri !== 'string' || !ALLOWED_REDIRECT_URIS.has(redirect_uri)) {
+      return new Response(JSON.stringify({ error: 'URL de retorno no autorizada' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
     // Validate state owner
