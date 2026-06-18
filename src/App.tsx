@@ -3,7 +3,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { AuthStateProvider, useAuthState } from "@/hooks/useAuthState";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { LoadingScreen } from "@/components/LoadingScreen";
@@ -33,6 +33,7 @@ const queryClient = new QueryClient({
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { authStatus, isLoading, isAuthenticated, isGuest } = useAuthState();
+  const location = useLocation();
 
   if (isLoading) {
     return <LoadingScreen message="Preparando tu espacio..." />;
@@ -42,7 +43,8 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
     return <>{children}</>;
   }
 
-  return <Navigate to="/auth" replace />;
+  const authPath = location.search.includes('gcal_connect=1') ? `/auth${location.search}` : '/auth';
+  return <Navigate to={authPath} replace />;
 }
 
 function OnboardingGuard({ children }: { children: React.ReactNode }) {
