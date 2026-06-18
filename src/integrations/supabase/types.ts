@@ -418,6 +418,42 @@ export type Database = {
         }
         Relationships: []
       }
+      user_google_calendar: {
+        Row: {
+          access_token: string
+          created_at: string
+          google_email: string | null
+          id: string
+          refresh_token: string
+          scope: string | null
+          token_expiry: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          access_token: string
+          created_at?: string
+          google_email?: string | null
+          id?: string
+          refresh_token: string
+          scope?: string | null
+          token_expiry: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          access_token?: string
+          created_at?: string
+          google_email?: string | null
+          id?: string
+          refresh_token?: string
+          scope?: string | null
+          token_expiry?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_telegram: {
         Row: {
           created_at: string
