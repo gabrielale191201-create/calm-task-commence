@@ -31,6 +31,10 @@ export default function Auth() {
   // If already guest or authenticated, go to home
   useEffect(() => {
     if (!isLoading && (isAuthenticated || isGuest)) {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get('gcal_connect') === '1') {
+        localStorage.setItem(GOOGLE_CALENDAR_PENDING_CONNECT_KEY, 'true');
+      }
       navigate('/', { replace: true });
     }
   }, [isAuthenticated, isGuest, isLoading, navigate]);
