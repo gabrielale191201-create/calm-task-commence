@@ -91,6 +91,7 @@ export function toTaskInsert(task: Task, userId: string): TablesInsert<'tasks'> 
     scheduled_date: task.scheduledDate ?? null,
     scheduled_time: task.scheduledTime ?? null,
     duration_minutes: task.durationMinutes ?? null,
+    google_event_id: task.googleEventId ?? null,
     reminder_enabled: task.reminderEnabled ?? false,
     reminder_sent_at: task.reminderSentAt ?? null,
   };

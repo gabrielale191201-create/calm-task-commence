@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { HelpCircle, LogOut, UserPlus, Download, X, Bell } from 'lucide-react';
 import { BottomNav } from '@/components/BottomNav';
 import { TimerIndicator } from '@/components/TimerIndicator';
@@ -32,6 +32,7 @@ import { useNavigate } from 'react-router-dom';
 import { useTaskNotifications } from '@/hooks/useTaskNotifications';
 import { useLocalNotifications, taskIdToNumericId } from '@/hooks/useLocalNotifications';
 import { useOneSignal } from '@/hooks/useOneSignal';
+import { GOOGLE_CALENDAR_PENDING_CONNECT_KEY, useGoogleCalendar } from '@/hooks/useGoogleCalendar';
 
 export default function Index() {
   const { signOut } = useAuthState();
@@ -45,7 +46,7 @@ export default function Index() {
     try { return localStorage.getItem('focuson-dismiss-update-v1.2') === 'true'; } catch { return false; }
   });
   const notifLoading = false;
-  const handleDismissUpdate = () => { setDismissedUpdate(true); try { localStorage.setItem('focuson-dismiss-update-v1.2', 'true'); } catch {} };
+  const handleDismissUpdate = () => { setDismissedUpdate(true); try { localStorage.setItem('focuson-dismiss-update-v1.2', 'true'); } catch { return; } };
   const { profile } = useProfile();
 
   // Session tracker for time-in-app telemetry
@@ -66,6 +67,8 @@ export default function Index() {
   useTaskNotifications(tasks);
   const { scheduleNotification, cancelNotificationByTaskId, requestPermissions, hasPermission } = useLocalNotifications();
   const { isSubscribed: oneSignalSubscribed, subscribe: oneSignalSubscribe } = useOneSignal();
+  const { connection: googleCalendarConnection, connect: connectGoogleCalendar, syncTask: syncGoogleCalendarTask, deleteTaskEvent: deleteGoogleCalendarTaskEvent } = useGoogleCalendar();
+  const googleCalendarSyncingIds = useRef(new Set<string>());
 
   // Routines stay in localStorage (legacy, section hidden)
   const [routines, setRoutines] = useLocalStorage<Routine[]>('focuson-routines', []);
@@ -100,6 +103,52 @@ export default function Index() {
     if (timer.isCompleted) playAlarm();
   }, [timer.isCompleted, playAlarm]);
 
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const shouldConnect = params.get('gcal_connect') === '1' || localStorage.getItem(GOOGLE_CALENDAR_PENDING_CONNECT_KEY) === 'true';
+    if (!shouldConnect) return;
+
+    localStorage.removeItem(GOOGLE_CALENDAR_PENDING_CONNECT_KEY);
+    window.history.replaceState({}, document.title, window.location.pathname);
+    connectGoogleCalendar();
+  }, [connectGoogleCalendar]);
+
+  const syncScheduledTaskToGoogle = useCallback((task: Task) => {
+    if (isGuest || !task.scheduledDate || !task.scheduledTime || !task.durationMinutes) return;
+
+    syncGoogleCalendarTask(task)
+      .then((result) => {
+        if (result?.event_id && result.event_id !== task.googleEventId) {
+          updateTaskFull(task.id, { googleEventId: result.event_id });
+        }
+      })
+      .catch((error) => {
+        toast.error('No se pudo enviar a Google Calendar', {
+          description: error instanceof Error ? error.message : 'Intenta conectar de nuevo.',
+        });
+      });
+  }, [isGuest, syncGoogleCalendarTask, updateTaskFull]);
+
+  const removeTaskEverywhere = (id: string) => {
+    const task = tasks.find(t => t.id === id);
+    if (task?.googleEventId) {
+      deleteGoogleCalendarTaskEvent(task).catch(() => undefined);
+    }
+    deleteTask(id);
+  };
+
+  useEffect(() => {
+    if (isGuest || !googleCalendarConnection) return;
+
+    tasks
+      .filter(t => t.status === 'pending' && t.scheduledDate && t.scheduledTime && t.durationMinutes && !t.googleEventId)
+      .forEach((task) => {
+        if (googleCalendarSyncingIds.current.has(task.id)) return;
+        googleCalendarSyncingIds.current.add(task.id);
+        syncScheduledTaskToGoogle(task);
+      });
+  }, [tasks, isGuest, googleCalendarConnection, syncScheduledTaskToGoogle]);
+
   // Reset routine steps daily
   useEffect(() => {
     const today = new Date().toISOString().split('T')[0];
@@ -116,7 +165,7 @@ export default function Index() {
     if (sessions.length === 0) return 0;
     const today = new Date(); today.setHours(0, 0, 0, 0);
     let streak = 0;
-    let checkDate = new Date(today);
+    const checkDate = new Date(today);
     while (true) {
       const dateStr = checkDate.toISOString().split('T')[0];
       const hasSessions = sessions.some(s => s.date === dateStr);
@@ -133,7 +182,7 @@ export default function Index() {
     isTopThree = false
   ) => {
     const newTask = addTask(input, isTopThree);
-    const opts = typeof input === 'string' ? {} as any : input;
+    const opts: Partial<Pick<Task, 'scheduledDate' | 'scheduledTime' | 'durationMinutes' | 'source'>> = typeof input === 'string' ? {} : input;
     if (opts.scheduledDate && opts.scheduledTime) {
       const scheduleAt = new Date(`${opts.scheduledDate}T${opts.scheduledTime}`);
       if (scheduleAt > new Date()) {
@@ -152,6 +201,7 @@ export default function Index() {
           });
         }
       });
+      syncScheduledTaskToGoogle(newTask);
     }
   };
 
@@ -180,6 +230,7 @@ export default function Index() {
           });
         }
       });
+      syncScheduledTaskToGoogle({ ...task, ...updates, scheduledDate: finalDate, scheduledTime: finalTime });
     }
   };
 
@@ -191,6 +242,7 @@ export default function Index() {
     const finalTime = updates.scheduledTime ?? task.scheduledTime;
     if (finalDate && finalTime) {
       triggerWebhook(task.id, task.text, finalDate, finalTime);
+      syncScheduledTaskToGoogle({ ...task, status: 'pending', ...updates, scheduledDate: finalDate, scheduledTime: finalTime });
     }
   };
 
@@ -296,7 +348,7 @@ export default function Index() {
         routines.some(r => r.steps.some(st => st.completed && (st.completedAt || '').startsWith(dateStr)));
     };
     const today = new Date(); today.setHours(0, 0, 0, 0);
-    let streak = 0; let check = new Date(today);
+    let streak = 0; const check = new Date(today);
     while (true) {
       const ds = check.toISOString().split('T')[0];
       if (dayHasVictory(ds)) { streak++; check.setDate(check.getDate() - 1); }
@@ -368,7 +420,7 @@ export default function Index() {
           <TasksPage
             tasks={tasks}
             onAddTask={(d) => handleAddTask(d, false)}
-            onToggleTask={toggleTask} onDeleteTask={deleteTask} onSetTaskStatus={setTaskStatus}
+            onToggleTask={toggleTask} onDeleteTask={removeTaskEverywhere} onSetTaskStatus={setTaskStatus}
             onUpdateTask={handleUpdateTask} onReuseTask={reuseTask}
             onStartFocus={(taskText, minutes) => startFocusFromTopTask(taskText, minutes)}
             getTasksCountForDate={getTasksCountForDate} onTogglePriority={togglePriority}

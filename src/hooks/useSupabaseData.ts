@@ -164,6 +164,7 @@ export function useSupabaseData() {
       completedAt: r.completed_at, createdAt: r.created_at, isTopThree: r.is_top_three,
       isExceptionToday: r.is_exception_today, scheduledDate: r.scheduled_date,
       scheduledTime: r.scheduled_time, durationMinutes: r.duration_minutes,
+      googleEventId: r.google_event_id,
       reminderEnabled: r.reminder_enabled, reminderSentAt: r.reminder_sent_at,
     };
   }
@@ -263,8 +264,11 @@ export function useSupabaseData() {
       if (updates.isTopThree !== undefined) dbUpdates.is_top_three = updates.isTopThree;
       if (updates.isExceptionToday !== undefined) dbUpdates.is_exception_today = updates.isExceptionToday;
       if (updates.scheduledDate !== undefined) dbUpdates.scheduled_date = updates.scheduledDate || null;
+      if (updates.scheduledTime !== undefined) dbUpdates.scheduled_time = updates.scheduledTime || null;
+      if (updates.durationMinutes !== undefined) dbUpdates.duration_minutes = updates.durationMinutes || null;
       if (updates.status !== undefined) dbUpdates.status = updates.status;
       if (updates.completedAt !== undefined) dbUpdates.completed_at = updates.completedAt || null;
+      if (updates.googleEventId !== undefined) dbUpdates.google_event_id = updates.googleEventId || null;
       supabase.from('tasks').update(dbUpdates).eq('id', id).then();
     } else {
       setGuestTasks(updater);

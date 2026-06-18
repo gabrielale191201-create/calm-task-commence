@@ -1,10 +1,12 @@
 import { useCallback, useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import type { Task } from '@/types/focuson';
 
 const STATE_KEY = 'gcal-oauth-state';
 const REDIRECT_PATH = '/calendar/callback';
 const PRODUCTION_ORIGIN = 'https://focusonlife.app';
+export const GOOGLE_CALENDAR_PENDING_CONNECT_KEY = 'focuson-pending-google-calendar-connect';
 
 function isTemporaryPreviewHost() {
   return window.location.hostname.endsWith('lovableproject.com');
@@ -54,9 +56,11 @@ export function useGoogleCalendar() {
         toast.info('Google Calendar se conecta desde la app publicada', {
           description: 'Te llevo a focusonlife.app para usar una URL autorizada por Google.',
         });
-        window.location.assign(PRODUCTION_ORIGIN);
+        window.location.assign(`${PRODUCTION_ORIGIN}/?gcal_connect=1`);
         return;
       }
+
+      localStorage.removeItem(GOOGLE_CALENDAR_PENDING_CONNECT_KEY);
 
       const redirect_uri = getGoogleCalendarRedirectUri();
       const { data, error } = await supabase.functions.invoke('google-calendar-connect', {
@@ -98,5 +102,46 @@ export function useGoogleCalendar() {
     }
   }, [refresh]);
 
-  return { connection, loading, working, connect, disconnect, completeOAuth, refresh };
+  const syncTask = useCallback(async (task: Task) => {
+    if (!task.scheduledDate || !task.scheduledTime || !task.durationMinutes) return null;
+
+    const { data, error } = await supabase.functions.invoke('google-calendar-sync-task', {
+      body: {
+        action: 'upsert',
+        task: {
+          id: task.id,
+          text: task.text,
+          scheduledDate: task.scheduledDate,
+          scheduledTime: task.scheduledTime,
+          durationMinutes: task.durationMinutes,
+          googleEventId: task.googleEventId ?? null,
+        },
+      },
+    });
+
+    if (error) throw error;
+    if (data?.error) throw new Error(data.error);
+    return data as { event_id?: string; skipped?: string } | null;
+  }, []);
+
+  const deleteTaskEvent = useCallback(async (task: Task) => {
+    if (!task.googleEventId) return null;
+
+    const { data, error } = await supabase.functions.invoke('google-calendar-sync-task', {
+      body: {
+        action: 'delete',
+        task: {
+          id: task.id,
+          text: task.text,
+          googleEventId: task.googleEventId,
+        },
+      },
+    });
+
+    if (error) throw error;
+    if (data?.error) throw new Error(data.error);
+    return data as { success?: boolean; skipped?: string } | null;
+  }, []);
+
+  return { connection, loading, working, connect, disconnect, completeOAuth, refresh, syncTask, deleteTaskEvent };
 }

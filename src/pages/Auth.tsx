@@ -13,6 +13,7 @@ import { FocusOnLogo } from '@/components/FocusOnLogo';
 import { User, Mail, Loader2 } from 'lucide-react';
 import { LoadingScreen } from '@/components/LoadingScreen';
 import { lovable } from '@/integrations/lovable/index';
+import { GOOGLE_CALENDAR_PENDING_CONNECT_KEY } from '@/hooks/useGoogleCalendar';
 
 const emailSchema = z.string().email('Email inválido');
 const passwordSchema = z.string().min(6, 'La contraseña debe tener al menos 6 caracteres');
@@ -30,6 +31,10 @@ export default function Auth() {
   // If already guest or authenticated, go to home
   useEffect(() => {
     if (!isLoading && (isAuthenticated || isGuest)) {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get('gcal_connect') === '1') {
+        localStorage.setItem(GOOGLE_CALENDAR_PENDING_CONNECT_KEY, 'true');
+      }
       navigate('/', { replace: true });
     }
   }, [isAuthenticated, isGuest, isLoading, navigate]);
@@ -54,6 +59,10 @@ export default function Auth() {
       }
 
       const redirectUrl = `${window.location.origin}/auth/callback`;
+      const params = new URLSearchParams(window.location.search);
+      if (params.get('gcal_connect') === '1') {
+        localStorage.setItem(GOOGLE_CALENDAR_PENDING_CONNECT_KEY, 'true');
+      }
       
       const { error } = await lovable.auth.signInWithOAuth('google', {
         redirect_uri: redirectUrl,
@@ -64,9 +73,9 @@ export default function Auth() {
         toast.error(`Error: ${error.message || 'No se pudo iniciar sesión con Google'}`);
         setIsGoogleLoading(false);
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('[Auth] Google sign-in exception:', err);
-      toast.error(`Error: ${err.message || 'Algo salió mal. Intenta de nuevo.'}`);
+      toast.error(`Error: ${err instanceof Error ? err.message : 'Algo salió mal. Intenta de nuevo.'}`);
       setIsGoogleLoading(false);
     }
   };
