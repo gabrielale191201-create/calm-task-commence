@@ -25,6 +25,7 @@ export interface Task {
   scheduledDate?: string; // YYYY-MM-DD (opcional)
   scheduledTime?: string; // HH:mm (opcional)
   durationMinutes?: number; // minutos (opcional)
+  googleEventId?: string;
   
   // Recordatorio push notification
   reminderEnabled?: boolean;
