@@ -10,6 +10,7 @@ const ALLOWED_REDIRECT_URIS = new Set([
   'https://www.focusonlife.app/calendar/callback',
   'https://calm-task-commence.lovable.app/calendar/callback',
 ]);
+const FALLBACK_REDIRECT_URI = 'https://focusonlife.app/calendar/callback';
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
@@ -37,9 +38,7 @@ Deno.serve(async (req) => {
     if (!redirect_uri || typeof redirect_uri !== 'string') {
       return new Response(JSON.stringify({ error: 'redirect_uri requerido' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
-    if (!ALLOWED_REDIRECT_URIS.has(redirect_uri)) {
-      return new Response(JSON.stringify({ error: 'URL de retorno no autorizada' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
-    }
+    const safeRedirectUri = ALLOWED_REDIRECT_URIS.has(redirect_uri) ? redirect_uri : FALLBACK_REDIRECT_URI;
 
     const clientId = Deno.env.get('GOOGLE_CALENDAR_CLIENT_ID');
     if (!clientId) {
@@ -49,7 +48,7 @@ Deno.serve(async (req) => {
     const state = `${userId}:${crypto.randomUUID()}`;
     const params = new URLSearchParams({
       client_id: clientId,
-      redirect_uri,
+      redirect_uri: safeRedirectUri,
       response_type: 'code',
       scope: 'openid email profile https://www.googleapis.com/auth/calendar.events',
       access_type: 'offline',
