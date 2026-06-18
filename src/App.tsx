@@ -13,6 +13,8 @@ const Auth = lazy(() => import("./pages/Auth"));
 const Onboarding = lazy(() => import("./pages/Onboarding"));
 const AuthCallback = lazy(() => import("./pages/AuthCallback"));
 const CalendarCallback = lazy(() => import("./pages/CalendarCallback"));
+const Privacy = lazy(() => import("./pages/Privacy"));
+const Terms = lazy(() => import("./pages/Terms"));
 
 const NotFound = lazy(() => import("./pages/NotFound"));
 
@@ -68,6 +70,8 @@ function AppRoutes() {
     <Suspense fallback={<LoadingScreen message="Cargando..." />}>
       <Routes>
         <Route path="/auth" element={<Auth />} />
+        <Route path="/privacidad" element={<Privacy />} />
+        <Route path="/terminos" element={<Terms />} />
         <Route path="/auth/callback" element={<AuthCallback />} />
         <Route path="/calendar/callback" element={
           <ProtectedRoute>
