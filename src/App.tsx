@@ -65,6 +65,7 @@ function AppRoutes() {
       <Routes>
         <Route path="/auth" element={<Auth />} />
         <Route path="/auth/callback" element={<AuthCallback />} />
+        <Route path="/calendar/callback" element={<LoadingScreen message="Conectando Google Calendar..." />} />
         <Route path="/onboarding" element={
           <ProtectedRoute>
             <Onboarding />
