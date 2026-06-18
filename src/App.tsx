@@ -15,6 +15,7 @@ const AuthCallback = lazy(() => import("./pages/AuthCallback"));
 const CalendarCallback = lazy(() => import("./pages/CalendarCallback"));
 const Privacy = lazy(() => import("./pages/Privacy"));
 const Terms = lazy(() => import("./pages/Terms"));
+const About = lazy(() => import("./pages/About"));
 
 const NotFound = lazy(() => import("./pages/NotFound"));
 
@@ -72,6 +73,8 @@ function AppRoutes() {
         <Route path="/auth" element={<Auth />} />
         <Route path="/privacidad" element={<Privacy />} />
         <Route path="/terminos" element={<Terms />} />
+        <Route path="/about" element={<About />} />
+        <Route path="/sobre" element={<About />} />
         <Route path="/auth/callback" element={<AuthCallback />} />
         <Route path="/calendar/callback" element={
           <ProtectedRoute>
