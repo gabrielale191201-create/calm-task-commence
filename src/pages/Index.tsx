@@ -348,7 +348,7 @@ export default function Index() {
         routines.some(r => r.steps.some(st => st.completed && (st.completedAt || '').startsWith(dateStr)));
     };
     const today = new Date(); today.setHours(0, 0, 0, 0);
-    let streak = 0; let check = new Date(today);
+    let streak = 0; const check = new Date(today);
     while (true) {
       const ds = check.toISOString().split('T')[0];
       if (dayHasVictory(ds)) { streak++; check.setDate(check.getDate() - 1); }
