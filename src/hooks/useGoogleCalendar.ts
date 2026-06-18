@@ -1,4 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
+import { Capacitor } from '@capacitor/core';
+import { Browser } from '@capacitor/browser';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import type { Task } from '@/types/focuson';
@@ -23,6 +25,15 @@ function getGoogleCalendarRedirectUri() {
     : window.location.origin;
 
   return `${origin}${REDIRECT_PATH}`;
+}
+
+async function openGoogleOAuth(url: string) {
+  if (Capacitor.isNativePlatform()) {
+    await Browser.open({ url, presentationStyle: 'fullscreen' });
+    return;
+  }
+
+  window.location.href = url;
 }
 
 export interface GoogleCalendarConnection {
@@ -74,7 +85,7 @@ export function useGoogleCalendar() {
       if (error) throw error;
       if (!data?.auth_url) throw new Error('No se recibió auth_url');
       sessionStorage.setItem(STATE_KEY, data.state);
-      window.location.href = data.auth_url;
+      await openGoogleOAuth(data.auth_url);
     } catch (e) {
       toast.error('No se pudo iniciar la conexión', { description: (e as Error).message });
       setWorking(false);

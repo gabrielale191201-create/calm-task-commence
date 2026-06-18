@@ -20,10 +20,10 @@ export default function Privacy() {
         <h2 className="text-lg font-semibold mt-6">2. Google Calendar</h2>
         <p>
           Si conectas tu Google Calendar, solicitamos el permiso
-          <code className="mx-1 px-1 rounded bg-muted text-xs">calendar.events</code>
-          para crear, actualizar y eliminar únicamente los eventos que generas desde Focus On Life.
-          No leemos ni modificamos eventos creados por otras apps. Puedes revocar el acceso en cualquier
-          momento desde tu perfil o desde
+          <code className="mx-1 px-1 rounded bg-muted text-xs">calendar.events.owned</code>
+          para crear, actualizar y eliminar únicamente eventos creados por Focus On Life para tus bloques
+          de Focus Time. No leemos, importamos ni modificamos eventos creados por ti u otras apps.
+          Puedes revocar el acceso en cualquier momento desde tu perfil o desde
           <a className="underline mx-1" href="https://myaccount.google.com/permissions" target="_blank" rel="noreferrer">
             myaccount.google.com/permissions
           </a>.
