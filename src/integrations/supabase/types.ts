@@ -315,6 +315,7 @@ export type Database = {
           completed_at: string | null
           created_at: string
           duration_minutes: number | null
+          google_event_id: string | null
           id: string
           is_exception_today: boolean
           is_top_three: boolean
@@ -332,6 +333,7 @@ export type Database = {
           completed_at?: string | null
           created_at?: string
           duration_minutes?: number | null
+          google_event_id?: string | null
           id?: string
           is_exception_today?: boolean
           is_top_three?: boolean
@@ -349,6 +351,7 @@ export type Database = {
           completed_at?: string | null
           created_at?: string
           duration_minutes?: number | null
+          google_event_id?: string | null
           id?: string
           is_exception_today?: boolean
           is_top_three?: boolean
@@ -411,6 +414,42 @@ export type Database = {
           event_name?: string
           id?: string
           metadata?: Json | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      user_google_calendar: {
+        Row: {
+          access_token: string
+          created_at: string
+          expires_at: string
+          google_email: string | null
+          id: string
+          refresh_token: string
+          scope: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          access_token: string
+          created_at?: string
+          expires_at: string
+          google_email?: string | null
+          id?: string
+          refresh_token: string
+          scope?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          access_token?: string
+          created_at?: string
+          expires_at?: string
+          google_email?: string | null
+          id?: string
+          refresh_token?: string
+          scope?: string | null
+          updated_at?: string
           user_id?: string
         }
         Relationships: []
