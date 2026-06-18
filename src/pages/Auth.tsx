@@ -13,6 +13,7 @@ import { FocusOnLogo } from '@/components/FocusOnLogo';
 import { User, Mail, Loader2 } from 'lucide-react';
 import { LoadingScreen } from '@/components/LoadingScreen';
 import { lovable } from '@/integrations/lovable/index';
+import { GOOGLE_CALENDAR_PENDING_CONNECT_KEY } from '@/hooks/useGoogleCalendar';
 
 const emailSchema = z.string().email('Email inválido');
 const passwordSchema = z.string().min(6, 'La contraseña debe tener al menos 6 caracteres');
@@ -54,6 +55,10 @@ export default function Auth() {
       }
 
       const redirectUrl = `${window.location.origin}/auth/callback`;
+      const params = new URLSearchParams(window.location.search);
+      if (params.get('gcal_connect') === '1') {
+        localStorage.setItem(GOOGLE_CALENDAR_PENDING_CONNECT_KEY, 'true');
+      }
       
       const { error } = await lovable.auth.signInWithOAuth('google', {
         redirect_uri: redirectUrl,
