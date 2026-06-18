@@ -112,6 +112,30 @@ export default function Index() {
     connectGoogleCalendar();
   }, [connectGoogleCalendar]);
 
+  const syncScheduledTaskToGoogle = (task: Task) => {
+    if (isGuest || !task.scheduledDate || !task.scheduledTime || !task.durationMinutes) return;
+
+    syncGoogleCalendarTask(task)
+      .then((result) => {
+        if (result?.event_id && result.event_id !== task.googleEventId) {
+          updateTaskFull(task.id, { googleEventId: result.event_id });
+        }
+      })
+      .catch((error) => {
+        toast.error('No se pudo enviar a Google Calendar', {
+          description: error instanceof Error ? error.message : 'Intenta conectar de nuevo.',
+        });
+      });
+  };
+
+  const removeTaskEverywhere = (id: string) => {
+    const task = tasks.find(t => t.id === id);
+    if (task?.googleEventId) {
+      deleteGoogleCalendarTaskEvent(task).catch(() => undefined);
+    }
+    deleteTask(id);
+  };
+
   // Reset routine steps daily
   useEffect(() => {
     const today = new Date().toISOString().split('T')[0];
