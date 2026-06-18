@@ -50,7 +50,7 @@ Deno.serve(async (req) => {
       client_id: clientId,
       redirect_uri: safeRedirectUri,
       response_type: 'code',
-      scope: 'openid email profile https://www.googleapis.com/auth/calendar.events',
+      scope: 'openid email profile https://www.googleapis.com/auth/calendar.events.owned',
       access_type: 'offline',
       prompt: 'consent',
       include_granted_scopes: 'true',
