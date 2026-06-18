@@ -73,9 +73,9 @@ export default function Auth() {
         toast.error(`Error: ${error.message || 'No se pudo iniciar sesión con Google'}`);
         setIsGoogleLoading(false);
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('[Auth] Google sign-in exception:', err);
-      toast.error(`Error: ${err.message || 'Algo salió mal. Intenta de nuevo.'}`);
+      toast.error(`Error: ${err instanceof Error ? err.message : 'Algo salió mal. Intenta de nuevo.'}`);
       setIsGoogleLoading(false);
     }
   };
