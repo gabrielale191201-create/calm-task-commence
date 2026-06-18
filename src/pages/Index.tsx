@@ -46,7 +46,7 @@ export default function Index() {
     try { return localStorage.getItem('focuson-dismiss-update-v1.2') === 'true'; } catch { return false; }
   });
   const notifLoading = false;
-  const handleDismissUpdate = () => { setDismissedUpdate(true); try { localStorage.setItem('focuson-dismiss-update-v1.2', 'true'); } catch {} };
+  const handleDismissUpdate = () => { setDismissedUpdate(true); try { localStorage.setItem('focuson-dismiss-update-v1.2', 'true'); } catch { return; } };
   const { profile } = useProfile();
 
   // Session tracker for time-in-app telemetry
@@ -113,7 +113,7 @@ export default function Index() {
     connectGoogleCalendar();
   }, [connectGoogleCalendar]);
 
-  const syncScheduledTaskToGoogle = (task: Task) => {
+  const syncScheduledTaskToGoogle = useCallback((task: Task) => {
     if (isGuest || !task.scheduledDate || !task.scheduledTime || !task.durationMinutes) return;
 
     syncGoogleCalendarTask(task)
@@ -127,7 +127,7 @@ export default function Index() {
           description: error instanceof Error ? error.message : 'Intenta conectar de nuevo.',
         });
       });
-  };
+  }, [isGuest, syncGoogleCalendarTask, updateTaskFull]);
 
   const removeTaskEverywhere = (id: string) => {
     const task = tasks.find(t => t.id === id);
@@ -147,7 +147,7 @@ export default function Index() {
         googleCalendarSyncingIds.current.add(task.id);
         syncScheduledTaskToGoogle(task);
       });
-  }, [tasks, isGuest, googleCalendarConnection]);
+  }, [tasks, isGuest, googleCalendarConnection, syncScheduledTaskToGoogle]);
 
   // Reset routine steps daily
   useEffect(() => {
@@ -165,7 +165,7 @@ export default function Index() {
     if (sessions.length === 0) return 0;
     const today = new Date(); today.setHours(0, 0, 0, 0);
     let streak = 0;
-    let checkDate = new Date(today);
+    const checkDate = new Date(today);
     while (true) {
       const dateStr = checkDate.toISOString().split('T')[0];
       const hasSessions = sessions.some(s => s.date === dateStr);
@@ -182,7 +182,7 @@ export default function Index() {
     isTopThree = false
   ) => {
     const newTask = addTask(input, isTopThree);
-    const opts = typeof input === 'string' ? {} as any : input;
+    const opts: Partial<Pick<Task, 'scheduledDate' | 'scheduledTime' | 'durationMinutes' | 'source'>> = typeof input === 'string' ? {} : input;
     if (opts.scheduledDate && opts.scheduledTime) {
       const scheduleAt = new Date(`${opts.scheduledDate}T${opts.scheduledTime}`);
       if (scheduleAt > new Date()) {
