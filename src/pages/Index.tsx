@@ -32,6 +32,7 @@ import { useNavigate } from 'react-router-dom';
 import { useTaskNotifications } from '@/hooks/useTaskNotifications';
 import { useLocalNotifications, taskIdToNumericId } from '@/hooks/useLocalNotifications';
 import { useOneSignal } from '@/hooks/useOneSignal';
+import { GOOGLE_CALENDAR_PENDING_CONNECT_KEY, useGoogleCalendar } from '@/hooks/useGoogleCalendar';
 
 export default function Index() {
   const { signOut } = useAuthState();
@@ -66,6 +67,7 @@ export default function Index() {
   useTaskNotifications(tasks);
   const { scheduleNotification, cancelNotificationByTaskId, requestPermissions, hasPermission } = useLocalNotifications();
   const { isSubscribed: oneSignalSubscribed, subscribe: oneSignalSubscribe } = useOneSignal();
+  const { connect: connectGoogleCalendar, syncTask: syncGoogleCalendarTask, deleteTaskEvent: deleteGoogleCalendarTaskEvent } = useGoogleCalendar();
 
   // Routines stay in localStorage (legacy, section hidden)
   const [routines, setRoutines] = useLocalStorage<Routine[]>('focuson-routines', []);
@@ -99,6 +101,16 @@ export default function Index() {
   useEffect(() => {
     if (timer.isCompleted) playAlarm();
   }, [timer.isCompleted, playAlarm]);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const shouldConnect = params.get('gcal_connect') === '1' || localStorage.getItem(GOOGLE_CALENDAR_PENDING_CONNECT_KEY) === 'true';
+    if (!shouldConnect) return;
+
+    localStorage.removeItem(GOOGLE_CALENDAR_PENDING_CONNECT_KEY);
+    window.history.replaceState({}, document.title, window.location.pathname);
+    connectGoogleCalendar();
+  }, [connectGoogleCalendar]);
 
   // Reset routine steps daily
   useEffect(() => {
