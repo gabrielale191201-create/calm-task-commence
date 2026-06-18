@@ -85,7 +85,7 @@ export default function About() {
             <Feature
               icon={<Calendar className="size-5" />}
               title="Google Calendar (opcional)"
-              text="Sincroniza tus bloques con tu calendario personal si lo conectas voluntariamente."
+              text="Crea eventos solo para tus bloques de Focus Time si lo conectas voluntariamente."
             />
           </ul>
         </section>
@@ -100,8 +100,8 @@ export default function About() {
               <h3 className="text-lg font-semibold mb-1">Privacidad primero</h3>
               <p className="text-sm text-[hsl(240,5%,70%)] leading-relaxed">
                 Tus tareas y notas son tuyas. Si conectas Google Calendar, Focus On
-                Life solo crea eventos para los bloques que tú agendas — nunca lee
-                eventos ajenos ni comparte tu información con terceros.
+                Life solo crea, actualiza y elimina eventos propios de la app para
+                tus bloques — nunca lee eventos ajenos ni comparte tu información.
               </p>
               <div className="mt-3 flex gap-4 text-sm">
                 <Link
