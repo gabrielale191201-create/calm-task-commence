@@ -6,8 +6,12 @@ const STATE_KEY = 'gcal-oauth-state';
 const REDIRECT_PATH = '/calendar/callback';
 const PRODUCTION_ORIGIN = 'https://focusonlife.app';
 
+function isTemporaryPreviewHost() {
+  return window.location.hostname.endsWith('lovableproject.com');
+}
+
 function getGoogleCalendarRedirectUri() {
-  const origin = window.location.hostname.endsWith('lovableproject.com')
+  const origin = isTemporaryPreviewHost()
     ? PRODUCTION_ORIGIN
     : window.location.origin;
 
@@ -46,6 +50,14 @@ export function useGoogleCalendar() {
   const connect = useCallback(async () => {
     setWorking(true);
     try {
+      if (isTemporaryPreviewHost()) {
+        toast.info('Google Calendar se conecta desde la app publicada', {
+          description: 'Te llevo a focusonlife.app para usar una URL autorizada por Google.',
+        });
+        window.location.assign(PRODUCTION_ORIGIN);
+        return;
+      }
+
       const redirect_uri = getGoogleCalendarRedirectUri();
       const { data, error } = await supabase.functions.invoke('google-calendar-connect', {
         body: { redirect_uri },
